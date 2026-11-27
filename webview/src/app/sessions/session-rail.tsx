@@ -34,6 +34,7 @@ export function SessionRail() {
       <div class="rail-list scroll-edges" ref={scrollEdges} role="listbox" aria-label="Chats">
         <SessionList
           sessions={client.state().sessions}
+          needsYou={client.state().needsYou}
           errors={client.state().sessionErrors}
           selected={client.state().sessionId}
           grouped

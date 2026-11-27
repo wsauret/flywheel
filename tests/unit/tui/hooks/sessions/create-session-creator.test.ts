@@ -39,7 +39,7 @@ function harness(dispatch: (command: ChatOpen) => Promise<CreationResult>) {
     },
     sessionShortTitle: () => "",
     statusView: () => undefined,
-    waitingSessions: () => new Set<string>(),
+    chatMark: () => undefined,
     outputView: () => undefined,
   }
   const [rows, setRows] = createSignal<readonly SessionCatalogRow[]>([])

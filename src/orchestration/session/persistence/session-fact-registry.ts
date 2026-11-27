@@ -6,6 +6,8 @@ import { SessionMetadataFactSchemas } from "../metadata/session-metadata-facts.j
 import { SessionRuntimeFactSchemas, ToolContentReferenceFactSchemas } from "../runtime-facts/session-runtime-event-types.js"
 import { ConversationTreeFactSchemas } from "../conversation/conversation-facts.js"
 import { AgentInputFactSchemas } from "../agent-input/agent-input-facts.js"
+import { ChatTurnStopFactSchemas } from "./chat-turn-stop-facts.js"
+import { ChatReadReceiptFactSchemas } from "./chat-read-receipt-facts.js"
 import { ProviderRequestAuditFactSchemas } from "../runtime-facts/provider-request-audit-facts.js"
 import { ConversationCheckpointFactSchemas } from "./conversation-checkpoint-facts.js"
 import { ConversationRolePickFactSchemas } from "./conversation-role-pick-facts.js"
@@ -16,6 +18,8 @@ const FACT_MODULES = [
   ConversationRolePickFactSchemas,
   ConversationPromptBaselineFactSchemas,
   AgentInputFactSchemas,
+  ChatTurnStopFactSchemas,
+  ChatReadReceiptFactSchemas,
   FileMutationFactSchemas,
   SessionForkFactSchemas,
   SessionMetadataFactSchemas,

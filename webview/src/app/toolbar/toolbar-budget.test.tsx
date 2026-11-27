@@ -129,3 +129,23 @@ test("toolbar preserves ready price and subscription wording", async () => {
     mounted.dispose()
   }
 })
+
+test("the narrow and phone headers lead with how many chats need the person and show nothing at zero", async () => {
+  const fixture = await loadBudgetRenderFixture()
+  for (const layout of ["narrow", "phone"] as const) {
+    const mounted = fixture.mountToolbarBudget(layout)
+    try {
+      assert.equal(mounted.needs(), undefined)
+      mounted.setNeedsYou(2)
+      const needs = mounted.needs()
+      assert.equal(needs?.properties["aria-label"], "2 chats need you", layout)
+      assert.match(mounted.text(), /2 need you/)
+      mounted.setNeedsYou(1)
+      assert.equal(mounted.needs(), needs, "a new count keeps the mark")
+      assert.equal(needs?.properties["aria-label"], "1 chat needs you")
+      assert.match(mounted.text(), /1 needs you/)
+      mounted.setNeedsYou(0)
+      assert.equal(mounted.needs(), undefined)
+    } finally { mounted.dispose() }
+  }
+})

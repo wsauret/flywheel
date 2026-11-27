@@ -11,7 +11,7 @@ import type { TranscriptLayoutSlot } from "../../../../src/tui/transcript/output
 import { catalogRow } from "../../../helpers/session-catalog.js"
 
 function tab(id: string, kind: "session" | "pending" = "session"): TabInfo {
-  return { kind, id, title: id, isForeground: false, isBusy: false, isBlocked: false }
+  return { kind, id, title: id, isForeground: false, isBusy: false }
 }
 
 function fixture(handed: LaunchState | undefined) {

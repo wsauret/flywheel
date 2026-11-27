@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import { loadBudgetRenderFixture } from "../../test-support/budget-render-test-loader.js"
+import { textContent } from "../../test-support/render-ownership-host-fixture.js"
 
 test("session metadata shows only loading totals and restores prior metadata gating", async () => {
   const fixture = await loadBudgetRenderFixture()
@@ -10,7 +11,7 @@ test("session metadata shows only loading totals and restores prior metadata gat
     const stable = mounted.stableControl()
     assert.equal(mounted.meta()?.properties["aria-busy"], true)
     assert.equal(mounted.metaText(), "totals loadingquestion+1~2-3")
-    assert.deepEqual(mounted.badge()?.properties.classList, { waiting: true, error: false })
+    assert.deepEqual(mounted.badge()?.properties.classList, { waiting: true, stopped: false, error: false })
     mounted.setReady()
     assert.equal(mounted.meta()?.properties["aria-busy"], undefined)
     assert.equal(mounted.metaText(), "question+1~2-3")
@@ -127,5 +128,66 @@ test("a title matches when each typed word starts one of its words, and a word t
     await pause()
     assert.ok(!queries.includes("ot"), "a two-letter word does not search the messages")
     assert.doesNotMatch(mounted.text(), /Searching messages/)
+  } finally { mounted.dispose() }
+})
+
+test("a stopped unread chat lists under Needs you after a question and moves to Recent in its own row once read", async () => {
+  const now = Date.now()
+  const chat = (id: string, overrides: { readonly awaitingAnswer?: true; readonly working?: true } = {}) => ({ id, title: id, subtitle: `${id} description`, kind: "chat" as const, lifecycleState: "inactive" as const, active: false, working: false, lastUpdated: new Date(now).toISOString(), totalsLoading: false, ...overrides })
+  const mounted = (await loadBudgetRenderFixture()).mountSessionListUnread([chat("asked", { awaitingAnswer: true }), chat("done"), chat("failed"), chat("busy", { working: true })])
+  try {
+    mounted.setWaiting([{ sessionId: "asked", openedAt: now }])
+    mounted.setUnread({
+      stopped: [
+        { sessionId: "done", ending: { kind: "completed" }, firstLine: "The fix is in place", stoppedAt: now - 3 * 3_600_000, stopKey: "entry-done" },
+        { sessionId: "failed", ending: { kind: "failed", failure: "api_overloaded" }, stoppedAt: now - 4 * 3_600_000, stopKey: "stop-failed" },
+      ],
+      unread: ["busy"],
+    })
+    assert.deepEqual(mounted.rowOrder(), ["asked", "done", "failed", "busy"])
+    assert.deepEqual(mounted.headings(), ["Needs you", "Working"])
+    assert.match(mounted.rowText("done"), /The fix is in place/)
+    assert.match(mounted.rowText("done"), /3h/)
+    assert.doesNotMatch(mounted.rowText("done"), /done description/)
+    assert.deepEqual(mounted.badges("done").map((badge) => [textContent(badge), badge.properties.classList]), [["stopped", { waiting: false, stopped: true, error: false }]])
+    assert.match(mounted.rowText("failed"), /the provider is overloaded/)
+    assert.deepEqual(mounted.badges("failed").map((badge) => [textContent(badge), badge.properties.classList]), [["error", { waiting: false, stopped: false, error: true }]])
+    // A working chat with unread messages keeps its place under Working.
+    assert.deepEqual(mounted.badges("busy").map((badge) => [textContent(badge), badge.properties.classList]), [["unread", { hidden: false }]])
+    const unreadMark = mounted.badges("busy")[0]
+
+    // The marks that apply to each row: a question is answered, not read.
+    assert.ok(mounted.action("done", "Mark read"))
+    assert.equal(mounted.action("done", "Mark unread"), undefined)
+    assert.ok(mounted.action("busy", "Mark read"))
+    assert.equal(mounted.action("asked", "Mark read"), undefined)
+    assert.equal(mounted.action("asked", "Mark unread"), undefined)
+    const markButton = mounted.action("done", "Mark read")
+    const markRead = markButton?.properties.onClick
+    if (typeof markRead === "function") markRead({ stopPropagation() {} })
+    assert.deepEqual(mounted.marked, ["read:done"])
+
+    // An equal set published again keeps every row and its marks.
+    const row = mounted.row("done")
+    const badge = mounted.badges("done")[0]
+    mounted.setUnread({ stopped: [{ sessionId: "done", ending: { kind: "completed" }, firstLine: "The fix is in place", stoppedAt: now - 3 * 3_600_000, stopKey: "entry-done" }], unread: [] })
+    assert.equal(mounted.row("done"), row)
+    assert.equal(mounted.badges("done")[0], badge)
+    // A working row keeps the slot of its mark once read, so its height stays.
+    assert.equal(mounted.badges("busy")[0], unreadMark)
+    assert.deepEqual(unreadMark?.properties.classList, { hidden: true })
+
+    // Read: the same row moves to Recent and shows its own line again.
+    mounted.setUnread({ stopped: [], unread: [] })
+    assert.equal(mounted.row("done"), row, "reading a chat must not replace its row")
+    assert.deepEqual(mounted.rowOrder(), ["asked", "busy", "done", "failed"])
+    assert.match(mounted.rowText("done"), /done description/)
+    assert.deepEqual(mounted.badges("done"), [])
+    // One mark button changes its words, so a focused button stays focused.
+    assert.equal(mounted.action("done", "Mark unread"), markButton)
+    assert.equal(mounted.action("done", "Mark read"), undefined)
+    const markUnread = mounted.action("done", "Mark unread")?.properties.onClick
+    if (typeof markUnread === "function") markUnread({ stopPropagation() {} })
+    assert.deepEqual(mounted.marked, ["read:done", "unread:done"])
   } finally { mounted.dispose() }
 })

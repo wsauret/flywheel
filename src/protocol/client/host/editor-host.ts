@@ -46,9 +46,23 @@ export type ViewMessage =
   | { readonly type: "capability"; readonly requestId: number; readonly request: CapabilityRequest }
   | { readonly type: "summary"; readonly summary: ClientSummary }
 
+/** Whether the person is at the chat view: the editor window has focus and
+ *  the view shows. Only the extension host knows both; the webview cannot
+ *  tell its view is hidden behind another panel or that the window is in the
+ *  background. */
+export interface EditorAttention {
+  readonly windowFocused: boolean
+  readonly viewVisible: boolean
+}
+
 /** Host to view. */
 export type HostMessage =
-  | { readonly type: "hostCommands"; readonly ids: readonly string[]; readonly review?: ChangesReviewTarget }
+  /** `attention` is present when the host bridges it, which the chat view's
+   *  host does; then an `attention` message follows each change. An older
+   *  host leaves it out, and the client then counts the person at no chat,
+   *  because its document cannot tell that the view is hidden. */
+  | { readonly type: "hostCommands"; readonly ids: readonly string[]; readonly review?: ChangesReviewTarget; readonly attention?: EditorAttention }
+  | { readonly type: "attention"; readonly attention: EditorAttention }
   | { readonly type: "socket.opened"; readonly id: number }
   | { readonly type: "socket.data"; readonly id: number; readonly bytes: Uint8Array }
   | { readonly type: "socket.closed"; readonly id: number; readonly error?: string }

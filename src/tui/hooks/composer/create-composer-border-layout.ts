@@ -40,9 +40,10 @@ export interface DismissibleUpdateStatus {
 
 export interface ComposerBorderLayoutController {
   readonly layout: Accessor<ComposerBorderLayout>
-  /** How many listed chats other than the one in front wait on a question.
-   *  The border shows it, and so does a docked question, which hides the border. */
-  readonly waitingCount: Accessor<number>
+  /** How many listed chats other than the one in front need the person: they
+   *  wait on a question or stopped unread. The border shows it, and so does a
+   *  docked question, which hides the border. */
+  readonly needsYouCount: Accessor<number>
   readonly dismissUpdate: () => void
 }
 
@@ -84,22 +85,18 @@ export function createDismissibleUpdateStatus(update: Accessor<UpdateStatusView 
 export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): ComposerBorderLayoutController {
   const { signals } = deps
   const updateStatus = createDismissibleUpdateStatus(signals.updateStatus)
-  // The listed chats other than the one in front that wait on a question
-  // (PI-INTERACTION-184). Joining with the listed rows leaves out deleted
-  // sessions, subagents, and workflow agents.
-  const waitingCount = createMemo(() => {
-    const waiting = signals.waitingSessions()
+  // The listed chats other than the one in front that need the person
+  // (PI-INTERACTION-184).
+  const needsYouCount = createMemo(() => {
     const foreground = signals.foregroundId()
-    let count = 0
-    for (const row of signals.listedSessions()) if (row.id !== foreground && waiting.has(row.id)) count += 1
-    return count
+    return signals.needsYou().rows.filter((row) => row.sessionId !== foreground).length
   })
   const layout = createMemo(() => computeComposerBorderLayout({
     terminalWidth: deps.terminalWidth(),
     modelLabel: signals.activeModelLabel(),
     update: updateStatus.current(),
     composerStatus: deps.composerStatus?.() ?? [],
-    waitingCount: waitingCount(),
+    needsYouCount: needsYouCount(),
     changesLabel: signals.foregroundId() ? sessionChangesPromptLabel(signals.sessionChanges()?.snapshot().summary) : undefined,
     primaryHints: primaryKeyHints({
       hasPendingQuestion: signals.pendingQuestion() !== undefined,
@@ -116,5 +113,5 @@ export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): Comp
     newHint: { key: deps.chordFor("new"), label: "new" },
     closeHint: { key: deps.chordFor("tab.close"), label: "close tab" },
   }))
-  return { layout, waitingCount, dismissUpdate: updateStatus.dismiss }
+  return { layout, needsYouCount, dismissUpdate: updateStatus.dismiss }
 }

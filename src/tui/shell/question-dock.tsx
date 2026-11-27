@@ -17,7 +17,7 @@ import { createQuestionForm } from "../components/composer/question-dock-form.js
 import { layoutQuestionDockEditor } from "./question-dock-editor-layout.js"
 import { createModalScrollController } from "../components/modal/scroll/modal-scroll-controller.js"
 import { ChromeControl } from "../components/chrome/chrome-control.js"
-import { waitingCountLabel } from "../components/composer/frame/composer-border-layout.js"
+import { needsYouCountLabel } from "../components/composer/frame/composer-border-layout.js"
 
 interface QuestionAnswers {
   [question: string]: AgentInputAnswer
@@ -31,11 +31,11 @@ export interface QuestionDockProps {
   /** False while an overlay covers the dock, so the dock leaves the terminal cursor alone. */
   captureFocus: () => boolean
   escapeHint?: string
-  /** How many listed chats other than this one wait on a question. The dock
+  /** How many listed chats other than this one need the person. The dock
    *  hides the composer border that shows this count, so it shows it at the
    *  right end of its hint row (PI-INTERACTION-184). */
-  waitingCount: number
-  /** Opens the Sessions list, where the waiting chats lead. */
+  needsYouCount: number
+  /** Opens the Sessions list, where the chats that need the person lead. */
   onOpenSessions: () => void
   onAnswer: (answers: QuestionAnswers) => Promise<boolean>
   onCancel: () => Promise<boolean>
@@ -341,7 +341,7 @@ export function QuestionDock(props: QuestionDockProps) {
 
       <box flexDirection="row">
         <text flexGrow={1} flexShrink={1} ref={(el: TextRenderable) => { createEffect(() => { el.content = hintsContent() }) }} />
-        <Show when={waitingCountLabel(props.waitingCount)}>
+        <Show when={needsYouCountLabel(props.needsYouCount)}>
           {(label) => (
             <ChromeControl hoverColor={theme.backgroundElement} onPress={() => props.onOpenSessions()}>
               <text fg={theme.warning} selectable={false} wrapMode="none">{label()}</text>

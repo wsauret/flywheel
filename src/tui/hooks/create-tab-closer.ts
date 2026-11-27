@@ -58,7 +58,7 @@ export function createTabCloser(deps: TabCloserDeps): TabCloser {
   function closeTab(tabId: string): void {
     const list = deps.tabs()
     const only = list.length === 1 ? list[0] : undefined
-    if (only?.id === tabId && only.kind === "session" && only.title === "New Chat" && !only.isBusy && !only.isBlocked) return
+    if (only?.id === tabId && only.kind === "session" && only.title === "New Chat" && !only.isBusy && only.mark === undefined) return
     const target = remove(tabId)
     if (!target) return
     if (target.kind === "pending") {

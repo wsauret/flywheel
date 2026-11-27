@@ -15,15 +15,23 @@ function tabState(summary: Pick<ClientSummary, "health" | "busy">): TabState {
   return summary.busy ? "working" : "idle"
 }
 
+/** A browser tab title led by the number of chats that need the person,
+ *  where a truncated tab still shows it. No number shows at zero
+ *  (PI-LOCAL-003). The local page and the phone page both title their tab
+ *  with it. */
+export function needsYouTitle(needsYou: number, title: string): string {
+  return needsYou > 0 ? `(${needsYou}) ${title}` : title
+}
+
 /** The tab's title: the session first, because a person with several project
  *  tabs open reads the session name, and the product last as the family name.
  *  A working session and a page that has lost the runtime say so up front,
- *  where a truncated tab still shows it. */
-function tabTitle(sessionTitle: string | undefined, state: TabState): string {
+ *  after the count of chats that need the person. */
+function tabTitle(sessionTitle: string | undefined, state: TabState, needsYou: number): string {
   const parts = [sessionTitle, PRODUCT].filter((part) => part !== undefined && part.length > 0)
-  if (state === "working") return `Working · ${parts.join(" · ")}`
-  if (state === "away") return `Runtime lost · ${parts.join(" · ")}`
-  return parts.join(" · ")
+  if (state === "working") return needsYouTitle(needsYou, `Working · ${parts.join(" · ")}`)
+  if (state === "away") return needsYouTitle(needsYou, `Runtime lost · ${parts.join(" · ")}`)
+  return needsYouTitle(needsYou, parts.join(" · "))
 }
 
 /** The tab's icon: the brand tile, with a dot in the corner while the session
@@ -55,8 +63,8 @@ export function reloadWhenRestoredFromCache(page: Pick<EventTarget, "addEventLis
 
 /** Paints the tab from one client summary: title and icon together, so the
  *  two never disagree about the session's state. */
-export function applyTabIdentity(document: Document, summary: Pick<ClientSummary, "health" | "busy" | "sessionTitle">): void {
+export function applyTabIdentity(document: Document, summary: Pick<ClientSummary, "health" | "busy" | "sessionTitle" | "needsYou">): void {
   const state = tabState(summary)
-  document.title = tabTitle(summary.sessionTitle, state)
+  document.title = tabTitle(summary.sessionTitle, state, summary.needsYou ?? 0)
   document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.setAttribute("href", faviconHref(state))
 }

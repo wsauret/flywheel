@@ -1,5 +1,5 @@
-import type { DesktopNotice } from "../../../src/protocol/client/chat/questions/question-pages.js"
-import type { InlineSettingAction, SettingOutcome } from "./settings-actions.js"
+import type { DesktopNotice } from "../../../../src/protocol/client/chat/desktop-pages.js"
+import type { InlineSettingAction, SettingOutcome } from "../settings-actions.js"
 
 /** Whether this page may show operating-system notifications: the browser's
  *  own answer, or `unsupported` where the page has no Notification API, such
@@ -97,12 +97,12 @@ export function browserDesktopNotifier(scope: PermissionsScope = globalThis): De
     },
     show(notice) {
       if (api === undefined || api.permission !== "granted") return
-      // One notice for each question: every open page of the project that
-      // pages for the same question shows one notice, and a later question
+      // One notice for each question or stop: every open page of the
+      // project that pages for the same one shows one notice, and a later one
       // alerts again instead of replacing the earlier notice in silence.
-      const shown = new api(notice.title, { body: notice.body, tag: `flywheel-question:${notice.questionId}` })
+      const shown = new api(notice.title, { body: notice.body, tag: `flywheel-${notice.key}` })
       // A click brings the page that paged the person to the front and
-      // opens the session that asks.
+      // opens the session the notice names.
       shown.addEventListener("click", () => {
         scope.focus?.()
         for (const open of openers) open(notice.sessionId)

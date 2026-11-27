@@ -92,6 +92,7 @@ function treeWriterStub(): ConversationTreeWriterController {
     commitQueuedUserInput: async () => { throw new Error("unused") },
     acceptRetainedOperation: async () => {},
     holdsForQuestion: () => false,
+    newestSincePersonMessage: () => undefined,
     awaitsAnswer: async () => false,
     readHeldMessages: async () => [],
     releaseHeldInput: async () => {},

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import type { ClientSummary } from "../../../src/protocol/client/host/host-contract.js"
-import { applyTabIdentity, reloadWhenRestoredFromCache } from "../../../webview/local/tab.js"
+import { applyTabIdentity, needsYouTitle, reloadWhenRestoredFromCache } from "../../../webview/local/tab.js"
 
 const ICON_PREFIX = "data:image/svg+xml;utf8,"
 
@@ -13,7 +13,7 @@ function memoryDocument(value: unknown): Document {
 
 /** The tab's title and icon after `applyTabIdentity` paints one summary onto
  *  a page with an icon link. */
-function paintedTab(summary: Pick<ClientSummary, "health" | "busy" | "sessionTitle">) {
+function paintedTab(summary: Pick<ClientSummary, "health" | "busy" | "sessionTitle" | "needsYou">) {
   let href = ""
   const page = {
     title: "",
@@ -42,6 +42,16 @@ describe("local browser tab identity", () => {
     expect(paintedTab({ health: { kind: "faulted", since: 1 }, busy: false, sessionTitle: "Fix the parser" }).title).toBe("Runtime lost · Fix the parser · Flywheel")
     expect(paintedTab({ health: healthy, busy: false, sessionTitle: undefined }).title).toBe("Flywheel")
     expect(paintedTab({ health: healthy, busy: true, sessionTitle: "" }).title).toBe("Working · Flywheel")
+  })
+
+  test("leads with how many chats need the person, before the state words, and shows no number at zero", () => {
+    expect(paintedTab({ health: healthy, busy: false, sessionTitle: "Fix", needsYou: 2 }).title).toBe("(2) Fix · Flywheel")
+    expect(paintedTab({ health: healthy, busy: true, sessionTitle: "Fix", needsYou: 1 }).title).toBe("(1) Working · Fix · Flywheel")
+    expect(paintedTab({ health: { kind: "faulted", since: 1 }, busy: false, sessionTitle: "Fix", needsYou: 3 }).title).toBe("(3) Runtime lost · Fix · Flywheel")
+    expect(paintedTab({ health: healthy, busy: false, sessionTitle: "Fix", needsYou: 0 }).title).toBe("Fix · Flywheel")
+    // The phone page leads its own title with the same count.
+    expect(needsYouTitle(2, "Flywheel")).toBe("(2) Flywheel")
+    expect(needsYouTitle(0, "Flywheel")).toBe("Flywheel")
   })
 
   test("badges the icon while working and dims it while away", () => {

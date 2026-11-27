@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { useQuestionPages } from "../../../../../src/tui/hooks/state/use-question-pages.js"
+import { useDesktopPages } from "../../../../../src/tui/hooks/state/use-desktop-pages.js"
 import { createQuestionCache } from "../../../../../src/tui/hooks/state/sessions/create-question-cache.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { questionCursor, type PendingQuestionView } from "../../../../../src/protocol/session/question-protocol-types.js"
 import { statusCursor } from "../../../../../src/protocol/session/status-protocol-types.js"
+import { unreadChatsCursor, type StoppedChat } from "../../../../../src/protocol/session/unread-protocol-types.js"
 import type { RuntimeSessionDetailView } from "../../../../../src/protocol/session/session-detail-protocol-types.js"
 import { catalogRow } from "../../../../helpers/session-catalog.js"
 import { fakeLanes, LANE_BREAK } from "../../../../helpers/fake-lanes.js"
@@ -23,9 +24,10 @@ const detailView = (sessionId: string): RuntimeSessionDetailView => ({
   },
 })
 
-/** A runtime that answers question reads from `waiting` and the session
- *  detail read with the session's title, and broadcasts live patches. */
-function fakeRuntime(waiting: ReadonlyMap<string, PendingQuestionView>) {
+/** A runtime that answers question reads from `waiting`, the unread set read
+ *  from `stopped`, and the session detail read with the session's title, and
+ *  broadcasts live patches. */
+function fakeRuntime(waiting: ReadonlyMap<string, PendingQuestionView>, stopped: StoppedChat[] = []) {
   let sequencer = createRuntimeUiPatchSequencer()
   const listeners = new Set<(event: FrontendEvent) => void>()
   const lanes = fakeLanes()
@@ -36,6 +38,7 @@ function fakeRuntime(waiting: ReadonlyMap<string, PendingQuestionView>) {
       detailReads.push(request.sessionId)
       return { view: detailView(request.sessionId) }
     },
+    unreadChatsSnapshot: async () => ({ stopped, unread: [], snapshotPosition: sequencer.snapshotPosition({ kind: "cursor", cursor: unreadChatsCursor() }) }),
   })
   const emit = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
   // Before a client attaches, the runtime publishes to no one.
@@ -49,6 +52,11 @@ function fakeRuntime(waiting: ReadonlyMap<string, PendingQuestionView>) {
     client, detailReads,
     ask(sessionId: string, toolUseId: string) { publish({ cursor: questionCursor(sessionId), payload: { kind: "question.updated", question: question(toolUseId) } }) },
     answer(sessionId: string) { publish({ cursor: questionCursor(sessionId), payload: { kind: "question.removed" } }) },
+    /** Publishes the set as `next`, announcing the stops in `newStops`. */
+    stop(next: readonly StoppedChat[], newStops: readonly StoppedChat[] = []) {
+      stopped.splice(0, stopped.length, ...next)
+      publish({ cursor: unreadChatsCursor(), payload: { kind: "unreadChats.changed", stopped: next, unread: [], newStops } })
+    },
     unrelated(sessionId: string) { publish({ cursor: statusCursor(sessionId), payload: { kind: "status.removed" } }) },
     reconnect() { lanes.end(); emit(LANE_BREAK); lanes.open() },
     /** The runtime restarts, and its positions start again. */
@@ -64,7 +72,7 @@ function mount(runtime: ReturnType<typeof fakeRuntime>, enabledAtStart = true) {
     const [enabled, setEnabled] = createSignal(enabledAtStart)
     const calls: string[] = []
     let rowReads = 0
-    useQuestionPages({
+    useDesktopPages({
       client: runtime.client, enabled,
       row: (sessionId) => { rowReads += 1; return sessionId === "chat" ? { title: "Plan the release" } : undefined },
       notify: (title, body) => { calls.push(`${title}: ${body}`) },
@@ -76,7 +84,22 @@ function mount(runtime: ReturnType<typeof fakeRuntime>, enabledAtStart = true) {
 const CHAT_PAGE = "Flywheel has a question: Plan the release"
 const AGENT_PAGE = "Flywheel has a question: Session workflow-agent"
 
-describe("terminal question pages", () => {
+describe("terminal desktop pages", () => {
+  test("a chat that stopped at attach pages no one; a stop that the set announces pages once with the words for finished", async () => {
+    const runtime = fakeRuntime(new Map(), [{ sessionId: "chat", ending: { kind: "completed" }, stoppedAt: 0, stopKey: "earlier" }])
+    const page = mount(runtime)
+    try {
+      await settle()
+      runtime.stop([])
+      const stop: StoppedChat = { sessionId: "chat", ending: { kind: "completed" }, stoppedAt: 1, stopKey: "answer-1" }
+      runtime.stop([stop], [stop])
+      runtime.stop([stop])
+      await settle()
+      expect(page.calls).toEqual(["Flywheel: Plan the release finished"])
+    } finally { page.dispose() }
+  })
+
+
   test("a question that waits at attach pages no one; each live question from a chat or an unopened workflow agent pages once, and a new question of the same session pages again", async () => {
     const runtime = fakeRuntime(new Map([["chat", question("waiting")]]))
     const page = mount(runtime)

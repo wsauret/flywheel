@@ -48,7 +48,7 @@ function workflowPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain
 function sessionPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "session" | "session_detail" | "output" | "status" | "budget" | "question" | "roles" | "auth" | "changes" | "background" | "experiment_view"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "session", domain, sessionId: "session-1" }, position: 17, prevPosition: 11, payload }
 }
-function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "waitingSessions" | "chat_default" | "executor" | "service" | "settlement" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote" | "reclaim_storage"): RuntimeUiPatch & { readonly payload: P } {
+function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "waitingSessions" | "unreadChats" | "chat_default" | "executor" | "service" | "settlement" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote" | "reclaim_storage"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "workspace", domain }, position: 17, prevPosition: 11, payload }
 }
 
@@ -88,6 +88,7 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
   "git.changed": workspacePatch({ kind: "git.changed", git: { directories: { "/project": { branch: "main" } } } }, "git"),
   "commandUsage.changed": workspacePatch({ kind: "commandUsage.changed", usage: { uses: [{ name: "ship", count: 1 }] } }, "commandUsage"),
   "waitingSessions.changed": workspacePatch({ kind: "waitingSessions.changed", sessions: [{ sessionId: "session-1", openedAt: 1 }] }, "waitingSessions"),
+  "unreadChats.changed": workspacePatch({ kind: "unreadChats.changed", stopped: [{ sessionId: "session-1", ending: { kind: "completed" }, firstLine: "Done.", stoppedAt: 1, stopKey: "entry-1" }], unread: ["session-2"], newStops: [{ sessionId: "session-1", ending: { kind: "completed" }, firstLine: "Done.", stoppedAt: 1, stopKey: "entry-1" }] }, "unreadChats"),
   "definitionStaleness.changed": workspacePatch({ kind: "definitionStaleness.changed", definitionStaleness: { overrides: [], diagnostics: [], reviewCount: 0 } }, "definitionStaleness"),
   "experiment_view.updated": sessionPatch({ kind: "experiment_view.updated", experimentView }, "experiment_view"),
   "experiment_view.removed": sessionPatch({ kind: "experiment_view.removed" }, "experiment_view"),

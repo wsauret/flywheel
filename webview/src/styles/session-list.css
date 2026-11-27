@@ -156,6 +156,17 @@
   color: color-mix(in srgb, var(--fw-warning) 40%, var(--fw-fg));
 }
 .session-badge.error { color: color-mix(in srgb, var(--fw-error) 40%, var(--fw-fg)); background: color-mix(in srgb, var(--fw-error) 10%, transparent); }
+/* A stop the person has not read needs them, as a question does, in the
+   colour of a message. Unread messages of a working chat only mark the row:
+   the same colour, no fill. */
+.session-badge.stopped {
+  background: color-mix(in srgb, var(--fw-info) 15%, transparent);
+  color: color-mix(in srgb, var(--fw-info) 40%, var(--fw-fg));
+}
+.session-badge.unread { color: color-mix(in srgb, var(--fw-info) 60%, var(--fw-fg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fw-info) 40%, transparent); }
+/* A working row that the person has read keeps the mark's slot, so the
+   mark never opens or closes the row's second line. */
+.session-badge.unread.hidden { visibility: hidden; }
 
 /* The lines a session changed, in the terminal picker's own order and
    colours: added, changed, removed. */

@@ -65,6 +65,9 @@ export interface ClientSummary {
    *  client older than this field leaves it out, and the host then shows
    *  every command. */
   readonly moduleIds?: readonly ModuleId[]
+  /** How many chats need the person: questions plus stopped unread chats
+   *  (PI-INTERACTION-057). A client older than this field leaves it out. */
+  readonly needsYou?: number
 }
 
 /** Navigation only: the review opens on `path` when the session changed it.

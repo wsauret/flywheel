@@ -3,11 +3,12 @@ import { describe, test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
 import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
-import type { DesktopNotice } from "../../../../src/protocol/client/chat/questions/question-pages.js"
+import type { DesktopNotice } from "../../../../src/protocol/client/chat/desktop-pages.js"
 import type { RuntimeSessionDetailView } from "../../../../src/protocol/session/session-detail-protocol-types.js"
 import { questionCursor, type PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
-import { browserDesktopNotifier, desktopPermissionRefusal, desktopSwitchOn, type DesktopNotifier, type DesktopPermission } from "../desktop-notifier.js"
-import { createQuestionPager } from "./question-pager.js"
+import { unreadChatsCursor, type StoppedChat } from "../../../../src/protocol/session/unread-protocol-types.js"
+import { browserDesktopNotifier, desktopPermissionRefusal, desktopSwitchOn, type DesktopNotifier, type DesktopPermission } from "./desktop-notifier.js"
+import { createDesktopPager } from "./desktop-pager.js"
 import { fakePanelSettings } from "../../app/client-context-fixture.js"
 import { fakeRuntimeConnection } from "../../test-support/runtime-connection-fixture.js"
 import { createSessionReadings } from "../session/session-readings.js"
@@ -68,6 +69,7 @@ function fakeRuntime() {
       await titles.promise
       return { view: agentDetail(request.sessionId) }
     },
+    unreadChatsSnapshot: () => ({ stopped: [], unread: [], snapshotPosition: position }),
   } }, {
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
   })
@@ -79,6 +81,11 @@ function fakeRuntime() {
     connection, waiting, detailReads,
     ask: (sessionId: string, toolUseId: string) => { emit(sessionId, { kind: "question.updated", question: question(toolUseId) }) },
     answer: (sessionId: string) => { emit(sessionId, { kind: "question.removed" }) },
+    /** Publishes the set as `stopped`, announcing the stops in `newStops`. */
+    stop: (stopped: readonly StoppedChat[], newStops: readonly StoppedChat[] = []) => {
+      position += 1
+      for (const listener of listeners) listener({ type: "patch", patch: { cursor: unreadChatsCursor(), position, prevPosition: position - 1, payload: { kind: "unreadChats.changed", stopped, unread: [], newStops } } })
+    },
     holdTitles() { titles = Promise.withResolvers<void>(); return titles.resolve },
   }
 }
@@ -90,9 +97,10 @@ function pagerFor(permission: DesktopPermission, on: boolean) {
   return createRoot((dispose) => {
     const readings = createSessionReadings({ connection: runtime.connection, changed() {} })
     const [frame, setFrame] = createSignal({ settings: settingsWith(on) })
-    createQuestionPager({
+    createDesktopPager({
       state: frame,
-      session: { desktopNotifier: desktop.notifier, row: (sessionId) => (sessionId === CHAT ? chatRow : undefined) },
+      notifier: desktop.notifier,
+      row: (sessionId) => (sessionId === CHAT ? chatRow : undefined),
       connection: runtime.connection,
       attend: (sessionId) => { attended.push(sessionId) },
     })
@@ -104,7 +112,7 @@ function pagerFor(permission: DesktopPermission, on: boolean) {
   })
 }
 
-describe("question pager", () => {
+describe("desktop pager", () => {
   test("a question that waits at attach pages no one, and each live question from a chat or a workflow agent pages once", async () => {
     const page = pagerFor("granted", true)
     page.runtime.waiting.set(CHAT, question("waiting"))
@@ -120,14 +128,14 @@ describe("question pager", () => {
     page.runtime.ask(CHAT, "ask-2")
     await settle()
     assert.deepEqual(page.desktop.shown, [
-      { sessionId: CHAT, questionId: "ask-2", title: "Flywheel has a question", body: "Plan the release" },
-      { sessionId: AGENT, questionId: "ask-1", title: "Flywheel has a question", body: "Build" },
+      { sessionId: CHAT, key: "question:ask-2", title: "Flywheel has a question", body: "Plan the release" },
+      { sessionId: AGENT, key: "question:ask-1", title: "Flywheel has a question", body: "Build" },
     ])
     assert.deepEqual(page.runtime.detailReads, [AGENT], "a session the page holds a row for reads nothing")
     page.runtime.answer(AGENT)
     page.runtime.ask(AGENT, "ask-3")
     await settle()
-    assert.deepEqual(page.desktop.shown.map((notice) => notice.questionId), ["ask-2", "ask-1", "ask-3"], "a new question of the same session pages again")
+    assert.deepEqual(page.desktop.shown.map((notice) => notice.key), ["question:ask-2", "question:ask-1", "question:ask-3"], "a new question of the same session pages again")
     page.dispose()
   })
 
@@ -163,7 +171,20 @@ describe("question pager", () => {
     assert.equal(page.desktop.shown.length, 0)
     page.runtime.ask(CHAT, "ask-2")
     await settle()
-    assert.deepEqual(page.desktop.shown.map((notice) => notice.questionId), ["ask-2"])
+    assert.deepEqual(page.desktop.shown.map((notice) => notice.key), ["question:ask-2"])
+    page.dispose()
+  })
+
+  test("a chat that stops unread pages once, and a click on its notice attends the chat", async () => {
+    const page = pagerFor("granted", true)
+    await settle()
+    const stopped: StoppedChat = { sessionId: CHAT, ending: { kind: "refused" }, stoppedAt: 0, stopKey: "stop:3" }
+    page.runtime.stop([stopped], [stopped])
+    page.runtime.stop([stopped])
+    await settle()
+    assert.deepEqual(page.desktop.shown, [{ sessionId: CHAT, key: "stop:chat-1:stop:3", title: "Flywheel", body: "Plan the release stopped on an error" }])
+    page.desktop.click(CHAT)
+    assert.deepEqual(page.attended, [CHAT])
     page.dispose()
   })
 
@@ -217,7 +238,7 @@ describe("desktop notifier", () => {
     const notifier = browserDesktopNotifier({ Notification: browser.api, focus: () => { focused += 1 } })
     const opened: string[] = []
     const stop = notifier.onOpen((sessionId) => { opened.push(sessionId) })
-    notifier.show({ sessionId: CHAT, questionId: "ask-1", title: "Flywheel has a question", body: "Chat" })
+    notifier.show({ sessionId: CHAT, key: "question:ask-1", title: "Flywheel has a question", body: "Chat" })
     browser.shown[0]?.dispatchEvent(new Event("click"))
     assert.equal(focused, 1)
     assert.deepEqual(opened, [CHAT])
@@ -226,17 +247,17 @@ describe("desktop notifier", () => {
     assert.deepEqual(opened, [CHAT], "a page that stopped listening opens nothing")
   })
 
-  test("asks the browser once, and shows one notice for each question only while it is allowed", async () => {
+  test("asks the browser once, and shows one notice for each question or stop only while it is allowed", async () => {
     const browser = browserApi("default", "granted")
     const notifier = browserDesktopNotifier({ Notification: browser.api })
     let changes = 0
     notifier.onChange(() => { changes += 1 })
-    notifier.show({ sessionId: CHAT, questionId: "ask-1", title: "early", body: "" })
+    notifier.show({ sessionId: CHAT, key: "question:ask-1", title: "early", body: "" })
     assert.equal(await notifier.request(), "granted")
     assert.equal(await notifier.request(), "granted")
     assert.equal(browser.asked, 1, "the browser prompt shows only while the answer is default")
     assert.equal(changes, 1)
-    notifier.show({ sessionId: CHAT, questionId: "ask-2", title: "Flywheel has a question", body: "Chat" })
+    notifier.show({ sessionId: CHAT, key: "question:ask-2", title: "Flywheel has a question", body: "Chat" })
     assert.deepEqual(browser.created, [{ title: "Flywheel has a question", options: { body: "Chat", tag: "flywheel-question:ask-2" } }])
   })
 

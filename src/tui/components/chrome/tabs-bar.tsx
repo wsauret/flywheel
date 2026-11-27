@@ -1,11 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { MouseEvent } from "@opentui/core"
+import type { MouseEvent, RGBA } from "@opentui/core"
 import type { Accessor } from "solid-js"
 import { For, createEffect, createMemo, createSignal, on, untrack } from "solid-js"
 import { BOLD } from "../../terminal/text-attributes.js"
+import { truncateToWidth } from "../../terminal/text.js"
 import { CellColumn, type CellColumnState, type Gutter } from "./cell-column.js"
 import type { TuiTheme } from "../../context/theme/tui-theme.js"
+import { MARK_GLYPHS, markColor, type ChatMark } from "../notices/chat-marks.js"
 
 /** What the tab bar draws for one tab. */
 export interface TabPresentation {
@@ -14,8 +16,9 @@ export interface TabPresentation {
   isForeground: boolean
   // Runner is currently processing a chat turn.
   isBusy: boolean
-  // The session waits on a question: the project's waiting set names it.
-  isBlocked: boolean
+  // What the session holds for the person: a question, a stop, or unread
+  // messages. Absent when it holds nothing.
+  mark?: ChatMark
 }
 
 interface TabsBarProps {
@@ -46,8 +49,6 @@ const NEW_TAB_WIDTH = 3
 // before it plus the glyph itself. Subtracted from `availableWidth` before
 // layoutTabs so overflow packing accounts for it.
 const NEW_TAB_RESERVED = TAB_GAP + NEW_TAB_WIDTH
-// Col-0 gutter glyph for a tab cell: an animated spinner or a blocked marker.
-const BLOCKED_GLYPH = "?"
 const DRAG_GLYPH = "↔"
 const INSERT_GLYPH = "│"
 const DRAG_THRESHOLD = 2
@@ -59,10 +60,6 @@ interface TabLayout {
 
 type Cell = CellColumnState & { key: string }
 
-function truncate(label: string, max: number): string {
-  if (label.length <= max) return label
-  return label.slice(0, max)
-}
 
 interface Layout {
   items: TabLayout[]
@@ -82,7 +79,7 @@ interface DragState {
 function layoutTabs(tabs: readonly TabPresentation[], available: number): Layout {
   if (tabs.length === 0) return { items: [], hasOverflow: false, visibleCount: 0 }
   const labelMax = Math.max(1, TAB_WIDTH - TAB_FRAME - GUTTER_SLOT)
-  const items = tabs.map((tab) => ({ tab, title: truncate(tab.title, labelMax) }))
+  const items = tabs.map((tab) => ({ tab, title: truncateToWidth(tab.title, labelMax, "") }))
   if (tabs.length * TAB_WIDTH + (tabs.length - 1) * TAB_GAP <= available) {
     return { items, hasOverflow: false, visibleCount: tabs.length }
   }
@@ -128,35 +125,39 @@ function tabGapCell(input: AppendTabCellsInput): Cell {
 function tabCell(input: AppendTabCellsInput): Cell {
   const tab = input.item.tab
   const isFg = tab.isForeground
-  const blocked = tab.isBlocked
   const dragging = input.state?.active === true && input.state.sessionId === tab.id
+  // A question or a stop colours the title; unread messages mark only the badge.
+  const marked = tab.mark !== undefined && tab.mark !== "unread" ? markColor(input.theme, tab.mark) : undefined
   return {
     key: `tab-${tab.id}`,
     width: TAB_WIDTH,
     text: input.item.title,
-    ...tabTextStyle(input.theme, isFg, blocked, dragging),
+    ...tabTextStyle(input.theme, isFg, marked, dragging),
     textCentered: true,
     paddingLeft: 1,
     paddingRight: 1,
     barColor: dragging ? input.theme.primary : isFg ? input.theme.primary : input.theme.border,
     leftBreak: false,
     rightBreak: false,
-    gutter: tabGutter(tab, dragging, blocked),
+    gutter: tabGutter(tab, dragging),
+    // Unread messages mark a working tab beside its spinner, so the tab
+    // still says that its agent works (PI-INTERACTION-188).
+    badge: tab.mark === "unread" ? { char: MARK_GLYPHS.unread, fg: markColor(input.theme, "unread") } : undefined,
     onClick: () => input.onActivate(tab.id),
     onMouseDown: (event) => input.startTabDrag(tab.id, event),
   }
 }
 
-function tabTextStyle(theme: TuiTheme, isFg: boolean, blocked: boolean, dragging: boolean): Pick<Cell, "textFg" | "textFgHover"> {
+function tabTextStyle(theme: TuiTheme, isFg: boolean, marked: RGBA | undefined, dragging: boolean): Pick<Cell, "textFg" | "textFgHover"> {
   return {
-    textFg: dragging ? theme.primary : blocked ? theme.warning : (isFg ? theme.text : theme.textMuted),
-    textFgHover: !isFg && !blocked ? theme.text : undefined,
+    textFg: dragging ? theme.primary : marked ?? (isFg ? theme.text : theme.textMuted),
+    textFgHover: !isFg && !marked ? theme.text : undefined,
   }
 }
 
-function tabGutter(tab: TabPresentation, dragging: boolean, blocked: boolean): Gutter | undefined {
+function tabGutter(tab: TabPresentation, dragging: boolean): Gutter | undefined {
   if (dragging) return { kind: "glyph", char: DRAG_GLYPH }
-  if (blocked) return { kind: "glyph", char: BLOCKED_GLYPH }
+  if (tab.mark !== undefined && tab.mark !== "unread") return { kind: "glyph", char: MARK_GLYPHS[tab.mark] }
   return tab.isBusy ? { kind: "spinner" } : undefined
 }
 

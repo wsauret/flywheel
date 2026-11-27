@@ -6,7 +6,7 @@ import type { ModuleId } from "../../../src/protocol/runtime/module-ids.js"
  *  control that never shows that it works. */
 type KernelAction =
   | "answer" | "capability" | "close" | "command" | "compact" | "delete" | "detach" | "dismiss-notice"
-  | "interrupt" | "load-older" | "model" | "model-effort" | "model-reset" | "model-role" | "model-seat" | "new-chat"
+  | "interrupt" | "load-older" | "mark-read" | "mark-unread" | "model" | "model-effort" | "model-reset" | "model-role" | "model-seat" | "new-chat"
   | "profile-create" | "profile-pin" | "profile-rename" | "profile-select"
   | "provider-consent" | "provider-disconnect" | "provider-login" | "provider-login-finish"
   | "provider-model" | "provider-models" | "provider-models-recheck" | "provider-rename" | "providers-refresh"

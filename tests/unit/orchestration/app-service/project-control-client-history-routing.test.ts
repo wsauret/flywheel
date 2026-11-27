@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { Rpc } from "effect/rpc"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
 import type { RuntimeQuery, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
@@ -306,6 +307,28 @@ describe("project control client history routing", () => {
     f.facts.push(answer)
     f.stored.emit([answer])
     expect((await client.query({ type: "waitingSessionsSnapshot" })).sessions).toEqual([])
+    await client.close()
+  })
+
+  test("answers which chats stopped unread and takes presence and marks while execution is paused, never asking the executor or writing a conversation", async () => {
+    const f = fixture()
+    const chatFact = (position: number, type: "chat.turn.started" | "chat.turn.stopped") => ({
+      id: String(position), position, seq: position - 1, timestamp: position, actor: "flywheel", aggregateId: "session:closed", sessionId: "closed", type, version: 1,
+      payload: type === "chat.turn.stopped" ? { conversationId: "conv-1", ending: { kind: "completed" }, finalEntryId: "answer-1", firstLine: "Done." } : { conversationId: "conv-1" },
+    })
+    f.facts.push(chatFact(1, "chat.turn.started"), chatFact(2, "chat.turn.stopped"))
+    // The executor never answers: a paused project with no restart scheduled.
+    const client = createProjectControlClient({ ...f.options, executionPaused: () => true })
+    const connection = new Rpc.ServerClient(1)
+
+    expect((await client.query({ type: "unreadChatsSnapshot" })).stopped.map((chat) => chat.sessionId)).toEqual(["closed"])
+    expect(await client.dispatch({ type: "chat.presence", sessionId: "closed" }, connection)).toEqual({ ok: true })
+    expect((await client.query({ type: "unreadChatsSnapshot" })).stopped).toEqual([])
+    client.disconnect(connection)
+    expect(await client.dispatch({ type: "chat.mark_unread", sessionId: "closed" })).toEqual({ ok: true })
+    expect((await client.query({ type: "unreadChatsSnapshot" })).stopped.map((chat) => chat.sessionId)).toEqual(["closed"])
+    // The only facts written are the person's receipts.
+    expect(f.facts.slice(2).map((fact) => [fact.type, fact.payload["cause"]])).toEqual([["chat.read.recorded", "presence_ended"], ["chat.read.recorded", "marked_unread"]])
     await client.close()
   })
 })

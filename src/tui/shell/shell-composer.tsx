@@ -138,7 +138,7 @@ export function ShellComposer(props: {
     const target = signals.foregroundTarget()
     return target?.kind === "pending" ? target.key : target?.sessionId
   }
-  const { layout: promptBorderLayout, waitingCount, dismissUpdate: dismissUpdateStatus } = createComposerBorderLayout({
+  const { layout: promptBorderLayout, needsYouCount, dismissUpdate: dismissUpdateStatus } = createComposerBorderLayout({
     signals,
     terminalWidth: lineWidth,
     composerStatus: slots.composerStatus,
@@ -171,7 +171,7 @@ export function ShellComposer(props: {
         promptAttachSlot={composer.attachSlot}
         spinnerSource={signals.spinnerStatusSource}
         promptBorderLayout={promptBorderLayout}
-        waitingCount={waitingCount}
+        needsYouCount={needsYouCount}
         onDismissUpdate={dismissUpdateStatus}
         onOpenChanges={modals.openSessionChangesModal}
         history={composer.promptHistory}

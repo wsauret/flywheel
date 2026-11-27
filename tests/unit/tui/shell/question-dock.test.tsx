@@ -66,7 +66,7 @@ describe("QuestionDock", () => {
     onOpenSessions?: () => void
   } = {}) {
     const [current, setCurrent] = createSignal(options.question ?? question)
-    const [waitingCount, setWaitingCount] = createSignal(0)
+    const [needsYouCount, setNeedsYouCount] = createSignal(0)
     let questionInput: QuestionInputContext | undefined
     const onAnswer = options.onAnswer ?? mock(() => {})
     const width = options.width ?? 100
@@ -81,7 +81,7 @@ describe("QuestionDock", () => {
           draftCache={draftCache}
           width={width}
           captureFocus={options.captureFocus ?? (() => true)}
-          waitingCount={waitingCount()}
+          needsYouCount={needsYouCount()}
           onOpenSessions={options.onOpenSessions ?? (() => {})}
           onAnswer={async (answers) => (await onAnswer(answers)) !== false}
           onCancel={async () => true}
@@ -103,35 +103,35 @@ describe("QuestionDock", () => {
     await result.renderOnce()
     const input = questionInput
     if (!input) throw new Error("question input did not mount")
-    return { result, input, onAnswer, setQuestion: setCurrent, setWaitingCount }
+    return { result, input, onAnswer, setQuestion: setCurrent, setNeedsYouCount }
   }
 
-  it("names the other chats that wait at the right end of the hint row, and a click opens Sessions", async () => {
+  it("names the other chats that need the person at the right end of the hint row, and a click opens Sessions", async () => {
     const onOpenSessions = mock(() => {})
-    const { result, setWaitingCount } = await renderQuestionDock({ onOpenSessions })
+    const { result, setNeedsYouCount } = await renderQuestionDock({ onOpenSessions })
     try {
       const hintRow = () => result.captureCharFrame().split("\n").find((line) => line.includes("esc cancel")) ?? ""
       const alone = hintRow()
-      expect(result.captureCharFrame()).not.toContain("waiting")
+      expect(result.captureCharFrame()).not.toContain("need you")
 
-      setWaitingCount(2)
+      setNeedsYouCount(2)
       await result.renderOnce()
       const row = hintRow()
-      expect(row.trimEnd()).toEndWith("? 2 waiting")
+      expect(row.trimEnd()).toEndWith("2 need you")
       expect(row.slice(0, row.indexOf("esc cancel"))).toBe(alone.slice(0, alone.indexOf("esc cancel")))
-      const label = result.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.includes("? 2 waiting"))
+      const label = result.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.includes("2 need you"))
       expect(label?.fg.equals(theme.warning)).toBe(true)
 
       const lines = result.captureCharFrame().split("\n")
-      const y = lines.findIndex((line) => line.includes("? 2 waiting"))
-      const x = lines[y]?.indexOf("? 2 waiting") ?? -1
+      const y = lines.findIndex((line) => line.includes("2 need you"))
+      const x = lines[y]?.indexOf("2 need you") ?? -1
       await result.mockMouse.pressDown(x, y)
       await result.mockMouse.release(x, y)
       expect(onOpenSessions).toHaveBeenCalledTimes(1)
 
-      setWaitingCount(0)
+      setNeedsYouCount(0)
       await result.renderOnce()
-      expect(result.captureCharFrame()).not.toContain("waiting")
+      expect(result.captureCharFrame()).not.toContain("need you")
       expect(hintRow()).toBe(alone)
     } finally {
       result.renderer.destroy()
@@ -542,7 +542,7 @@ describe("QuestionDock", () => {
             </box>
             <box flexShrink={1} minHeight={0}>
               <Show when={docked()}>
-                <QuestionDock sessionId="session-a" question={question} draftCache={createDraftCache()} width={100} captureFocus={() => true} waitingCount={0} onOpenSessions={() => {}} onAnswer={async () => true} onCancel={async () => true} />
+                <QuestionDock sessionId="session-a" question={question} draftCache={createDraftCache()} width={100} captureFocus={() => true} needsYouCount={0} onOpenSessions={() => {}} onAnswer={async () => true} onCancel={async () => true} />
               </Show>
             </box>
           </box>

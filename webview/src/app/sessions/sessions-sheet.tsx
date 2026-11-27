@@ -43,6 +43,7 @@ export function SessionsSheet() {
       <div role="listbox" aria-label="Chats" tabIndex={-1} data-autofocus={searchFirst ? undefined : true}>
         <SessionList
           sessions={client.state().sessions}
+          needsYou={client.state().needsYou}
           errors={client.state().sessionErrors}
           selected={client.state().sessionId}
           grouped

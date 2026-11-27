@@ -1,7 +1,9 @@
 import { Key } from "@solid-primitives/keyed"
-import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js"
+import { createComputed, createEffect, createMemo, createSignal, For, on, onCleanup, Show, untrack } from "solid-js"
 
 import type { SessionCatalogError } from "../../../../src/protocol/runtime/app-service-types.js"
+import type { NeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
+import type { StoppedChat } from "../../../../src/protocol/session/unread-protocol-types.js"
 import { contentResults, createContentSearch, type ContentAnswer } from "../../../../src/protocol/client/chat/search/chat-content-search.js"
 import { snippetParts } from "../../../../src/protocol/client/chat/search/search-snippet.js"
 import { sessionTitleMatcher } from "../../../../src/protocol/client/chat/search/session-title-match.js"
@@ -32,6 +34,8 @@ export interface SessionListActions {
   readonly onClose?: (sessionId: string) => void
   readonly onDelete?: (sessionId: string) => void
   readonly onRename?: (sessionId: string) => void
+  readonly onMarkRead?: (sessionId: string) => void
+  readonly onMarkUnread?: (sessionId: string) => void
   /** True while an action on the session runs, such as Close or Delete. */
   readonly working: (sessionId: string) => boolean
   /** The chats whose messages match a search; without it the list searches titles only. `signal` aborts once a
@@ -53,8 +57,34 @@ interface Tray {
 
 const NEED_TITLES = {
   question: "A question waits for your answer",
+  stopped: "The chat stopped and waits for you",
   error: "The session reports an error",
 } as const
+
+/** What a stop on an error says in the row's description line. */
+const ENDING_WORDS = {
+  local_persistence_error: "Stopped: the chat could not be saved",
+  context_overflow: "Stopped: the conversation is too long for the model",
+  output_overflow: "Stopped: the answer was too long for the model",
+  api_error: "Stopped: the provider returned an error",
+  model_unavailable: "Stopped: the model is not available",
+  transient_disconnect: "Stopped: the connection to the provider dropped",
+  stream_stalled: "Stopped: the provider stopped answering",
+  api_overloaded: "Stopped: the provider is overloaded",
+} as const satisfies { readonly [Kind in Extract<StoppedChat["ending"], { kind: "failed" }>["failure"]]: string }
+
+function stoppedOnError(stopped: StoppedChat): boolean {
+  return stopped.ending.kind !== "completed"
+}
+
+/** The description line of a stopped row: the first line of the final
+ *  message, or what the error was. */
+function stopLine(stopped: StoppedChat): string | undefined {
+  const ending = stopped.ending
+  if (ending.kind === "failed") return ENDING_WORDS[ending.failure]
+  if (ending.kind === "refused") return "Stopped: the provider refused the conversation"
+  return stopped.firstLine
+}
 
 export function SessionList(props: {
   readonly sessions: readonly SessionSummary[]
@@ -68,6 +98,8 @@ export function SessionList(props: {
   /** Group headings for the long-form list. */
   readonly grouped?: boolean
   readonly filter?: string
+  /** The chats that need the person and the chats with unread messages. */
+  readonly needsYou: NeedsYou
   readonly actions: SessionListActions
   /** The pause in typing before the messages are searched; the shared default when absent. */
   readonly contentSearchDelayMs?: number
@@ -76,8 +108,22 @@ export function SessionList(props: {
     const query = props.filter?.trim() ?? ""
     const matches = sessionTitleMatcher(query)
     const visible = query.length === 0 ? props.sessions : props.sessions.filter((session) => matches([session.title, session.subtitle, session.id]))
-    return layoutSessionRows(visible, props.grouped === true, previous)
+    return layoutSessionRows(visible, props.needsYou, props.grouped === true, previous)
   }, [])
+
+  // A keyed move inserts a row's node again, and a browser drops the focus
+  // of a node it moves, such as a row's Rename button when a read patch
+  // moves the row to Recent. So the control that held the focus before a
+  // layout is focused again after it, without a scroll (PI-INTERACTION-062).
+  // The computation runs before the list's nodes move and the effect after.
+  let listRoot: HTMLElement | undefined
+  let focusedBefore: HTMLElement | undefined
+  createComputed(on(rows, () => { focusedBefore = listRoot?.querySelector<HTMLElement>(":focus") ?? undefined }))
+  createEffect(on(rows, () => {
+    const control = focusedBefore
+    focusedBefore = undefined
+    if (control?.isConnected && control.ownerDocument.activeElement !== control) control.focus({ preventScroll: true })
+  }))
 
   // Title matches show at once; chats found by what was said in them come
   // after a pause in typing and go below every title match, so an answer
@@ -130,6 +176,8 @@ export function SessionList(props: {
     const close = settled(props.actions.onClose)
     const remove = settled(props.actions.onDelete)
     const rename = settled(props.actions.onRename)
+    const markRead = settled(props.actions.onMarkRead)
+    const markUnread = settled(props.actions.onMarkUnread)
     return {
       onSelect: (sessionId) => {
         if (tray()?.id === sessionId) { setTray(undefined); return }
@@ -140,11 +188,13 @@ export function SessionList(props: {
       ...(close === undefined ? {} : { onClose: close }),
       ...(remove === undefined ? {} : { onDelete: remove }),
       ...(rename === undefined ? {} : { onRename: rename }),
+      ...(markRead === undefined ? {} : { onMarkRead: markRead }),
+      ...(markUnread === undefined ? {} : { onMarkUnread: markUnread }),
     }
   })
 
   return (
-    <div class="session-list" ref={(root) => onCleanup(bindRowSwipe(root, tray, setTray))}>
+    <div class="session-list" ref={(root) => { listRoot = root; onCleanup(bindRowSwipe(root, tray, setTray)) }}>
       <Show when={rows().length === 0 && found().length === 0 && props.errors.length === 0}>
         <div class="session-list-empty">{searchingMessages() ? "Searching messages..." : (props.filter?.trim().length ?? 0) > 0 ? "No chats match." : "No chats yet."}</div>
       </Show>
@@ -225,6 +275,16 @@ function SessionRow(props: {
   const session = () => props.row.session
   const diff = () => session().diffStats
   const hasDiff = () => { const stats = diff(); return stats !== undefined && (stats.added > 0 || stats.removed > 0 || stats.modified > 0) }
+  const stopped = () => props.row.stopped
+  const description = () => { const stop = stopped(); return (stop === undefined ? undefined : stopLine(stop)) ?? session().subtitle }
+  const when = () => { const stop = stopped(); return stop === undefined ? session().lastUpdated : new Date(stop.stoppedAt).toISOString() }
+  const errored = () => { const stop = stopped(); return props.row.need === "error" || (stop !== undefined && stoppedOnError(stop)) }
+  // Mark read clears what the row marks; Mark unread brings a read chat
+  // back. A question is answered, not read.
+  const mark = (): "read" | "unread" | undefined => {
+    if (props.row.need === "stopped" || props.row.unread) return props.actions.onMarkRead ? "read" : undefined
+    return session().kind === "chat" && props.row.need !== "question" && props.actions.onMarkUnread ? "unread" : undefined
+  }
   let element: HTMLDivElement | undefined
   createEffect(() => {
     const row = element
@@ -251,12 +311,17 @@ function SessionRow(props: {
         <span class="session-title">
           {session().title}
         </span>
-        <span class="session-when">{formatTimeAgo(session().lastUpdated)}</span>
-        <Show when={session().subtitle}>{(subtitle) => <span class="session-subtitle">{subtitle()}</span>}</Show>
+        <span class="session-when">{formatTimeAgo(when())}</span>
+        <Show when={description()}>{(line) => <span class="session-subtitle">{line()}</span>}</Show>
         <span class="session-meta" aria-busy={session().totalsLoading || undefined}>
           <Show when={session().totalsLoading}><span class="session-totals-loading">totals loading</span></Show>
           <Show when={props.row.need}>
-            {(need) => <span class="session-badge" classList={{ waiting: need() === "question", error: need() === "error" }} title={NEED_TITLES[need()]}>{need()}</span>}
+            {(need) => <span class="session-badge" classList={{ waiting: need() === "question", stopped: need() === "stopped" && !errored(), error: errored() }} title={errored() && need() === "stopped" ? "The chat stopped on an error" : NEED_TITLES[need()]}>{errored() ? "error" : need()}</span>}
+          </Show>
+          {/* A working row always holds the slot of its unread mark, so the
+              mark coming and going never changes the row's height. */}
+          <Show when={session().working || props.row.unread}>
+            <span class="session-badge unread" classList={{ hidden: !props.row.unread }} aria-hidden={!props.row.unread || undefined} title={props.row.unread ? "New messages you have not read" : undefined}>unread</span>
           </Show>
           <Show when={hasDiff()}>
             <span class="session-diff" title="Lines added, changed, and removed this session">
@@ -268,6 +333,22 @@ function SessionRow(props: {
         </span>
       </div>
       <span class="session-row-actions">
+        {/* One button for both marks: a read patch changes its words and
+            keeps the node, so a focused button keeps its focus. */}
+        <Show when={mark() !== undefined}>
+          <button
+            class="row-action"
+            title={mark() === "read" ? "Mark read" : "Mark unread"}
+            aria-label={`Mark ${session().title} ${mark() ?? ""}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (mark() === "read") props.actions.onMarkRead?.(session().id)
+              else props.actions.onMarkUnread?.(session().id)
+            }}
+          >
+            <Icon path={mark() === "read" ? ICONS.check : ICONS.unread} size={13} />
+          </button>
+        </Show>
         <Show when={props.actions.onCopy}>
           <button class="row-action" title="Copy session ID" aria-label={`Copy session ID for ${session().title}`} onClick={(event) => { event.stopPropagation(); props.actions.onCopy?.(session().id) }}>
             <Icon path={ICONS.copy} size={13} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { createRoot, createSignal } from "solid-js"
+import { createRenderEffect, createRoot, createSignal } from "solid-js"
 import { createSessionStore } from "../../../../../src/orchestration/session-store/store"
 import { EventReaderService } from "../../../../../src/infra/substrate/store/event-store-effect.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../../src/orchestration/session/manager"
@@ -63,6 +63,19 @@ describe("Shell state derived memos", () => {
         sessionStore.updateChatEntry("startup", { outputBlocks: [{ kind: "userMessage", id: "user-1", content: "hello", timestamp: 1, pending: false, injected: false }], visibleMessageCountSuffix: 1 })
         await waitForAssertion(() => expect(signals.sessionCount()).toBe(3))
         expect(signals.listedSessions().map((row) => row.id).toSorted()).toEqual(["kept", "prior", "startup"])
+
+        // A later block of the foreground changes nothing that the list or
+        // the inbox shows, so neither runs again.
+        let listRuns = 0
+        let needsYouRuns = 0
+        createRenderEffect(() => { signals.listedSessions(); listRuns += 1 })
+        createRenderEffect(() => { signals.needsYou(); needsYouRuns += 1 })
+        sessionStore.updateChatEntry("startup", { outputBlocks: [
+          { kind: "userMessage", id: "user-1", content: "hello", timestamp: 1, pending: false, injected: false },
+          { kind: "userMessage", id: "user-2", content: "again", timestamp: 2, pending: false, injected: false },
+        ], visibleMessageCountSuffix: 2 })
+        await waitForAssertion(() => expect(signals.outputView("startup")?.blocks.length).toBe(2))
+        expect({ listRuns, needsYouRuns }).toEqual({ listRuns: 1, needsYouRuns: 1 })
       } finally {
         dispose()
       }

@@ -16,6 +16,9 @@ const theme: TuiTheme = {
   textMuted: color(40, 41, 42),
   textSubtle: color(60, 61, 62),
   warning: color(200, 120, 0),
+  info: color(0, 120, 200),
+  error: color(220, 30, 30),
+  accent: color(150, 50, 200),
 }
 
 const spinnerPattern = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/
@@ -71,29 +74,64 @@ describe("TabsBar", () => {
       title: "Chat",
       isForeground: false,
       isBusy: true,
-      isBlocked: false,
     }])
 
     expect(text).toMatch(spinnerPattern)
     expect(text).not.toContain("⚙ Chat")
   })
 
-  it("uses the blocked glyph ahead of busy indicators", async () => {
+  it.each([
+    ["question", "?", "warning"],
+    ["stopped", "✓", "info"],
+    ["failed", "!", "error"],
+  ] as const)("shows the %s mark ahead of busy indicators, in its colour", async (mark, glyph, tone) => {
     const { text, frame } = await renderTabs([{
       kind: "session",
-      id: "blocked",
-      title: "Blocked",
+      id: "marked",
+      title: "Marked",
       isForeground: false,
       isBusy: true,
-      isBlocked: true,
+      mark,
     }])
 
-    expect(text).toContain("? Blocked")
-    const label = frame.lines.flatMap((line) => line.spans).find((span) => span.text.includes("Blocked"))
-    expect(label?.fg.equals(theme.warning)).toBe(true)
+    expect(text).toContain(`${glyph} Marked`)
+    const label = frame.lines.flatMap((line) => line.spans).find((span) => span.text.includes("Marked"))
+    expect(label?.fg.equals(theme[tone])).toBe(true)
     expect((label?.attributes ?? 0) & createTextAttributes({ dim: true })).toBe(0)
-    expect(text).not.toContain("⚙ Blocked")
     expect(text).not.toMatch(spinnerPattern)
+  })
+
+  it("marks unread messages beside the spinner of a working tab", async () => {
+    const { text, frame } = await renderTabs([{
+      kind: "session",
+      id: "unread",
+      title: "Unread",
+      isForeground: false,
+      isBusy: true,
+      mark: "unread",
+    }])
+
+    const row = tabLabelRow(text)
+    expect(row).toMatch(spinnerPattern)
+    expect(row).toMatch(/Unread\s+•/)
+    const spans = frame.lines.flatMap((line) => line.spans)
+    expect(spans.find((span) => span.text.includes("Unread"))?.fg.equals(theme.textMuted)).toBe(true)
+    expect(spans.find((span) => span.text === "•")?.fg.equals(theme.accent)).toBe(true)
+  })
+
+  it("keeps the unread mark of a tab whose title is in wide characters", async () => {
+    const { text, frame } = await renderTabs([{
+      kind: "session",
+      id: "unread",
+      title: "日本語のタイトルです",
+      isForeground: false,
+      isBusy: true,
+      mark: "unread",
+    }])
+
+    expect(tabLabelRow(text)).toMatch(/日本語\S*\s*•/)
+    const spans = frame.lines.flatMap((line) => line.spans)
+    expect(spans.find((span) => span.text === "•")?.fg.equals(theme.accent)).toBe(true)
   })
 
   it("keeps the new-tab affordance visible when cell roles shift", async () => {
@@ -103,7 +141,6 @@ describe("TabsBar", () => {
       title: `Tab ${i + 1}`,
       isForeground: i === 0,
       isBusy: false,
-      isBlocked: false,
     }))
     const [availableWidth, setAvailableWidth] = createSignal(100)
     const result = await renderTabsFixture(() => tabs, availableWidth)
@@ -129,7 +166,6 @@ describe("TabsBar", () => {
       title: `Tab ${i + 1}`,
       isForeground: i === 0,
       isBusy: false,
-      isBlocked: false,
     }))
     const [availableWidth, setAvailableWidth] = createSignal(100)
     const result = await renderTabsFixture(() => tabs, availableWidth)
@@ -164,7 +200,6 @@ describe("TabsBar", () => {
       title: `Tab ${i + 1}`,
       isForeground: i === 0,
       isBusy: false,
-      isBlocked: false,
     }))
     const activated: string[] = []
     const result = await renderTabsFixture(() => tabs, () => 38, undefined, (id) => activated.push(id), 4)
@@ -215,8 +250,8 @@ describe("TabsBar", () => {
   })
 
   it("updates visible cells when canonical tab order changes", async () => {
-    const first = { kind: "session", id: "first", title: "First", isForeground: true, isBusy: false, isBlocked: false } satisfies TabInfo
-    const second = { kind: "session", id: "second", title: "Second", isForeground: false, isBusy: false, isBlocked: false } satisfies TabInfo
+    const first = { kind: "session", id: "first", title: "First", isForeground: true, isBusy: false } satisfies TabInfo
+    const second = { kind: "session", id: "second", title: "Second", isForeground: false, isBusy: false } satisfies TabInfo
     const [tabs, setTabs] = createSignal<readonly TabInfo[]>([first, second])
     const result = await renderTabsFixture(tabs)
 
@@ -235,9 +270,9 @@ describe("TabsBar", () => {
 
   it("previews and commits mixed pending and durable drag reorder by tab slot", async () => {
     const tabs: TabInfo[] = [
-      { kind: "pending", id: "first", title: "Opening", isForeground: true, isBusy: false, isBlocked: false },
-      { kind: "session", id: "second", title: "Second", isForeground: false, isBusy: false, isBlocked: false },
-      { kind: "session", id: "third", title: "Third", isForeground: false, isBusy: false, isBlocked: false },
+      { kind: "pending", id: "first", title: "Opening", isForeground: true, isBusy: false },
+      { kind: "session", id: "second", title: "Second", isForeground: false, isBusy: false },
+      { kind: "session", id: "third", title: "Third", isForeground: false, isBusy: false },
     ]
     const calls: Array<{ id: string; beforeId: string | null }> = []
     const activations: string[] = []
@@ -271,8 +306,8 @@ describe("TabsBar", () => {
 
   it("schedules no frames while a tab is held still", async () => {
     const tabs: TabInfo[] = [
-      { kind: "session", id: "first", title: "First", isForeground: true, isBusy: false, isBlocked: false },
-      { kind: "session", id: "second", title: "Second", isForeground: false, isBusy: false, isBlocked: false },
+      { kind: "session", id: "first", title: "First", isForeground: true, isBusy: false },
+      { kind: "session", id: "second", title: "Second", isForeground: false, isBusy: false },
     ]
     const result = await renderTabsFixture(() => tabs, () => 100, () => {})
 
@@ -294,7 +329,7 @@ describe("TabsBar", () => {
 
   it("renders Opening with the existing idle tab colors and no spinner", async () => {
     for (const isForeground of [true, false]) {
-      const state = { id: "local", title: "Opening", isForeground, isBusy: false, isBlocked: false }
+      const state = { id: "local", title: "Opening", isForeground, isBusy: false }
       const pending = await renderTabs([{ ...state, kind: "pending" }])
       const durable = await renderTabs([{ ...state, kind: "session", title: "Opening" }])
       expect(pending.text).toBe(durable.text)
@@ -306,7 +341,7 @@ describe("TabsBar", () => {
 
   it("keeps the foreground tab in view when the strip narrows or the tab order moves it", async () => {
     const tabAt = (index: number, foreground: number): TabInfo => ({
-      kind: "session", id: `tab-${index}`, title: `Tab ${index + 1}`, isForeground: index === foreground, isBusy: false, isBlocked: false,
+      kind: "session", id: `tab-${index}`, title: `Tab ${index + 1}`, isForeground: index === foreground, isBusy: false,
     })
     const [tabs, setTabs] = createSignal<readonly TabInfo[]>(Array.from({ length: 5 }, (_, index) => tabAt(index, 4)))
     const [availableWidth, setAvailableWidth] = createSignal(100)
@@ -342,7 +377,7 @@ describe("TabsBar", () => {
   it("scrolls to the pending foreground after mixed-tab navigation", async () => {
     const initial: TabInfo[] = Array.from({ length: 5 }, (_, index) => ({
       kind: index === 4 ? "pending" : "session", id: `key-${index}`, title: index === 4 ? "Opening" : `Tab ${index}`,
-      isForeground: index === 0, isBusy: false, isBlocked: false,
+      isForeground: index === 0, isBusy: false,
     }))
     const [tabs, setTabs] = createSignal<readonly TabInfo[]>(initial)
     const activated: string[] = []

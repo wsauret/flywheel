@@ -44,6 +44,7 @@ export function makeMemoryTreeWriter(): ConversationTreeWriterController {
     reserveMessageId: async () => crypto.randomUUID(),
     releaseMessageId() {},
     holdsForQuestion: () => false,
+    newestSincePersonMessage: () => undefined,
     awaitsAnswer: async () => false,
     readHeldMessages: async () => [],
     releaseHeldInput: async () => {},

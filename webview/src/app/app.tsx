@@ -10,7 +10,8 @@ import { actionKey } from "../client/action-key.js"
 import type { ReadingPlace } from "../client/input/reading-place.js"
 import type { RuntimeSession } from "../client/session/session.js"
 import { createViewProjection, summaryOf } from "../client/session/view-state.js"
-import { createQuestionPager } from "../client/questions/question-pager.js"
+import { followPresence } from "../client/session/navigation/presence.js"
+import { createDesktopPager } from "../client/notifications/desktop-pager.js"
 import type { ClientCommand, ClientSheetId, SheetFocus } from "../../../src/protocol/client/host/host-contract.js"
 import { createWebSurfaces } from "./sheets/commands/surfaces.js"
 import type { ClientHost } from "../host.js"
@@ -191,6 +192,7 @@ export function App(props: AppProps) {
       providers: frame.providers,
       changes: frame.changes?.summary,
       ...(frame.settings?.moduleIds === undefined ? {} : { moduleIds: frame.settings.moduleIds }),
+      needsYou: frame.needsYou.count,
     })
   }
   publishSummary()
@@ -434,7 +436,7 @@ export function App(props: AppProps) {
     openSession(sessionId)
     setAttention((previous) => ({ sessionId, sequence: (previous?.sequence ?? 0) + 1 }))
   }
-  createQuestionPager({ state, session: props.session, connection: props.connection, attend: attendQuestion })
+  createDesktopPager({ state, notifier: props.session.desktopNotifier, row: props.session.row, connection: props.connection, attend: attendQuestion })
   onCleanup(props.onCommand((command) => {
     if (clients.some(client => client.command?.(command))) return
     switch (command.type) {
@@ -475,6 +477,15 @@ export function App(props: AppProps) {
     return module?.viewError?.component
   }
   const stacked = () => stack() !== undefined && !wide() && hasProject()
+  // The phone's list in front hides the chat it last showed, and a full
+  // workflow card hides the transcript of the chat under it.
+  followPresence({
+    host: props.host,
+    connection: props.connection,
+    selected: () => state().sessionId,
+    covered: () => coversConversation() || (stacked() && stack()?.screen() === "sessions"),
+    onDiagnostic: props.host.onDiagnostic ?? (() => {}),
+  })
   const stackX = () => {
     const current = stack()
     if (!current) return undefined

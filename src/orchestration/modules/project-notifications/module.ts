@@ -32,7 +32,7 @@ export const projectNotificationsModule = {
       opens: NOTIFICATIONS_SURFACE,
     } },
     { domain: "settings", id: "project-notifications", value: { control: "binary", group: "Interface", label: "Notifications", description: "Keep what the runtime needs you to know, across restarts" } },
-    { domain: "settings", id: "project-notifications-desktop", value: { control: "config-boolean", setting: "notificationsDesktop", group: "Interface", label: "Desktop notifications", description: "Show a desktop notification when a session asks you a question", host: "browser" } },
+    { domain: "settings", id: "project-notifications-desktop", value: { control: "config-boolean", setting: "notificationsDesktop", group: "Interface", label: "Desktop notifications", description: "Notify on the desktop when a session asks a question or stops", host: "browser" } },
   ],
   observers: [{
     seam: "notify",

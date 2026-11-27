@@ -37,6 +37,7 @@ export const runtimeCallPolicies = {
   budgetSnapshot: controlRead,
   questionSnapshot: controlRead,
   waitingSessionsSnapshot: controlRead,
+  unreadChatsSnapshot: controlRead,
   roleSnapshot: controlRead,
   authStatusSnapshot: controlRead,
   authProfileDeletionPreview: controlRead,

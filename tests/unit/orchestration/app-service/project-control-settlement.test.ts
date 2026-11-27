@@ -95,7 +95,7 @@ async function fixture(privateOffset = 99, publicOffset = 0, preAttachment = fal
     service: servingAccountService(),
     sessionHolds: { holdProject: () => undefined, projectIdleGraceMs: undefined },
     awaitGenerationRecovery: async () => {}, authProfiles: { inspect() { throw new Error("unexpected auth") } },
-    state: { ...asAsyncEventReadSurface(inMemoryEventReader([])), onStored: () => () => {}, sessions: {
+    state: { ...asAsyncEventReadSurface(inMemoryEventReader([])), onStored: () => () => {}, writer: { append: unused }, sessions: {
       allocateId: () => "id", createChat: unused, listForIds: async () => ({ sessions: [], errors: [] }),
       read: unused, updateLabel: unused, updateLifecycleState: unused, subscribe: () => () => {}, interruptOwed: unused,
     } },

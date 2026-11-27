@@ -59,6 +59,7 @@ export async function dispatchFrontendMutation(
     | { type: "background.release" }
     | { type: "output.watch" }
     | { type: "session.claim_composer_returns" }
+    | { type: "chat.presence" | "chat.mark_read" | "chat.mark_unread" }
   >,
   deps: MutationHandlerDeps,
 ): Promise<MutationResult | SessionChangesUndoResult | CommandOutcome | ProtocolModuleMutationResult<ProtocolModuleMutationType>> {

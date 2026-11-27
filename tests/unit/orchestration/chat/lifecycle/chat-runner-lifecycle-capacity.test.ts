@@ -49,8 +49,15 @@ function capacityLifecycle(prefix: string, options: { readonly unattended?: true
 }
 
 describe("chat runner lifecycle capacity wait", () => {
-  it("waits for model capacity until the stated time and continues the same turn on its own; an interrupt ends the wait with the person's turn end", async () => {
+  it("waits for model capacity until the stated time and continues the same turn on its own, with no stop for the person; an interrupt ends the wait with the person's turn end", async () => {
     const { lifecycle, resolvers, deps, eventBus } = makeLifecycle()
+    // A chat that waits for capacity continues by itself, so it records no stop (ARCH-SESSIONS-051).
+    const turnFacts: string[] = []
+    const record = deps.infra.sessionEventWriter.record
+    deps.infra.sessionEventWriter.record = (fact, ...rest) => {
+      if (fact.type === "chat.turn.stopped" || fact.type === "chat.turn.started") turnFacts.push(fact.type)
+      return record(fact, ...rest)
+    }
     const turnEnds: string[] = []
     deps.treeWriter.commitTurnEnd = async (by) => { turnEnds.push(String(by)); return { kind: "user", content: "interrupted", origin: "system" } }
     let waitsShown = 0
@@ -72,10 +79,12 @@ describe("chat runner lifecycle capacity wait", () => {
     // the runner reaches the interrupt.
     resolvers[1]?.(spent(Date.now() + 60_000))
     await secondWaitShown
+    expect(turnFacts).toEqual(["chat.turn.started"])
     expect(lifecycle.interruptGeneration()).toBe(true)
     while (lifecycle.turnState !== "idle") await flushMicrotasks()
     expect(resolvers.length).toBe(2)
     expect(turnEnds).toEqual(["person"])
+    expect(turnFacts).toEqual(["chat.turn.started"])
   })
 
   it("resumes on attach a turn whose row owes a capacity wait ahead, which waits under the host: hold answers and the runtime's stop ends it with no request; nothing owed starts nothing", async () => {

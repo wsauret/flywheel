@@ -66,6 +66,12 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "agent_input.withdrawn": HISTORY,
     "agent_input.consumed": HISTORY,
 
+    // A root chat's stop for the person and its next start (ARCH-SESSIONS-051): only the newest of each per session applies.
+    "chat.turn.stopped": REPLACE_LATEST,
+    "chat.turn.started": REPLACE_LATEST,
+    // How far the person has read a root chat (ARCH-SESSIONS-052): only the newest per session applies.
+    "chat.read.recorded": REPLACE_LATEST,
+
     // Conversation trees (ARCH-SESSIONS-047): append-only by design.
     "session.representation.retired": HISTORY,
     "chat.tree.created": HISTORY,

@@ -189,7 +189,7 @@ describe("useSessionModal", () => {
 
       hook.openSessionsModal()
       // The footer's one line truncates from the end, so Close chat comes after the primary control.
-      expect(hook.sessionModalActions().map((action) => action.key)).toEqual(["ctrl+d", "ctrl+e", "ctrl+y", "ctrl+g", "ctrl+x"])
+      expect(hook.sessionModalActions().map((action) => action.key)).toEqual(["ctrl+d", "ctrl+e", "ctrl+y", "ctrl+g", "ctrl+t", "ctrl+x"])
 
       pressCtrl(modals, "g")
       await Promise.resolve()
@@ -347,7 +347,7 @@ describe("useSessionModal", () => {
         hook.handleSessionFilter(query)
 
         select("chat-paused")
-        expect(hook.sessionModalActions().map((action) => `${action.key} ${action.label}`)).toEqual(["ctrl+d delete", "ctrl+e rename", "ctrl+y copy session ID", "ctrl+r resume"])
+        expect(hook.sessionModalActions().map((action) => `${action.key} ${action.label}`)).toEqual(["ctrl+d delete", "ctrl+e rename", "ctrl+y copy session ID", "ctrl+r resume", "ctrl+t mark unread"])
         pressCtrl(modals, "y")
         expect(mockClipboardCopy).toHaveBeenCalledWith("chat-paused")
         pressCtrl(modals, "r")

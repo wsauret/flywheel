@@ -54,6 +54,14 @@ export function Toolbar(props: { readonly wide: boolean; readonly rail?: { reado
   }
   // The same three states the session rows show, for the chat in view.
   const dot = () => <span class="session-dot" classList={{ open: current()?.active === true, live: current()?.working === true, waiting: current()?.awaitingAnswer === true }} />
+  // Questions plus stopped unread chats, the count the tab title leads with.
+  const needs = () => (
+    <Show when={state().needsYou.count > 0}>
+      <span class="toolbar-needs" title={needsYouLabel(state().needsYou.count)} aria-label={needsYouLabel(state().needsYou.count)}>
+        <span class="toolbar-needs-count">{state().needsYou.count}</span><span class="toolbar-needs-words">{state().needsYou.count === 1 ? " needs you" : " need you"}</span>
+      </span>
+    </Show>
+  )
   const heading = () => (
     <span class="toolbar-title-text">
       {title()}
@@ -110,9 +118,7 @@ export function Toolbar(props: { readonly wide: boolean; readonly rail?: { reado
                 {dot()}
                 <span class="toolbar-title" aria-busy={acting()}>{heading()}</span>
                 <span class="toolbar-location" title={location().directory}>{locationLine()}</span>
-                <Show when={state().sessions.some((session) => session.awaitingAnswer && session.id !== state().sessionId)}>
-                  <span class="toolbar-needs" title="Another chat is waiting on your answer" aria-label="Another chat needs you"><span>needs you</span></span>
-                </Show>
+                {needs()}
                 <Icon path={ICONS.chevronDown} />
               </button>
               {/* New chat sits beside the picker on purpose: choosing a session and
@@ -142,9 +148,7 @@ export function Toolbar(props: { readonly wide: boolean; readonly rail?: { reado
                 </span>
                 <span class="toolbar-subtitle" title={location().directory}>{locationLine()}</span>
               </span>
-              <Show when={state().sessions.some((session) => session.awaitingAnswer && session.id !== state().sessionId)}>
-                <span class="toolbar-needs" title="Another chat is waiting on your answer" aria-label="Another chat needs you"><span>needs you</span></span>
-              </Show>
+              {needs()}
             </>
           )}
         </Show>
@@ -203,4 +207,8 @@ function ToolbarBudgetReadings(props: {
 
 function readyBudget(budget: BudgetSummary): Extract<BudgetSummary, { readonly totalsLoading: false }> | undefined {
   return budget.totalsLoading ? undefined : budget
+}
+
+function needsYouLabel(count: number): string {
+  return count === 1 ? "1 chat needs you" : `${count} chats need you`
 }

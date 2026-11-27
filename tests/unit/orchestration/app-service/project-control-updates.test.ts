@@ -37,7 +37,7 @@ function options(executor: ProjectControlExecutor, updates: ProjectControlClient
     chatDefault: () => ({ kind: "pending" }), setChatDefault: unused, onError(error) { throw error }, endIfWedged: unused, executorState: () => ({ kind: "serving" }),
     awaitGenerationRecovery: async () => {}, authProfiles: { inspect: unused },
     sessionHolds: { holdProject: () => undefined, projectIdleGraceMs: undefined },
-    state: { ...asAsyncEventReadSurface(inMemoryEventReader([])), onStored: () => () => {}, sessions: {
+    state: { ...asAsyncEventReadSurface(inMemoryEventReader([])), onStored: () => () => {}, writer: { append: unused }, sessions: {
       allocateId: unused, createChat: unused, listForIds: async () => ({ sessions: [], errors: [] }),
       read: unused, updateLabel: unused, updateLifecycleState: unused, subscribe: () => () => {}, interruptOwed: unused,
     } },

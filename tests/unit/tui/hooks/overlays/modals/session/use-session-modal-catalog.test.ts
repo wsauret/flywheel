@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRenderEffect, createRoot, createSignal } from "solid-js"
 import { createModal, pressCtrl, rowLabels, session } from "../../../_session-modal-fixtures.js"
+import type { UnreadChatsView } from "../../../../../../../src/protocol/session/unread-protocol-types.js"
 
 describe("useSessionModal catalog lifecycle", () => {
   it("keeps the selected session through prepend, minute regrouping, and the presentation cap", () => {
@@ -31,7 +32,7 @@ describe("useSessionModal catalog lifecycle", () => {
         const rows = Array.from({ length: 450 }, (_, index) => session({ id: `session-${index}`, lastUpdated: new Date(Date.parse("2026-05-22T23:58:00.000Z") - index * 60_000).toISOString() }))
         // The 210 oldest chats wait, more than the cap holds on its own, and
         // the 240 others still exceed it.
-        const waiting = new Set(rows.slice(240).map((row) => row.id))
+        const waiting = rows.slice(240).map((row) => row.id)
         const { hook } = createModal({ sessions: rows, waitingSessions: waiting })
         hook.openSessionsModal()
         const result = hook.sessionModalResult()
@@ -43,6 +44,64 @@ describe("useSessionModal catalog lifecycle", () => {
       } finally { dispose() }
     })
   })
+  it("lists a stopped unread chat after the questions, marks it read and unread from the list, and keeps the selection as the set moves", async () => {
+    await createRoot(async (dispose) => {
+      try {
+        const done = { sessionId: "done", ending: { kind: "completed" }, firstLine: "Shipped.", stoppedAt: Date.parse("2026-05-22T00:05:00.000Z"), stopKey: "entry-9" } as const
+        const [unread, setUnread] = createSignal<UnreadChatsView>({ stopped: [done], unread: [] })
+        const rows = ["asks", "done", "other"].map((id, index) => session({ id, lastUpdated: new Date(Date.parse("2026-05-22T00:04:00.000Z") - index * 60_000).toISOString() }))
+        const { hook, modals, appService } = createModal({ sessions: rows, waitingSessions: ["asks"], unreadChats: unread })
+        hook.openSessionsModal()
+        expect(rowLabels(hook).slice(0, 3)).toEqual(["Needs you", "asks", "done"])
+        const select = (id: string) => hook.selectModalItem(hook.sessionModalResult().rows.findIndex((row) => row.kind === "session" && row.session.id === id))
+
+        // A question needs its answer, so it offers no mark.
+        select("asks")
+        expect(hook.sessionModalActions().map((action) => action.label)).not.toContain("mark read")
+        select("done")
+        expect(hook.sessionModalActions().map((action) => action.label)).toContain("mark read")
+        pressCtrl(modals, "t")
+        expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.mark_read", sessionId: "done" })
+
+        // The row moves only when the set says so, and the selection stays on
+        // the chat the person chose.
+        select("other")
+        const revision = hook.modalNavigationRevision()
+        setUnread({ stopped: [], unread: [] })
+        expect(rowLabels(hook).slice(0, 2)).toEqual(["Needs you", "asks"])
+        expect(hook.sessionModalResult().rows[hook.modalCursor()]).toMatchObject({ session: { id: "other" } })
+        expect(hook.modalNavigationRevision()).toBe(revision)
+
+        select("done")
+        expect(hook.sessionModalActions().map((action) => action.label)).toContain("mark unread")
+        pressCtrl(modals, "t")
+        expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.mark_unread", sessionId: "done" })
+        setUnread({ stopped: [done], unread: [] })
+        expect(rowLabels(hook).slice(0, 3)).toEqual(["Needs you", "asks", "done"])
+        expect(hook.sessionModalResult().rows[hook.modalCursor()]).toMatchObject({ session: { id: "done" } })
+        await Promise.resolve()
+      } finally { dispose() }
+    })
+  })
+  it("says so in a toast when the runtime refuses to mark unread a chat with nothing to read", async () => {
+    await createRoot(async (dispose) => {
+      try {
+        const showToast = mock((_toast: { message: string; variant: string }) => {})
+        const { hook, modals } = createModal({
+          sessions: [session({ id: "quiet", title: "Quiet" })],
+          dispatch: async (command) => command.type === "chat.mark_unread" ? { ok: false, error: "it has no message to read since it last started" } : { ok: true },
+          showToast,
+        })
+        hook.openSessionsModal()
+        hook.selectModalItem(hook.sessionModalResult().rows.findIndex((row) => row.kind === "session"))
+        pressCtrl(modals, "t")
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(showToast).toHaveBeenCalledWith({ message: "Mark unread failed for Quiet: it has no message to read since it last started", variant: "error" })
+      } finally { dispose() }
+    })
+  })
+
   it("does not read the full catalog until its own modal opens", () => {
     createRoot((dispose) => {
       try {

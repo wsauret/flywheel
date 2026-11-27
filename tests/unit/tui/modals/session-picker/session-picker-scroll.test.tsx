@@ -7,7 +7,7 @@
 
 import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
-import { createSignal } from "solid-js"
+import { batch, createSignal } from "solid-js"
 import type { SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { PickerRow, PickerSessionRow } from "../../../../../src/tui/modals/session-picker/picker-types.js"
 
@@ -41,15 +41,15 @@ function resultOf(rows: readonly PickerRow[]) {
 
 const HEIGHT = 14
 
-async function renderPicker() {
+async function renderPicker(initial?: readonly PickerRow[], initialCursor = 0, navigation?: () => number) {
   const [{ SessionPickerList }, { ThemeProvider, useTheme }, { TickPoolProvider }] = await Promise.all([
     import("../../../../../src/tui/modals/session-picker/session-picker-list.js"),
     import("../../../../../src/tui/context/theme.js"),
     import("../../../../../src/tui/context/tick-pool-context.js"),
   ])
   const rows = Array.from({ length: 40 }, (_, index) => sessionRow(index))
-  const [result, setResult] = createSignal(resultOf(rows))
-  const [cursor, setCursor] = createSignal(0)
+  const [result, setResult] = createSignal(resultOf(initial ?? rows))
+  const [cursor, setCursor] = createSignal(initialCursor)
   const [filterQuery] = createSignal("")
 
   function Picker() {
@@ -57,13 +57,13 @@ async function renderPicker() {
     return <SessionPickerList
       result={result()}
       cursor={cursor()}
-      navigationRevision={cursor()}
+      navigationRevision={navigation ? navigation() : cursor()}
       actions={[]}
       theme={theme}
       height={HEIGHT}
       rowWidth={60}
       statusView={() => undefined}
-      waitingSessions={new Set<string>()}
+      chatMark={() => undefined}
       now={Date.parse("2026-01-01T00:10:00.000Z")}
       filterQuery={filterQuery()}
       inputPresentation={{ value: filterQuery(), cursor: filterQuery().length, selection: null, preferredVisualColumn: null }}
@@ -83,6 +83,29 @@ async function renderPicker() {
 }
 
 describe("session picker scroll ownership", () => {
+  // Reading the selected chat moves it from Needs you to its date group. The
+  // patch moves no selection, so the selected row keeps its screen line.
+  it("keeps the selected row in view when a read patch moves it to its date group", async () => {
+    const dated = Array.from({ length: 40 }, (_, index) => sessionRow(index))
+    const stopped: PickerSessionRow = { ...sessionRow(77), category: "Needs you" }
+    const before: PickerRow[] = [{ kind: "header", id: "needs-you", label: "Needs you" }, stopped, { kind: "header", id: "today", label: "Today" }, ...dated]
+    const { rendered, setResult, setCursor } = await renderPicker(before, 1, () => 0)
+    try {
+      expect(rendered.captureCharFrame()).toContain("> ○ session-77")
+      const after: PickerRow[] = [{ kind: "header", id: "today", label: "Today" }, ...dated.slice(0, 30), { ...stopped, category: "Today" }, ...dated.slice(30)]
+      // The selection follows its chat in the same update, as the keyed
+      // selection of the hook does.
+      batch(() => {
+        setResult(resultOf(after))
+        setCursor(31)
+      })
+      await rendered.flush()
+      expect(rendered.captureCharFrame()).toContain("> ○ session-77")
+    } finally {
+      rendered.renderer.destroy()
+    }
+  })
+
   it("holds a wheel-scrolled position across data refreshes, and follows the cursor", async () => {
     const { rendered, rows, setResult, setCursor } = await renderPicker()
     try {

@@ -9,7 +9,7 @@ import { sessionCursor, workspaceDomainCursor, type RuntimeSessionViewEntry, typ
 import { budgetCursor } from "../../../../protocol/session/budget-protocol-types.js"
 import type { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
 import { resolveSessionAuthProfile } from "../../../auth/session-auth-profile.js"
-import { projectSessionCatalogRow, replaceCatalogTotals } from "../../../session/control/session-catalog-row.js"
+import { mergeExecutionRow, projectSessionCatalogRow, replaceCatalogTotals } from "../../../session/control/session-catalog-row.js"
 import { editedSessionLabels } from "../../../session/metadata/session-label.js"
 import type { DurableSessionCatalogRow } from "../../../session/metadata/catalog/session-catalog-types.js"
 import type { ProjectStateClient } from "../../project-state/project-state-client.js"
@@ -32,6 +32,8 @@ import { createBackgroundFollows } from "../../background/background-follows.js"
 import type { AccountUpdates } from "../../../update/account-updates.js"
 import { createGitProjection } from "../../projections/changes/git-projection.js"
 import { createWaitingSessionsProjection } from "../../projections/waiting-sessions-projection.js"
+import { createUnreadChatsProjection } from "../../projections/unread-chats-projection.js"
+import { isUnreadChatsMutation } from "../../../../protocol/session/unread-protocol-types.js"
 import { replaceOwnedCatalogErrors } from "./catalog-error-ownership.js"
 import { gitCursor } from "../../../../protocol/git/git-protocol-types.js"
 
@@ -53,7 +55,9 @@ export interface ProjectServiceState {
 }
 
 export interface ProjectControlClientOptions {
-  readonly state: Pick<ProjectStateClient, "onStored" | "capturePosition" | "readPage"> & {
+  readonly state: Pick<ProjectStateClient, "onStored" | "capturePosition" | "readPage" | "readSlice"> & {
+    /** Records the person's read receipts (ARCH-SESSIONS-052). */
+    readonly writer: Pick<ProjectStateClient["writer"], "append">
     readonly sessions: Pick<ProjectStateClient["sessions"], "allocateId" | "createChat" | "listForIds" | "read" | "updateLabel" | "updateLifecycleState" | "subscribe" | "interruptOwed">
   }
   readonly executor: ProjectControlExecutor | Promise<ProjectControlExecutor>
@@ -196,6 +200,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
   const admissions = new Map<string, SessionRow>()
   const git = createGitProjection({ projectRoot: options.directories.projectRoot, publish: bus.publish })
   const waitingSessions = createWaitingSessionsProjection({ reader: state, onStored: state.onStored, bus })
+  const unreadChats = createUnreadChatsProjection<SessionHolder>({ reader: state, writer: state.writer, onStored: state.onStored, bus })
   const details = createSessionDetailPublisher({
     state, bus, own, closing: () => closing,
     read: (sessionId) => queryRaw({ type: "sessionDetail", sessionId }),
@@ -346,20 +351,6 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     }
     replaceOwnedErrors(sessionIds, sessionIds.flatMap((sessionId) => summaries.errors(sessionId)), SUMMARY_ERROR_SCOPES)
   })
-  function mergeExecutionRow(prior: SessionCatalogRow, execution: SessionCatalogRow): SessionCatalogRow {
-    // The executor's row carries the live presentation: notices, activity,
-    // and the actions its runner admits; the prior row keeps the durable metadata.
-    const presentation = {
-      ...prior,
-      notices: execution.notices,
-      ...(execution.activity === undefined ? {} : { activity: execution.activity }),
-      ...(execution.admittedActions === undefined ? {} : { admittedActions: execution.admittedActions }),
-    }
-    return withAdmission(replaceCatalogTotals(presentation, execution.totalsLoading
-      ? { totalsLoading: true }
-      : { totalsLoading: false, row: execution }))
-  }
-
   // While the project is paused or a restart is scheduled, each session's
   // own input from a person waits for the generation the restart starts, in
   // the order it was sent. An interrupt of that session waits until it has
@@ -430,7 +421,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       for (const execution of snapshot.rows) {
         const prior = rows.get(execution.id)
         if (!prior) continue
-        rows.set(execution.id, mergeExecutionRow(prior, execution))
+        rows.set(execution.id, withAdmission(mergeExecutionRow(prior, execution)))
       }
       settlement.reset()
       bus.publish({ cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } })
@@ -446,7 +437,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       if (payload.kind === "chat_default.changed") options.setChatDefault(payload.chatDefault)
       if (payload.kind === "session.added" || payload.kind === "session.updated") {
         const prior = rows.get(payload.row.id)
-        const merged = prior ? mergeExecutionRow(prior, payload.row) : payload.row
+        const merged = prior ? withAdmission(mergeExecutionRow(prior, payload.row)) : payload.row
         rows.set(merged.id, merged)
         bus.publish({ cursor, payload: { ...payload, row: merged } })
       } else {
@@ -566,6 +557,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     }
     // Served here, never by the executor, so it answers while execution is paused.
     if (request.type === "waitingSessionsSnapshot") return waitingSessions.snapshot()
+    if (request.type === "unreadChatsSnapshot") return unreadChats.snapshot()
     if (request.type === "snapshot") {
       await syncCatalog()
       // Admission reads the history, which a failed recovery refuses. It never
@@ -658,6 +650,8 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       return { ok: true }
     }
     if (command.type === "session.activate") return activate(command, connection)
+    // Read state is the account's own and never reaches the executor (ARCH-SESSIONS-052).
+    if (isUnreadChatsMutation(command)) return unreadChats.dispatch(command, connection)
     if (options.accountModules?.owns(command)) return options.accountModules.mutate(command)
     if (command.type === "settings.set_update_auto_install") return settingsWriteResult(await options.updates.setAutoInstall(command.expected, command.value))
     if (command.type === "service.restart") return options.service.restart()
@@ -773,6 +767,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       holds.drop(connection)
       details.drop(connection)
       backgroundFollows.drop(connection)
+      unreadChats.disconnect(connection)
     },
     subscribe(listener) {
       if (closing) throw new Error("Project control client is closed")
@@ -796,6 +791,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       details.dispose()
       git.dispose()
       waitingSessions.dispose()
+      unreadChats.dispose()
       holds.dispose()
       unsubscribeSummaries()
       summaries.dispose()

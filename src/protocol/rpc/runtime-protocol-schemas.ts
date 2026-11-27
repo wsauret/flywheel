@@ -5,6 +5,7 @@ import { RuntimeCursorIdentitySchema } from "./runtime-cursor-schemas.js"
 import { ChatInputObjectSchema } from "../../infra/substrate/events/chat-input-schema.js"
 import { BackgroundWorkRowSchema, SessionBackgroundWorkQuerySchema, SessionBackgroundWorkResultSchema } from "../session/background-index-protocol-types.js"
 import { ChatSettlementQuerySchema, ChatSettlementResultSchema, SettlementPatchPayloadSchema } from "../session/chat-settlement-protocol-types.js"
+import { RuntimeUnreadChatsSnapshotResultSchema, UnreadChatsMutationSchemas, UnreadChatsPatchPayloadSchema } from "../session/unread-protocol-types.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "../session/mutation-evidence-protocol-types.js"
 import { SessionChangeSummaryQuerySchema, SessionChangeSummaryResultSchema, SessionFileChangeCountsSchema, SessionChangesQuerySchema, SessionChangesResultSchema, SessionChangeDiffQuerySchema, SessionChangeDiffResultSchema, SessionChangesSetViewedSchema, SessionChangesUndoSchema } from "../session/session-changes-protocol-types.js"
 import { Rpc, RpcGroup } from "effect/rpc"
@@ -285,6 +286,7 @@ export const RuntimeUiPatchPayloadSchema = Schema.Union([
   ...recursiveUnionMembers(BudgetPatchPayloadSchema),
   ...recursiveUnionMembers(QuestionPatchPayloadSchema),
   WaitingSessionsPatchPayloadSchema,
+  UnreadChatsPatchPayloadSchema,
   ...recursiveUnionMembers(RolePatchPayloadSchema),
   Schema.Struct({ kind: Schema.Literal("auth.changed"), auth: RuntimeAuthViewSchema }),
   CommandCatalogPatchPayloadSchema,
@@ -333,6 +335,7 @@ export const FrontendMutationSchema: Schema.Codec<FrontendMutation, FrontendMuta
   Schema.Struct({ type: Schema.Literal("session.claim_composer_returns"), sessionId: Schema.String, submissionIds: Schema.Array(Schema.NonEmptyString) }),
   SessionChangesUndoSchema,
   SessionChangesSetViewedSchema,
+  ...UnreadChatsMutationSchemas,
   // A named chat's id becomes a directory name on the machine, so it must
   // have the shape every session id has.
   Schema.Struct({ type: Schema.Literal("chat.open"), initialMessage: Schema.optional(ProtocolChatInputSchema), sessionId: Schema.optional(Schema.String.check(Schema.makeFilter((value) => isSessionId(value) || "Expected a session id"))) }),
@@ -411,6 +414,7 @@ export const RuntimeQuerySchema: Schema.Codec<RuntimeQuery> = Schema.Union([
   Schema.Struct({ type: Schema.Literal("budgetSnapshot"), sessionIds: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("questionSnapshot"), sessionIds: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("waitingSessionsSnapshot") }),
+  Schema.Struct({ type: Schema.Literal("unreadChatsSnapshot") }),
   Schema.Struct({ type: Schema.Literal("roleSnapshot"), sessionIds: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("recallQueuedMessage"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("authStatusSnapshot"), scope: RuntimeAuthStatusScopeSchema }),
@@ -542,6 +546,7 @@ const RUNTIME_QUERY_RESULT_SCHEMAS = {
   statusSnapshot: RuntimeStatusSnapshotResultSchema, budgetSnapshot: RuntimeBudgetSnapshotResultSchema,
   questionSnapshot: RuntimeQuestionSnapshotResultSchema, roleSnapshot: RuntimeRoleSnapshotResultSchema,
   waitingSessionsSnapshot: RuntimeWaitingSessionsSnapshotResultSchema,
+  unreadChatsSnapshot: RuntimeUnreadChatsSnapshotResultSchema,
   authStatusSnapshot: RuntimeAuthStatusSnapshotResultSchema,
   authProfileDeletionPreview: AuthProfileDeletionPreviewSchema,
   updateSnapshot: RuntimeUpdateSnapshotResultSchema, restartReadiness: RuntimeRestartReadinessSchema, moduleSnapshot: RuntimeModuleSnapshotResultSchema, configSnapshot: RuntimeConfigSnapshotResultSchema,
@@ -566,7 +571,7 @@ export function runtimeQueryResultSchema(type: RuntimeQuery["type"]): Schema.Cod
  *  query seeds that domain. The `satisfies` clause is the completeness gate. */
 export const RUNTIME_READ_DOMAINS = {
   snapshot: ["session", "chat_default", "executor", "service"],
-  statusSnapshot: ["status"], budgetSnapshot: ["budget"], questionSnapshot: ["question"], roleSnapshot: ["roles"], waitingSessionsSnapshot: ["waitingSessions"],
+  statusSnapshot: ["status"], budgetSnapshot: ["budget"], questionSnapshot: ["question"], roleSnapshot: ["roles"], waitingSessionsSnapshot: ["waitingSessions"], unreadChatsSnapshot: ["unreadChats"],
   sessionDetailSnapshot: ["session_detail"], authStatusSnapshot: ["auth"], updateSnapshot: ["updates"], moduleSnapshot: ["modules"], configSnapshot: ["config"],
   gitAiAttributionSnapshot: ["gitAiAttribution"], gitSnapshot: ["git"], commandUsageSnapshot: ["commandUsage"], commandCatalog: ["commands"],
   outputWindow: ["output"], sessionChangeSummary: ["changes"], sessionBackgroundWork: ["background"],

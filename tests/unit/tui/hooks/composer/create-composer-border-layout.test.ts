@@ -8,6 +8,7 @@ import {
 } from "../../../../../src/tui/hooks/composer/create-composer-border-layout.js"
 import { createKeymap } from "../../../../../src/tui/terminal/keymap/keymap.js"
 import { createSignals, session } from "../_session-modal-fixtures.js"
+import { selectNeedsYou } from "../../../../../src/protocol/client/session/needs-you.js"
 
 const AUTO_INSTALL_ON = { persisted: true, forcedOff: false, effective: true } as const
 
@@ -71,13 +72,18 @@ describe("composer border hints", () => {
     })
   })
 
-  it("counts the listed chats other than the one in front that wait, for as long as they wait", () => {
+  it("counts the chats other than the one in front that need the person, by a question or by a stop, for as long as they do", () => {
     createRoot((dispose) => {
-      const [waiting, setWaiting] = createSignal<ReadonlySet<string>>(new Set())
+      const [waiting, setWaiting] = createSignal<readonly string[]>([])
+      const [stopped, setStopped] = createSignal<readonly string[]>([])
       const signals = createSignals({}, "front")
-      signals.waitingSessions = waiting
       // A deleted session or a subagent in the set is not listed, so it never counts.
-      signals.listedSessions = () => ["front", "closed-a", "closed-b"].map((id) => session({ id }))
+      const listed = ["front", "closed-a", "closed-b", "done"].map((id) => session({ id }))
+      signals.needsYou = () => selectNeedsYou({
+        waiting: { sessions: waiting().map((sessionId, index) => ({ sessionId, openedAt: index })) },
+        unread: { stopped: stopped().map((sessionId, index) => ({ sessionId, ending: { kind: "completed" }, firstLine: "Done", stoppedAt: index, stopKey: `entry-${sessionId}` })), unread: ["working"] },
+        listed,
+      })
       const { layout } = createComposerBorderLayout({
         signals,
         terminalWidth: () => 200,
@@ -86,19 +92,24 @@ describe("composer border hints", () => {
         activeSessionCount: () => 1,
       })
 
-      setWaiting(new Set(["front"]))
-      expect(layout().waitingLabel).toBeUndefined()
-      setWaiting(new Set(["front", "closed-a", "closed-b", "deleted", "subagent"]))
-      expect(layout().waitingLabel).toBe("? 2 waiting")
-      // Leaving a waiting chat makes it one of the others; the label follows
-      // the foreground without any change to the set.
+      setWaiting(["front"])
+      expect(layout().needsYouLabel).toBeUndefined()
+      setWaiting(["front", "closed-a", "closed-b", "deleted", "subagent"])
+      expect(layout().needsYouLabel).toBe("2 need you")
+      // A stopped unread chat counts beside the questions; a working chat
+      // with unread messages does not need the person.
+      setStopped(["done", "deleted"])
+      expect(layout().needsYouLabel).toBe("3 need you")
+      // Leaving a chat that needs the person makes it one of the others; the
+      // label follows the foreground without any change to the set.
       signals.setForegroundId("closed-a")
-      expect(layout().waitingLabel).toBe("? 2 waiting")
+      expect(layout().needsYouLabel).toBe("3 need you")
       signals.setForegroundId("closed-b")
-      setWaiting(new Set(["closed-b"]))
-      expect(layout().waitingLabel).toBeUndefined()
+      setWaiting(["closed-b"])
+      setStopped([])
+      expect(layout().needsYouLabel).toBeUndefined()
       signals.setForegroundId("front")
-      expect(layout().waitingLabel).toBe("? 1 waiting")
+      expect(layout().needsYouLabel).toBe("1 needs you")
       dispose()
     })
   })

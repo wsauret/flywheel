@@ -14,7 +14,7 @@ import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"
 type KeyboardDeps = Parameters<typeof createKeyboardHandler>[0]
 
 function tab(id: string, isForeground: boolean, kind: TabInfo["kind"] = "session"): TabInfo {
-  return { kind, id, title: id, isForeground, isBusy: false, isBlocked: false }
+  return { kind, id, title: id, isForeground, isBusy: false }
 }
 
 type KeyboardDepsOverrides = Omit<Partial<KeyboardDeps>, "signals" | "chat" | "sessionControls"> & {

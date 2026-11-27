@@ -76,6 +76,8 @@ const RUNTIME_DELIVERY_POLICY = {
   settlement: { delivery: "query-only", content: "change" },
   // One patch carries every session that waits on a question.
   waitingSessions: collapsible,
+  // One patch carries every stopped unread chat and every chat with unread messages.
+  unreadChats: collapsible,
 } as const satisfies { readonly [D in RuntimeKernelDomain]: RuntimeDomainDelivery }
 
 export function runtimeDeliveryPolicy(domain: RuntimeUiDomain): RuntimeDeliveryPolicy {

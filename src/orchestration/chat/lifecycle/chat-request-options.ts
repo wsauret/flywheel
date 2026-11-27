@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto"
 import { resolveSessionDir } from "../../../infra/platform/files/paths.js"
 import type { StoredFact } from "../../../infra/substrate/store/event-store-types.js"
 import type { AgentHostContextOptions } from "../../agent-runtime/runner/turn-host/types.js"
-import type { AgentOptions, RoleHold, RunnerToolSurfaces } from "../../agent-runtime/types.js"
+import type { ConversationMessage } from "../../../infra/providers/llm/conversation/conversation-message.js"
+import type { AgentConversation, AgentOptions, RoleHold, RunnerToolSurfaces } from "../../agent-runtime/types.js"
 import type { ProviderSession } from "../../agent-runtime/request/provider-runtime-cache.js"
 import type { ResolvedRole } from "../../config/roles.js"
 import { SESSION_TITLE_PURPOSE } from "../../agent-runtime/session-title-generation.js"
@@ -12,6 +13,7 @@ interface ChatRequestOptionsInput {
   readonly deps: ChatSessionDeps
   readonly surfaces: Required<Pick<RunnerToolSurfaces, "background" | "foregroundBashHold" | "askUser">>
   readonly applyNestedStoredFact: (event: StoredFact) => void | Promise<void>
+  readonly awaitDurableFacts: () => Promise<void>
   /** The chat's provider session identity, which its sends and its pre-start share. */
   readonly providerSessionKey: () => string
 }
@@ -26,6 +28,14 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
   const { sessionId, projectRoot, executionCwd, userDataRoot, accountHome } = deps
   // The chat role's pair that the chat resolved first, which every later send and pre-start keeps (ARCH-RUNTIME-082).
   const roleHold: RoleHold = {}
+
+  /** The chat's tree as the conversation of a run on `providerSessionKey`, before the writes that a send adds. */
+  const tree = (providerSessionKey: string | undefined) => ({
+    kind: "durable-tree", sessionId, conversationId: deps.conversationId, providerSessionKey,
+    resolveLeafId: () => deps.treeWriter.getLeafId(),
+    committedTree: () => deps.treeWriter.getState(),
+    captureCommittedForkMessages: () => deps.treeWriter.captureCommittedForkMessages(),
+  }) as const
 
   function send(selectedModel: ResolvedRole | undefined, provider: ProviderSession) {
     return {
@@ -70,6 +80,31 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
 
   return {
     send,
+    /** The conversation of one send: the chat's tree, from `priorMessages`, which the send's loop writes through the
+     *  tree writer. A message that the loop appends once `isLive` no longer holds is dropped. */
+    conversation(run: {
+      readonly providerSessionKey: string | undefined
+      readonly priorMessages: readonly ConversationMessage[]
+      readonly isLive: () => boolean
+      readonly onAssistantMessage: (message: Extract<ConversationMessage, { kind: "assistant" }>) => void
+    }): Extract<AgentConversation, { kind: "durable-tree" }> {
+      const { treeWriter } = deps
+      return {
+        ...tree(run.providerSessionKey),
+        priorMessages: run.priorMessages,
+        recordInterruption: () => treeWriter.commitTurnEnd("person"),
+        reserveMessageId: treeWriter.reserveMessageId,
+        releaseMessageId: treeWriter.releaseMessageId,
+        append: (message, entryId) => {
+          if (!run.isLive()) return
+          if (message.kind === "assistant") run.onAssistantMessage(message)
+          return treeWriter.recordCanonicalMessage(message, entryId)
+        },
+        recordCompaction: (compaction) => treeWriter.recordCompaction(compaction).then((result) => result?.messages),
+        flush: (protectedToolUseIds, finalizedCheckpointSwaps) => treeWriter.flushSavePoint(protectedToolUseIds, finalizedCheckpointSwaps),
+        awaitDurableFacts: input.awaitDurableFacts,
+      }
+    },
     /** The chat's next send on `provider`, for its pre-start (`RequestPreparer`), and the read of its history, which
      *  the preparation runs only when it prepares a request. Between turns the history ends with the chat's reply,
      *  which the person's next message follows, so the read allows an assistant tail. A preparation writes nothing, so
@@ -78,16 +113,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
       const roles = await deps.resolveRoles()
       const options: AgentOptions & { readonly providerSession: ProviderSession } = {
         ...send(roles.get("chat"), provider),
-        conversation: {
-          kind: "durable-tree", sessionId, conversationId: deps.conversationId,
-          providerSessionKey: input.providerSessionKey(),
-          priorMessages: [],
-          append: () => {},
-          reserveMessageId: async () => randomUUID(),
-          resolveLeafId: () => deps.treeWriter.getLeafId(),
-          committedTree: () => deps.treeWriter.getState(),
-          captureCommittedForkMessages: () => deps.treeWriter.captureCommittedForkMessages(),
-        },
+        conversation: { ...tree(input.providerSessionKey()), priorMessages: [], append: () => {}, reserveMessageId: async () => randomUUID() },
         lifecycle: { kind: "one-shot" },
         onEvent: () => {},
       }

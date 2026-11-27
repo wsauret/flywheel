@@ -5,7 +5,7 @@ import type { AgentInputAnswer } from "../../../src/protocol/session/question-pr
 import type { ChatSearchRequest, ChatSearchResult, ProjectFileEntry, TranscriptSearchRequest, TranscriptSearchResult } from "../../../src/protocol/transcript/transcript-protocol-types.js"
 import type { CommandOutcome } from "../../../src/protocol/commands/command-catalog-protocol-types.js"
 import type { CaptureSurfaceOpener } from "../../../src/protocol/client/commands/surface-presentation.js"
-import type { ProtocolChatAttachment, SessionTitlePatch } from "../../../src/protocol/runtime/app-service-types.js"
+import type { FrontendMutation, ProtocolChatAttachment, SessionTitlePatch } from "../../../src/protocol/runtime/app-service-types.js"
 import type { LocalRecall } from "../../../src/protocol/client/chat/chat-submissions.js"
 import { routeSlashToken, type SlashRoute } from "../../../src/protocol/client/commands/slash-route.js"
 import { offCommandRefusal } from "../../../src/protocol/client/commands/off-command.js"
@@ -14,7 +14,7 @@ import { actionKey, controlActionKey } from "./action-key.js"
 import { describeFailure } from "./format/failure-message.js"
 import type { RuntimeSession } from "./session/session.js"
 import type { SessionLink } from "./session/navigation/session-navigation.js"
-import { desktopPermissionRefusal } from "./desktop-notifier.js"
+import { desktopPermissionRefusal } from "./notifications/desktop-notifier.js"
 import { DraftKeptRefusal } from "./session/session-input.js"
 import { applyInlineSetting, settingKeys, type InlineSettingAction, type SettingOutcome } from "./settings-actions.js"
 import type { MutationEvidenceReader } from "../../../src/protocol/client/chat/transcript/mutation-evidence.js"
@@ -78,6 +78,10 @@ export interface ClientActions {
   removeSession(sessionId: string): void
   closeSession(sessionId: string): void
   renameSession(sessionId: string, patch: SessionTitlePatch): void
+  /** The person's marks from the list (PI-INTERACTION-187): a chat marked
+   *  unread is read again the next time the person is at it. */
+  markRead(sessionId: string): void
+  markUnread(sessionId: string): void
   /** Whether Close, Cancel, Delete, or Rename of `sessionId` runs. Every
    *  surface that names the session reads it here, such as its list row and
    *  the open chat's title, so an action started anywhere shows on both.
@@ -213,6 +217,10 @@ export function createClientActions(deps: ClientActionDeps): ClientActions {
   /** An attempt recorded under `key`, for an action that acts on something. */
   const perform = <T>(key: string, work: () => Promise<T>, onFailure?: (cause: unknown) => void): Promise<boolean> =>
     join(key, () => attempt(work, onFailure))
+  const mark = async (mutation: Extract<FrontendMutation, { readonly type: "chat.mark_read" | "chat.mark_unread" }>): Promise<void> => {
+    const result = await deps.connection.dispatch(mutation)
+    if (!result.ok) throw new Error(result.error)
+  }
   /** The selected session, for a control that acts on whichever one is open. */
   const selected = () => session.sessionId ?? ""
 
@@ -291,6 +299,10 @@ export function createClientActions(deps: ClientActionDeps): ClientActions {
     removeSession: (sessionId) => perform(actionKey("delete", sessionId), () => session.remove(sessionId)),
     closeSession: (sessionId) => perform(actionKey("close", sessionId), () => session.close(sessionId)),
     renameSession: (sessionId, patch) => perform(actionKey("rename", sessionId), () => session.rename(sessionId, patch)),
+    markRead: (sessionId) => perform(actionKey("mark-read", sessionId), () => mark({ type: "chat.mark_read", sessionId })),
+    // The account service refuses a mark unread of a chat with nothing to
+    // read, and the person hears why the row stayed as it was.
+    markUnread: (sessionId) => perform(actionKey("mark-unread", sessionId), () => mark({ type: "chat.mark_unread", sessionId })),
     sessionWorking: (sessionId) => SESSION_ACTIONS.some((action) => isRunning(actionKey(action, sessionId))),
     loadOlder: () => join(actionKey("load-older", selected()), () => session.loadOlder().catch((cause: unknown) => {
       reportFailure(cause)
