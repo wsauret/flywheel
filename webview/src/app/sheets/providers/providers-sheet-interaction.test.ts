@@ -3,6 +3,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
 import { BROWSER_LOGIN_COPY } from "../../../../../src/protocol/client/auth/provider-account-copy.js"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../../../src/protocol/client/providers/antigravity-warning-copy.js"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
 import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
@@ -523,6 +524,34 @@ test("the shared Authentication sheet asks before a paid account replaces the fr
     assert.deepEqual(keeping.mutations().at(-1), { type: "auth.login.cancel", operationId: "browser-operation" })
     assert.deepEqual(keeping.reports(), [{ severity: "info", message: "ChatGPT was not connected, and the free-plan account stays. Nothing was stored." }])
     assert.doesNotMatch(keeping.text(), /This will replace/)
+  } finally {
+    keeping.dispose()
+  }
+})
+
+test("the shared Authentication sheet shows the opt-in warning: Turn on logs in again with turnOn, Keep it off dispatches nothing more (PI-MODEL-096)", async () => {
+  const turning = mountProviderBrowserLogin(undefined, undefined, undefined, undefined, undefined, undefined, GOOGLE_ANTIGRAVITY_WARNING)
+  try {
+    await turning.ready()
+    assert.ok(turning.text().includes(GOOGLE_ANTIGRAVITY_WARNING))
+    const [first, ...rest] = turning.mutations()
+    assert.equal(first?.type, "auth.login")
+    assert.equal(rest.length, 0)
+    turning.clickButton("Turn on")
+    await turning.ready()
+    assert.deepEqual(turning.mutations(), [first, { ...first, turnOn: true }])
+    assert.equal(turning.inputLabel(), BROWSER_LOGIN_COPY.placeholder)
+  } finally {
+    turning.dispose()
+  }
+  const keeping = mountProviderBrowserLogin(undefined, undefined, undefined, undefined, undefined, undefined, GOOGLE_ANTIGRAVITY_WARNING)
+  try {
+    await keeping.ready()
+    keeping.clickButton("Keep it off")
+    await keeping.ready()
+    assert.equal(keeping.mutations().length, 1)
+    assert.deepEqual(keeping.reports(), [{ severity: "info", message: "ChatGPT stays off. Nothing was changed." }])
+    assert.ok(!keeping.text().includes(GOOGLE_ANTIGRAVITY_WARNING))
   } finally {
     keeping.dispose()
   }

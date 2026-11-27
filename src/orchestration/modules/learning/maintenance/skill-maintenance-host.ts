@@ -23,6 +23,7 @@ import { Log } from "../../../../infra/diagnostics/log.js"
 import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
 import { captureRuntimeConfigRequest } from "../../../config/request-config.js"
+import { profileProviderOptIns } from "../../../config/models/access-provider-registry.js"
 import { runHeadlessBootstrap } from "../../../app-service/headless/headless-bootstrap.js"
 import { moduleRequirementsForContribution } from "../../../module-contract/module-requirements.js"
 import { createSessionFactWriter } from "../../../session/persistence/session-fact-writer.js"
@@ -108,6 +109,7 @@ export async function runSkillMaintenanceForProject(
         profile: authProfile,
         moduleSelection,
         allowTrainingRoutes: requestConfig.allowTrainingRoutes,
+        providerOptIns: profileProviderOptIns(config.profiles[authProfile.id]),
         resolveKey,
         captureRuntimeConfig: () => requestConfig,
         workflowPreparation: { ...directories, definitions, moduleSelection, launcher: input.launcher, resolveKey, capabilities: capabilityPolicy.policy },

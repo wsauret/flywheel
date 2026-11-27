@@ -86,6 +86,8 @@ export interface WorkspaceSettings {
   readonly gitAiAttribution: boolean
   /** Whether the active profile allows model routes that may train on requests. */
   readonly allowTrainingRoutes: boolean
+  /** Whether the active profile lets Google Antigravity sign in and serve requests (PI-MODEL-096). */
+  readonly allowGoogleAntigravity: boolean
   /** Settings the runtime could not accept as written, for the rows to annotate. */
   readonly problems: readonly SettingProblem[]
   /** The configuration file's state when it is not simply valid. */
@@ -187,6 +189,7 @@ export async function readWorkspaceSettings(connection: Pick<RuntimeConnection, 
     }),
     gitAiAttribution: profile?.gitAiAttribution ?? false,
     allowTrainingRoutes: profile?.allowTrainingRoutes ?? false,
+    allowGoogleAntigravity: profile?.allowGoogleAntigravity ?? false,
     problems: config.config.diagnostics.map((diagnostic) => ({ settingId: diagnostic.settingId, message: configProblemText(diagnostic.reason, config.config.status) })),
     ...(config.config.status.kind === "valid" ? {} : { configStatus: config.config.status.message }),
     profile: { displayName: auth.auth.profile.displayName, count: auth.auth.profile.availableProfiles.length },

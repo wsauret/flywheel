@@ -69,7 +69,7 @@ test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling d
   }))
   const modes: string[] = []
   let metadataRefreshes = 0
-  const preparation = createEligibilityPreparation({
+  const preparation = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
     allowTrainingRoutes: () => false,
     userDataRoot: directories.userDataRoot, resolveKey: async () => undefined,
     moduleSelection: () => composeFirstPartyModules(), observeAuth: diskAuthObservation(() => composeFirstPartyModules()),
@@ -152,7 +152,7 @@ test("reads saved model, assignment, and effort options for defaults and session
   const entered = Promise.withResolvers<void>()
   const order: string[] = []
   let auth = testAuthContext({ apiKeys: { openai_api: "test-key" } })
-  const preparation = createEligibilityPreparation({
+  const preparation = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
     allowTrainingRoutes: () => false,
     userDataRoot: directories.userDataRoot,
     resolveKey: async () => undefined,
@@ -500,7 +500,7 @@ test("keeps connection conditions with the credential capture when a transient f
   preferences.publish(preferences.prepare({ profileId: profile.id, inputRevision: revision, catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map() }))
   const entered = Promise.withResolvers<void>()
   const release = Promise.withResolvers<void>()
-  const preparation = createEligibilityPreparation({
+  const preparation = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
     allowTrainingRoutes: () => false,
     userDataRoot: directories.userDataRoot, moduleSelection: () => composition,
     prepare: preferences.prepare, publish: preferences.publish, current: preferences.state,

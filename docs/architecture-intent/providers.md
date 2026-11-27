@@ -66,6 +66,10 @@ Not: One engine process for each agent, or the shared-host dispatcher of the Cla
 Flywheel admits each model step of an Antigravity engine through the engine's documented step hook, and proves the hook at the start of each engine session before any real content. A step that runs without admission because the hook failed, or that starts an engine retry, is cancelled at once and fails its request. The route's context window ends below the engine's own compaction threshold, so the engine never compacts.
 Because: The engine proceeds when its hook process fails, and it retries and compacts on its own.
 
+## ARCH-PROVIDERS-088: The profile's Antigravity setting admits the route
+
+The Antigravity route admission reads the active profile's Antigravity setting at sign-in, at catalog discovery, and at request planning. An off setting launches no engine, except to log out a retained account when the person disconnects it or deletes its profile.
+
 ## ARCH-PROVIDERS-073: Each host agent keeps its own definition and view
 
 Each host agent runs on its own definition's model, effort, and working directory. A grant, depth limit, or disabled module narrows its calls and the text that it alone reads, never the text that it shares with its chat tree.

@@ -1,6 +1,6 @@
 import { Effect, Scope } from "effect"
 import type { Claim, ProviderDemand } from "../../../agent-runtime/llm/types.js"
-import type { EngineLease, RegisteredEngine } from "./engine-registry.js"
+import type { EngineLease, EnginePlace, RegisteredEngine } from "./engine-registry.js"
 import { registerLiveEngine } from "./live-engines.js"
 
 /**
@@ -27,6 +27,7 @@ function onceClaim(release: () => Promise<void>): Claim {
 
 /** The claims on one place's engine of a session: the one lease that they share, and the claims that hold it. */
 interface PlaceDemand {
+  readonly loginDir: string
   readonly lease: EngineLease<RegisteredEngine>
   readonly claims: Set<Claim>
 }
@@ -38,12 +39,13 @@ interface PlaceDemand {
  * roles on one place hold one engine, and that engine's end asks for one plan (`reportEngineEnd`). A caller that moves
  * a role to another selection claims the new place before it releases the old claim, so an engine that both places
  * share never closes between them. What a demand holds lives in the demand's scope, not a client's. The module turned
- * off ends every lease at once, because a shown session's claim serves no request, and asks for one plan.
+ * off ends every lease at once, and a profile that turns the provider off ends the leases on its logins, because a
+ * shown session's claim then serves no request; either asks for one plan.
  */
 interface SessionEngineDemand {
-  /** Claims the engine of the place whose key is `key`. The first claim on a place leases it with `lease` and launches
-   *  its engine; the release of the last claim ends that lease. A claim on an engine that ended holds nothing. */
-  claimEngine(key: string, lease: () => EngineLease<RegisteredEngine>): Claim
+  /** Claims the engine of `place`. The first claim on a place leases it with `lease` and launches its engine; the
+   *  release of the last claim ends that lease. A claim on an engine that ended holds nothing. */
+  claimEngine(place: Pick<EnginePlace, "treeRootSessionId" | "loginDir">, lease: () => EngineLease<RegisteredEngine>): Claim
 }
 
 const demands = new WeakMap<ProviderDemand, SessionEngineDemand>()
@@ -60,9 +62,10 @@ export function sessionEngineDemand(demand: ProviderDemand): SessionEngineDemand
     return entry.lease.release()
   }
   const dropAll = () => Promise.all([...places].map(([key, entry]) => drop(key, entry)))
-  const unregister = registerLiveEngine(() => {
-    if (places.size === 0) return
-    void dropAll()
+  const unregister = registerLiveEngine((within) => {
+    const released = [...places].filter(([, entry]) => within(entry.loginDir))
+    if (released.length === 0) return
+    for (const [key, entry] of released) void drop(key, entry)
     reportEngineEnd(demand, { drained: true, served: false })
   })
   Effect.runSync(Scope.addFinalizer(demand.scope, Effect.promise(() => {
@@ -70,10 +73,11 @@ export function sessionEngineDemand(demand: ProviderDemand): SessionEngineDemand
     return dropAll()
   })))
   const created: SessionEngineDemand = {
-    claimEngine(key, lease) {
+    claimEngine(place, lease) {
+      const key = JSON.stringify([place.treeRootSessionId, place.loginDir])
       let entry = places.get(key)
       if (entry === undefined) {
-        const opened: PlaceDemand = { lease: lease(), claims: new Set() }
+        const opened: PlaceDemand = { loginDir: place.loginDir, lease: lease(), claims: new Set() }
         places.set(key, opened)
         void opened.lease.engine().then(async (engine) => {
           const end = await engine.ended

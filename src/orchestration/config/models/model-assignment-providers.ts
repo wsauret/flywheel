@@ -37,6 +37,8 @@ interface ProviderModelDeps {
   readonly preferencePersistence?: "persist" | "read-only";
   /** The caller's launch authority, for a provider whose listing runs a local process. */
   readonly launcher?: LauncherScope;
+  /** Providers that the profile keeps off, whose accounts read only their saved listing. */
+  readonly savedOnlyProviders?: ReadonlySet<AccessProviderId>;
 }
 
 interface ResolvedProviderModelInventoryCandidate {
@@ -82,6 +84,7 @@ export async function resolveProviderModelCatalog(
     ...(deps.onAccessAudit === undefined ? {} : { onAccessAudit: deps.onAccessAudit }),
     ...(deps.recheckAccount === undefined ? {} : { recheckAccount: deps.recheckAccount }),
     ...(deps.launcher === undefined ? {} : { launcher: deps.launcher }),
+    ...(deps.savedOnlyProviders === undefined ? {} : { savedOnlyProviders: deps.savedOnlyProviders }),
   }));
   const selection = accessProviderRegistry(modules).selection;
   const liveCatalog = new Map<AccessProviderId, ReadonlySet<string>>();

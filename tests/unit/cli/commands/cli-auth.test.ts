@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { FREE_PLAN_REPLACE_QUESTION } from "../../../../src/infra/providers/llm/access/free-plan-accounts.js"
 import { keptFreePlanMessage } from "../../../../src/protocol/client/auth-login.js"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../../src/protocol/client/providers/antigravity-warning-copy.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Redacted } from "effect"
@@ -71,6 +72,8 @@ const errorLines: string[] = []
 let promptAnswer = ""
 let promptAnswers: (string | PromptCancelled)[] = []
 const promptCalls: { readonly question: string; readonly secret: boolean; readonly signal?: AbortSignal }[] = []
+/** Runs before each prompt answers, as another client could change the configuration while the prompt waits. */
+let beforeAnswer: ((question: string) => void) | undefined
 const exitCodes: number[] = []
 
 const dependencies: AuthCommandDependencies = {
@@ -85,6 +88,7 @@ const dependencies: AuthCommandDependencies = {
   },
   prompt: async (question, options) => {
     promptCalls.push({ question, secret: options?.secret === true, ...(options?.signal === undefined ? {} : { signal: options.signal }) })
+    beforeAnswer?.(question)
     const next = promptAnswers.shift() ?? promptAnswer
     if (next instanceof PromptCancelled) throw next
     return next
@@ -110,6 +114,7 @@ describe("auth cli", () => {
     promptAnswer = ""
     promptAnswers = []
     promptCalls.length = 0
+    beforeAnswer = undefined
     exitCodes.length = 0
     mockLoginWithApiKey.mockClear()
     mockLoginWithChatGPT.mockClear()
@@ -119,6 +124,7 @@ describe("auth cli", () => {
     mockGetAuthStatus.mockClear()
     mockGetAuthStatusWithDiagnostics.mockClear()
     mockSettleCatalog.mockClear()
+    mockProviderLoginFlow.mockClear()
   })
 
   it("shows usage when no command given", async () => {
@@ -156,6 +162,49 @@ describe("auth cli", () => {
         expect(lines.join("\n")).toContain("login --chatgpt")
         await runAuth(["login", "--chatgpt"], directories, dependencies)
         expect(mockLoginWithChatGPT).toHaveBeenCalledTimes(1)
+      } finally {
+        rmSync(accountHome, { recursive: true, force: true })
+      }
+    })
+
+    it("login --google-antigravity shows the warning first, and only a yes turns the provider on and signs in (PI-MODEL-096)", async () => {
+      const accountHome = mkdtempSync(join(tmpdir(), "flywheel-auth-opt-in-"))
+      const userDataRoot = join(accountHome, ".flywheel")
+      const directories = { ...DIRECTORIES, accountHome, userDataRoot }
+      const config = join(userDataRoot, "flywheel.toml")
+      try {
+        mkdirSync(userDataRoot)
+        writeFileSync(config, "")
+        promptAnswers = ["n"]
+        await expect(runAuth(["login", "--google-antigravity"], directories, dependencies)).rejects.toThrow("process.exit")
+        expect(lines).toContain(`${GOOGLE_ANTIGRAVITY_WARNING}\n`)
+        expect(promptCalls.map(({ question }) => question)).toEqual(["Turn it on? [y/N] "])
+        expect(mockProviderLoginFlow).not.toHaveBeenCalledWith("google_antigravity")
+        expect(readFileSync(config, "utf8")).toBe("")
+
+        promptAnswers = ["y", ""]
+        await runAuth(["login", "--google-antigravity"], directories, dependencies).catch(() => undefined)
+        expect(mockProviderLoginFlow).toHaveBeenCalledWith("google_antigravity")
+        expect(readFileSync(config, "utf8")).toContain("allow_google_antigravity = true")
+
+        promptCalls.length = 0
+        promptAnswers = [""]
+        await runAuth(["login", "--google-antigravity"], directories, dependencies).catch(() => undefined)
+        expect(promptCalls.map(({ question }) => question)).not.toContain("Turn it on? [y/N] ")
+
+        // A profile that turns the provider off while the provider picker waits shows the warning again.
+        promptCalls.length = 0
+        mockProviderLoginFlow.mockClear()
+        beforeAnswer = (question) => {
+          if (!question.startsWith("Enter number")) return
+          writeFileSync(config, "")
+          const choice = lines.findLast((line) => line.includes(") Google Antigravity"))?.trim().split(")")[0] ?? ""
+          promptAnswers.unshift(choice)
+        }
+        promptAnswers = ["n"]
+        await expect(runAuth(["login"], directories, dependencies)).rejects.toThrow("process.exit")
+        expect(promptCalls.map(({ question }) => question)).toEqual(["Enter number (or q to cancel): ", "Turn it on? [y/N] "])
+        expect(mockProviderLoginFlow).not.toHaveBeenCalledWith("google_antigravity")
       } finally {
         rmSync(accountHome, { recursive: true, force: true })
       }

@@ -77,6 +77,9 @@ describe("chat A/B acceptance scoring", () => {
       ["acceptance/a.test.ts > todo", "fail"],
       ["acceptance/a.test.ts > slow", "fail"],
     ]));
+    // Bun on Windows names the file suite with backslashes; a describe name keeps its own.
+    const windows = `<testsuites><testsuite name="acceptance\\b.test.ts"><testsuite name="a\\b"><testcase name="c" /></testsuite></testsuite></testsuites>`;
+    expect(parseJUnitReport(windows)).toEqual(new Map([["acceptance/b.test.ts > a\\b > c", "pass"]]));
   });
 
   it("fails every test in the scope of a beforeAll or afterAll hook that throws", () => {

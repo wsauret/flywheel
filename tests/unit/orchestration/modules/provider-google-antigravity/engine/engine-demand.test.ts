@@ -22,7 +22,7 @@ function setup() {
   const registry = createEngineRegistry(launches.launch)
   const session = shownSession()
   const demand = sessionEngineDemand(session.demand)
-  const claim = () => demand.claimEngine("A@login-1", () => registry.lease(PLACE))
+  const claim = () => demand.claimEngine(PLACE, () => registry.lease(PLACE))
   return { ...launches, registry, session, claim }
 }
 
@@ -73,11 +73,14 @@ describe("a session's engine demand", () => {
     await registry.drain()
   })
 
-  test("the module turned off releases an idle engine at once, and one with an open prompt after the prompt settles", async () => {
+  test("the module turned off releases an idle engine at once, and one with an open prompt after the prompt settles; a release of other logins keeps it", async () => {
     const { engines, claim, registry, session } = setup()
     claim()
     await settle()
-    releaseLiveEngines()
+    releaseLiveEngines((loginDir) => loginDir !== PLACE.loginDir)
+    await settle()
+    expect({ exited: engines[0]?.exited, stale: session.staleCount() }).toEqual({ exited: false, stale: 0 })
+    releaseLiveEngines((loginDir) => loginDir === PLACE.loginDir)
     await settle()
     expect(engines[0]?.exited).toBe(true)
     expect(session.staleCount()).toBe(1)

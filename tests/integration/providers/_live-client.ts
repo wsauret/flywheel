@@ -24,7 +24,8 @@ import { selectStartupDirectories } from "../../../src/infra/platform/files/dire
 import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherScope } from "../../../src/infra/process-supervisor.js";
 import { createAgentRuntime } from "../../../src/orchestration/agent-runtime/runner/factory.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";
-import { accessProviderRegistry } from "../../../src/orchestration/config/models/access-provider-registry.js";
+import { accessProviderRegistry, profileProviderOptIns, turnedOffProviders } from "../../../src/orchestration/config/models/access-provider-registry.js";
+import type { ProviderOptInSettingId } from "../../../src/infra/providers/llm/access/access-provider.js";
 import { captureAccountConnection } from "../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js";
 import type { ModelClient, ProviderSessionLifetime, ServingAttempt } from "../../../src/orchestration/agent-runtime/llm/types.js";
@@ -99,6 +100,9 @@ export interface LiveRoute {
   /** The reason to refuse a provider attempt that the walk selected, or undefined to let it run. A refusal fails the
    *  request before the attempt sends anything, so a tier that qualifies one provider never passes on another. */
   readonly refuse?: (attempt: ServingAttempt) => string | undefined;
+  /** Provider opt-ins that the test turns on for its own run of the profile, over what the profile's configuration
+   *  states, so a tier that qualifies such a provider runs it without changing the person's configuration. */
+  readonly turnOn?: readonly ProviderOptInSettingId[];
 }
 
 /** Runs `use` with a real client of `route` resolved as a headless run on
@@ -133,7 +137,10 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
       ...providerModelPreferencePersistence(() => profile.directory),
     });
     releases.push(() => providerModels.dispose());
+    const optIns = profileProviderOptIns(runtimeConfig.snapshot().config.profiles[profile.id]);
+    const turnedOff = turnedOffProviders(providers.selection.definitions, { ...optIns, ...Object.fromEntries((route.turnOn ?? []).map((setting) => [setting, true])) });
     const prepareEligibility = createEligibilityPreparation({
+      turnedOffProviders: () => turnedOff,
       allowTrainingRoutes: () => requestConfig.allowTrainingRoutes,
       userDataRoot: liveDirectories.userDataRoot,
       resolveKey,

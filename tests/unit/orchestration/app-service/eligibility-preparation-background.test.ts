@@ -22,7 +22,7 @@ describe("background discovery", () => {
     let held = true
     const calls: number[] = []
     let ran = Promise.withResolvers<void>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot, resolveKey: async () => undefined,
       moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: service.prepare, publish: service.publish, current: service.state,

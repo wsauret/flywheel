@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { isExternalLoginDefinition } from "../../../../../src/infra/providers/auth/provider-account.js"
 import { accessProviderRegistry } from "../../../../../src/orchestration/config/models/access-provider-registry.js"
@@ -21,6 +21,8 @@ import { createGoogleAntigravityModule, googleAntigravityModule } from "../../..
 import { MODULE_IDS } from "../../../../../src/protocol/runtime/module-ids.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
+import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
+import { authDir as profileAuthDir, globalConfigFile } from "../../../../../src/infra/platform/files/paths.js"
 import { AGY, fakeAgy, pastePorts } from "./_fake-agy.js"
 
 const temporaryDirectory = temporaryDirectories()
@@ -43,8 +45,17 @@ function fakeEngine(options: EngineLaunchOptions, closes: string[], busy: Promis
   }
 }
 
+/** The configuration of a fresh account whose file authors `toml`, and the rewrite of that file that its subscribers read. */
+async function accountConfig(toml = "") {
+  const userDataRoot = temporaryDirectory("flywheel-antigravity-config-")
+  const file = globalConfigFile(userDataRoot)
+  writeFileSync(file, toml, { mode: 0o600 })
+  const owner = await createRuntimeConfigOwner({ userDataRoot, watch: false })
+  return { owner, async set(next: string) { writeFileSync(file, next); await owner.refresh() } }
+}
+
 describe("the Google Antigravity provider module", () => {
-  test("turned off, it stays listed for the auth actions but admits no model and builds no process service", () => {
+  test("turned off, it stays listed for the auth actions but admits no model and builds no process service", async () => {
     const definition = installedAccessProviderDefinitions().find((candidate) => candidate.id === PROVIDER)
     expect(definition).toMatchObject({ displayName: "Google Antigravity", billing: "subscription", accountRotation: "never", cli: { flag: "google-antigravity" }, dynamicCatalog: { membership: "first-party" } })
     if (definition === undefined || !isExternalLoginDefinition(definition)) throw new Error("the provider has no external login")
@@ -60,7 +71,7 @@ describe("the Google Antigravity provider module", () => {
     expect(on.contributions.some((contribution) => contribution.domain === "health" && contribution.id === ID)).toBe(true)
     expect(moduleProtocolRows(MODULE_IDS, SHIPPED_MODULES).find((row) => row.id === ID)).toMatchObject({ installed: true, effective: true, setting: { control: "binary", group: "Model providers", label: "Google Antigravity" } })
 
-    const kernel = { ...moduleProcessServices({ onSelectionChanged: () => () => {} }), directories: testDirectories(temporaryDirectory("flywheel-antigravity-module-")) }
+    const kernel = { ...moduleProcessServices({ onSelectionChanged: () => () => {}, config: (await accountConfig()).owner }), directories: testDirectories(temporaryDirectory("flywheel-antigravity-module-")) }
     const services = (enabled: readonly string[]) => {
       const composed = composePortableModuleServices([googleAntigravityModule], () => enabled, kernel)
       composed.reconcile()
@@ -73,7 +84,7 @@ describe("the Google Antigravity provider module", () => {
     return Promise.all([withModule.dispose(), withoutModule.dispose()])
   })
 
-  test("its process service lets live engine uses go only when the module turns off, names the account whose engine serves a tree, holds a logout until that engine closed, and closes every engine at its end", async () => {
+  test("its process service lets live engine uses go when the module turns off, and those of one profile's logins when that profile turns the provider off, names the account whose engine serves a tree, holds a logout until that engine closed, and closes every engine at its end", async () => {
     const root = temporaryDirectory("flywheel-antigravity-service-")
     const authDir = join(root, "auth")
     const agy = fakeAgy({ identity: "person@example.com" })
@@ -86,15 +97,23 @@ describe("the Google Antigravity provider module", () => {
 
     let enabled = true
     const listeners: (() => void | Promise<void>)[] = []
-    let releases = 0
-    const unregister = registerLiveEngine(() => { releases += 1 })
-    const instance = module.service.create(moduleProcessServices({ enabled: () => enabled, onSelectionChanged: (listener) => { listeners.push(listener); return () => {} } }))
+    const directories = testDirectories(root)
+    const workLogin = join(profileAuthDir(directories.userDataRoot, "work"), "antigravity", "login-1")
+    const homeLogin = join(profileAuthDir(directories.userDataRoot, "home"), "antigravity", "login-1")
+    const releases: string[][] = []
+    const unregister = registerLiveEngine((within) => { releases.push([workLogin, homeLogin].filter(within)) })
+    const bothOn = "[profiles.work]\nallow_google_antigravity = true\n\n[profiles.home]\nallow_google_antigravity = true\n"
+    const config = await accountConfig(bothOn)
+    const instance = module.service.create(moduleProcessServices({ enabled: () => enabled, onSelectionChanged: (listener) => { listeners.push(listener); return () => {} }, config: config.owner, directories }))
     try {
       for (const listener of listeners) await listener()
-      expect(releases).toBe(0)
+      await config.set(`${bothOn}\n[profiles.other]\n`)
+      expect(releases).toEqual([])
+      await config.set("[profiles.work]\n\n[profiles.home]\nallow_google_antigravity = true\n")
+      expect(releases).toEqual([[workLogin]])
       enabled = false
       for (const listener of listeners) await listener()
-      expect(releases).toBe(1)
+      expect(releases).toEqual([[workLogin], [workLogin, homeLogin]])
 
       const runtime = currentEngineRuntime()
       if (runtime === undefined) throw new Error("the service opened no engine runtime")
@@ -141,7 +160,7 @@ describe("the Google Antigravity provider module", () => {
     const module = createGoogleAntigravityModule({ enginePath: () => AGY, launchEngine: async (options) => refusing(options) })
     const provider = module.contributions[0].value
     const account = await provider.definition.auth.login(authDir, pastePorts(agy.launcher).ports)
-    const instance = module.service.create(moduleProcessServices({ onSelectionChanged: () => () => {} }))
+    const instance = module.service.create(moduleProcessServices({ onSelectionChanged: () => () => {}, config: (await accountConfig()).owner }))
     const scope = Scope.makeUnsafe()
     try {
       const model = "gemini-3.1-pro"

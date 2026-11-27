@@ -1,6 +1,7 @@
 import type { RuntimeAuthLoginQuestion, RuntimeAuthView } from "../../../../../protocol/auth/auth-status-protocol-types.js"
 import { Redacted } from "effect"
 import { errorMessage } from "../../../../../infra/diagnostics/error-message.js"
+import { keptOffMessage } from "../../../../../protocol/client/auth-login.js"
 import type { AuthModalDeps } from "./auth-modal-types.js"
 import type { AuthView } from "../../../../modals/auth/auth-modal-options.js"
 
@@ -27,11 +28,14 @@ interface AskingQuestion extends OwnedQuestion {
 }
 
 /** The login the person accepted: its operation once the runtime starts it,
- *  and whether the person submitted the code that completes it. */
+ *  whether the person submitted the code that completes it, and whether it
+ *  waits for the person's answer to the warning of a provider that the
+ *  account's profile keeps off (PI-MODEL-096). */
 interface LoginInProgress extends OwnedQuestion {
   readonly phase: "login"
   operationId?: string
   submitted?: true
+  optIn?: true
 }
 
 /** Owns one modal's runtime login, not the account's answer authority. */
@@ -72,12 +76,18 @@ export function createAuthModalLoginQuestion(deps: LoginQuestionDeps) {
     }
   }
 
-  async function login(owned: LoginInProgress): Promise<void> {
+  async function login(owned: LoginInProgress, turnOn?: true): Promise<void> {
     try {
       const question = owned.question
-      const result = await deps.dispatch({ type: "auth.login", providerId: question.providerId, instanceId: question.instanceId, loginQuestionId: question.questionId, ...deps.signInPage.request })
+      const result = await deps.dispatch({ type: "auth.login", providerId: question.providerId, instanceId: question.instanceId, loginQuestionId: question.questionId, ...deps.signInPage.request, ...(turnOn === undefined ? {} : { turnOn }) })
       if (current !== owned) return
       if (result.kind === "ignored") { finish(owned); return }
+      if (result.kind === "needs_opt_in") {
+        // The question stays open in the runtime until the person answers the warning.
+        owned.optIn = true
+        deps.setView({ kind: "login-confirmation", providerId: question.providerId, label: question.providerDisplayName, message: result.warning, question: "turn-on", choice: "keep" })
+        return
+      }
       if (result.kind === "browser") {
         owned.operationId = result.operationId
         deps.setView({ kind: "browser-auth", providerId: question.providerId, label: question.providerDisplayName, url: result.authorizeUri, question })
@@ -118,6 +128,23 @@ export function createAuthModalLoginQuestion(deps: LoginQuestionDeps) {
       current = accepted
       deps.setView({ kind: "login-question", question: accepted.question, choice: "login", submitting: true })
       void login(accepted)
+    },
+    /** Answers the warning that this login shows, and returns false when it shows none. A yes logs in again with
+     *  `turnOn`; a no declines the account's question, and nothing is changed. */
+    answerTurnOn(yes: boolean): boolean {
+      const owned = current
+      if (owned?.phase !== "login" || owned.optIn !== true) return false
+      delete owned.optIn
+      if (yes) {
+        deps.setView({ kind: "login-question", question: owned.question, choice: "login", submitting: true })
+        void login(owned, true)
+        return true
+      }
+      current = { question: owned.question, phase: "asking", ...(owned.onUndelivered === undefined ? {} : { onUndelivered: owned.onUndelivered }) }
+      cancel()
+      deps.showToast({ message: keptOffMessage(owned.question.providerDisplayName), variant: "info" })
+      deps.close()
+      return true
     },
     cancel,
     observe,

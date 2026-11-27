@@ -1,7 +1,9 @@
-import { createAccessProviderSelection, type AccessProviderDefinition, type AccessProviderId, type ProviderSettingValues } from "../../../infra/providers/llm/access/access-provider.js"
+import { createAccessProviderSelection, type AccessProviderDefinition, type AccessProviderId, type ProviderOptInSettingId, type ProviderSettingValues } from "../../../infra/providers/llm/access/access-provider.js"
 import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../infra/providers/llm/usage/subscription-usage.js"
 import type { ModuleProviderSetting } from "../../../protocol/runtime/module-protocol-types.js"
 import type { FirstPartyModuleComposition } from "../../module-contract/module-catalog.js"
+import type { FlywheelConfig } from "../schema/schema.js"
+import type { RuntimeConfigOwner } from "../runtime-config-owner.js"
 import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js"
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/routing/provider-affordability.js"
 import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/routing/provider-availability-types.js"
@@ -45,6 +47,38 @@ export function providerSettingValues(declarations: ProviderSettingDeclarations,
   const values: { [key: string]: number } = {}
   for (const setting of declarations.get(providerId) ?? []) values[setting.key] = authored?.[providerId]?.[setting.key] ?? setting.defaultValue
   return values
+}
+
+/** One profile's provider opt-in settings (PI-MODEL-096). */
+export type ProviderOptIns = { readonly [Setting in ProviderOptInSettingId]: boolean }
+
+/** The opt-in settings that `profile` authors, off where it states none. A hand edit of the configuration file turns
+ *  a provider on as Settings does. */
+export function profileProviderOptIns(profile: FlywheelConfig["profiles"][string] | undefined): ProviderOptIns {
+  return { allowGoogleAntigravity: profile?.allow_google_antigravity ?? false }
+}
+
+/** The providers that a profile keeps off: each one whose `profileOptIn` setting the profile has not turned on. */
+export function turnedOffProviders(definitions: readonly Pick<AccessProviderDefinition, "id" | "profileOptIn">[], optIns: ProviderOptIns): ReadonlySet<AccessProviderId> {
+  return new Set(definitions.flatMap(({ id, profileOptIn }) => profileOptIn === undefined || optIns[profileOptIn.setting] ? [] : [id]))
+}
+
+/** The providers that each profile keeps off now, read from the live configuration and module selection. */
+export function profileTurnedOffProviders(moduleSelection: () => FirstPartyModuleComposition, runtimeConfig: Pick<RuntimeConfigOwner, "snapshot">): (profileId: string) => ReadonlySet<AccessProviderId> {
+  return (profileId) => turnedOffProviders(accessProviderRegistry(moduleSelection()).selection.definitions, profileProviderOptIns(runtimeConfig.snapshot().config.profiles[profileId]))
+}
+
+/** Calls `changed` once for each profile whose turned-off providers differ after a change of the profiles config, such
+ *  as a person turning Google Antigravity on or off (ARCH-PROVIDERS-088). Returns the unsubscribe. */
+export function onProviderOptInChange(runtimeConfig: Pick<RuntimeConfigOwner, "snapshot" | "subscribe">, moduleSelection: () => FirstPartyModuleComposition, changed: (profileId: string) => void): () => Promise<void> {
+  // A profile that the file does not author keeps every opt-in provider off, so its key is that of an empty overlay.
+  const key = (profiles: FlywheelConfig["profiles"], profileId: string) => [...turnedOffProviders(accessProviderRegistry(moduleSelection()).selection.definitions, profileProviderOptIns(profiles[profileId]))].join("\u0000")
+  let previous = runtimeConfig.snapshot().config.profiles
+  return runtimeConfig.subscribe("profiles", ({ config }) => {
+    const before = previous
+    previous = config.profiles
+    for (const profileId of new Set([...Object.keys(before), ...Object.keys(config.profiles)])) if (key(before, profileId) !== key(config.profiles, profileId)) changed(profileId)
+  })
 }
 
 const accessProviderRegistries = new WeakMap<FirstPartyModuleComposition, AccessProviderRegistry>()

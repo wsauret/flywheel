@@ -66,6 +66,7 @@ const nordSettings: PanelSettings = {
   providerSettings: [],
   gitAiAttribution: false,
   allowTrainingRoutes: false,
+  allowGoogleAntigravity: false,
   problems: [],
   profile: { displayName: "Default", count: 1 },
   configProblems: [],

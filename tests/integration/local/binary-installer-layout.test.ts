@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { EXECUTABLE_ROLES } from "../../../src/infra/platform/executable-roles.js";
 import { computeBuildId } from "../../../src/infra/update/build-identity.js";
 import { installBuild } from "../../../src/orchestration/update/install-engine.js";
+import { LOAD_SHIPPED_CATALOG } from "../../helpers/child-module-catalog.js";
 import { activatePlacedBuild, placeBuild, placedBuildVersionAnswer } from "../../helpers/placed-build.js";
 
 /** This installation is Unix's: one `current` symlink activation atomically
@@ -135,7 +136,7 @@ unixInstallation("installing one build", () => {
 
   test("the install role reports a payload error without leaking cleanup diagnostics", async () => {
     const entry = new URL("../../../src/cli/binary-install.ts", import.meta.url).href;
-    const child = Bun.spawn([process.execPath, "--conditions=browser", "-e", `import { runBinaryInstall } from ${JSON.stringify(entry)}; process.exitCode = await runBinaryInstall()`], {
+    const child = Bun.spawn([process.execPath, "--conditions=browser", "-e", `${LOAD_SHIPPED_CATALOG} import { runBinaryInstall } from ${JSON.stringify(entry)}; process.exitCode = await runBinaryInstall()`], {
       cwd: home,
       env: { ...process.env, HOME: home, FLYWHEEL_INSTALL_DIR: wrapperDir },
       stdout: "pipe",
@@ -171,7 +172,7 @@ unixInstallation("installing one build", () => {
       prelude: `if [ "$1" = "${EXECUTABLE_ROLES.guardian}" ]; then exec "${process.execPath}" --conditions=browser "${sourceCli}" "$@"; fi\n`,
     });
     const entry = new URL("../../../src/cli/binary-install.ts", import.meta.url).href;
-    const script = `process.execPath = ${JSON.stringify(join(payload.dir, "flywheel-bin"))}; const { runBinaryInstall } = await import(${JSON.stringify(entry)}); process.exitCode = await runBinaryInstall()`;
+    const script = `${LOAD_SHIPPED_CATALOG} process.execPath = ${JSON.stringify(join(payload.dir, "flywheel-bin"))}; const { runBinaryInstall } = await import(${JSON.stringify(entry)}); process.exitCode = await runBinaryInstall()`;
     const child = Bun.spawn([process.execPath, "--conditions=browser", "-e", script], {
       cwd: home,
       env: { ...process.env, HOME: home, FLYWHEEL_INSTALL_DIR: wrapperDir },

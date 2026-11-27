@@ -4,6 +4,7 @@ import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/substrate/store/event-store-types.js"
 import { AuthProfileManager } from "../../../auth/auth-profile-manager.js"
 import { captureRuntimeConfigRequest } from "../../../config/request-config.js"
+import { profileProviderOptIns } from "../../../config/models/access-provider-registry.js"
 import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../../../agent-runtime/llm/routing/shared-provider-availability.js"
 import { composeRealmModuleSnapshot, installedAccessProviderIds } from "../../../module-contract/module-composition.js"
 import { createRuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
@@ -60,6 +61,7 @@ export async function runSkillCorpusCleanupForProject(input: SkillCorpusCleanupP
             profile: authProfile,
             moduleSelection: () => moduleSelection,
             allowTrainingRoutes: requestConfig.allowTrainingRoutes,
+            providerOptIns: profileProviderOptIns(config.profiles[authProfile.id]),
             resolveKey,
             captureRuntimeConfig: () => requestConfig,
             workflowPreparation: { ...directories, definitions, moduleSelection, launcher, resolveKey, capabilities: modules.policy },

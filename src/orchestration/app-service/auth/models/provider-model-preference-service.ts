@@ -576,6 +576,7 @@ function enabledCandidateProjection(source: ReadonlyMap<string, ProviderModelInv
     catalog: value.catalog,
     ...(value.preferFreeRoutes === undefined ? {} : { preferFreeRoutes: value.preferFreeRoutes }),
     ...(value.idleFreePlan === undefined ? {} : { idleFreePlan: value.idleFreePlan }),
+    ...(value.turnedOff === undefined ? {} : { turnedOff: value.turnedOff }),
   })]))
 }
 

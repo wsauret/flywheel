@@ -60,7 +60,7 @@ export function fakePanelSettings(fields: Partial<PanelSettings> = {}): PanelSet
     workflowMode: capabilities.workflowsMode, persistentProcesses: capabilities.persistentProcesses, moduleSettings: [],
     compactionThreshold: 50_000, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt",
     showThinking: true, showBuild: false, writeSyntaxTheme: "nord", diffColors: "theme",
-    profileId: "default", providerSettings: [], gitAiAttribution: false, allowTrainingRoutes: false, problems: [],
+    profileId: "default", providerSettings: [], gitAiAttribution: false, allowTrainingRoutes: false, allowGoogleAntigravity: false, problems: [],
     profile: { displayName: "Default", count: 1 }, configProblems: [],
     seatSlot: { kind: "role", roleId: "chat" }, seatEfforts: [],
     ...fields,

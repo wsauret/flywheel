@@ -294,7 +294,7 @@ describe("WorkflowController", () => {
           ...makeWorkflowDeps(),
           captureRuntimeConfig: () => captureRuntimeConfigRequest({
             revision: 0,
-            config: { ...CONFIG_DEFAULTS, profiles: { default: { roles: { "workflow-agent": { model: "gpt-5.5", effort: "low" } }, git_ai_attribution: false, allow_training_routes: false, providers: {} } } },
+            config: { ...CONFIG_DEFAULTS, profiles: { default: { roles: { "workflow-agent": { model: "gpt-5.5", effort: "low" } }, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: {} } } },
             warnings: [],
             diagnostics: [],
             sourceIdentity: "test",

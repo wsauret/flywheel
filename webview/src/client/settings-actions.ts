@@ -39,6 +39,10 @@ export type InlineSettingAction =
   | { readonly kind: "set-module-setting"; readonly setting: Extract<PanelModuleSetting, { readonly control: "config-boolean" }>; readonly on: boolean }
   | { readonly kind: "set-git-ai-attribution"; readonly on: boolean }
   | { readonly kind: "set-allow-training-routes"; readonly on: boolean }
+  /** Turning it on writes only after the person confirmed the warning, which the caller shows (PI-MODEL-096). The
+   *  profile and the value that the row showed when the person chose are part of the consent, so a profile switch
+   *  while the warning is open never turns on another profile. */
+  | { readonly kind: "set-allow-google-antigravity"; readonly profileId: string; readonly expected: boolean; readonly on: boolean }
   /** Binds this project to the profile `profileId`, or removes its binding when undefined. */
   | { readonly kind: "set-project-profile"; readonly profileId: string | undefined }
   | { readonly kind: "set-workflow-mode"; readonly mode: "off" | "ask" | "on" }
@@ -51,7 +55,7 @@ export type InlineSettingAction =
  *  write is not an inline setting change. */
 export type SettingId =
   | "persistent" | "updates" | "workflow-mode" | "web-search" | "profile" | "effort" | "compaction" | "thinking"
-  | "show-build" | "write-syntax-theme" | "diff-colors" | "git-attribution" | "training-routes" | "project-profile" | "reset" | "preset"
+  | "show-build" | "write-syntax-theme" | "diff-colors" | "git-attribution" | "training-routes" | "google-antigravity" | "project-profile" | "reset" | "preset"
   | "idle-compaction"
   | "shell-write-guard"
   | "auto-delete-session-days"
@@ -96,6 +100,7 @@ export function settingTarget(action: InlineSettingAction): SettingId {
     case "set-module-setting": return moduleSettingId(action.setting)
     case "set-git-ai-attribution": return "git-attribution"
     case "set-allow-training-routes": return "training-routes"
+    case "set-allow-google-antigravity": return "google-antigravity"
     case "set-project-profile": return "project-profile"
     case "set-module": return `module:${action.moduleId}`
     case "reset-defaults": return "reset"
@@ -140,7 +145,8 @@ function settingValue(action: InlineSettingAction): string | undefined {
     case "set-module-setting":
     case "set-module":
     case "set-git-ai-attribution":
-    case "set-allow-training-routes": return String(action.on)
+    case "set-allow-training-routes":
+    case "set-allow-google-antigravity": return String(action.on)
     case "set-project-profile": return action.profileId ?? ""
     case "set-write-syntax-theme": return action.theme
     case "set-diff-colors": return action.mode
@@ -274,6 +280,9 @@ export async function applyInlineSetting(connection: RuntimeConnection, action: 
     case "set-allow-training-routes":
       if (action.on === current.allowTrainingRoutes) return { kind: "applied" }
       return writeProfileSetting(connection, current.profileId, { id: "allowTrainingRoutes", expected: { kind: "value", value: current.allowTrainingRoutes }, desired: action.on })
+    case "set-allow-google-antigravity":
+      if (action.on === action.expected) return { kind: "applied" }
+      return writeProfileSetting(connection, action.profileId, { id: "allowGoogleAntigravity", expected: { kind: "value", value: action.expected }, desired: action.on })
     case "set-project-profile": {
       const result = await connection.dispatch(action.profileId === undefined
         ? { type: "auth.profile.unbind_current_project", scope: { kind: "defaults" } }

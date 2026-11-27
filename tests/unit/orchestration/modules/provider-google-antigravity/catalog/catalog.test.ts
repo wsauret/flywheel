@@ -331,9 +331,10 @@ describe("the Google Antigravity catalog", () => {
       ],
     }
     let discovery: CatalogDiscovery = listed
+    let fetches = 0
     const definition: AccessProviderDefinition = {
       id: "google_antigravity", displayName: "Google Antigravity", shortName: "Antigravity", rank: 1, configHints: [], catalogId: undefined,
-      dynamicCatalog: { ...antigravityDynamicCatalog(), fetch: async ({ credential }) => ({ discovery, credential }) },
+      dynamicCatalog: { ...antigravityDynamicCatalog(), fetch: async ({ credential }) => { fetches += 1; return { discovery, credential } } },
       auth: { kind: "api_key", statusRank: 1 }, cli: { name: "antigravity" }, billing: "metered", spendMode: "direct_api",
     }
     const google = (wireModelId: string, contextLimit: number) => ({
@@ -371,5 +372,10 @@ describe("the Google Antigravity catalog", () => {
     discovery = { kind: "failed", reason: "transport" }
     const failed = (await client.getModelCatalogs(auth, { mode: "fresh" })).candidates.get(accessProviderAccountKey({ kind: "singleton", providerId: "google_antigravity" }))
     expect(failed?.visibleModels?.size).toBe(0)
+
+    // A profile that keeps the provider off reads only its saved listing in every mode, so no listing runs (ARCH-PROVIDERS-088).
+    const listings = fetches
+    for (const mode of ["fresh", "refresh"] as const) await client.getModelCatalogs(auth, { mode, savedOnlyProviders: new Set(["google_antigravity"]) })
+    expect(fetches).toBe(listings)
   })
 })

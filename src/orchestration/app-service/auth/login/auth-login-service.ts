@@ -16,7 +16,7 @@ import type { ExternalLoginDefinition, ExternalLoginQuestion, OAuthLoginPrompt }
 import { isExternalLoginDefinition } from "../../../../infra/providers/auth/provider-account.js"
 import { installedAccessProviderDefinitions } from "../../../module-contract/module-composition.js"
 
-type LoginRecovery = Pick<ExternalLoginDefinition["auth"], "answerLogin" | "settleLogin">
+type LoginRecovery = Pick<ExternalLoginDefinition["auth"], "loginQuestions" | "answerLogin" | "settleLogin">
 
 /** The owned profile a request writes: its id keys publication, and its
  *  directory holds the credentials. */
@@ -89,6 +89,13 @@ export interface AuthLoginServiceOptions {
   /** The OAuth login one provider's definition declares. Undefined for
    *  API-key providers and unknown ids. */
   readonly loginFlows: (providerId: string) => ProviderOAuthLogin | undefined
+  /** The opt-in of a provider that the profile keeps off (PI-MODEL-096): its warning, and the write that turns it on
+   *  and fails with a message. Undefined when the provider needs no opt-in or the profile has turned it on. */
+  readonly optIn?: (providerId: string, profileId: string) => { readonly warning: string; readonly turnOn: () => Promise<void> } | undefined
+  /** Calls `changed` after each change that can turn a provider off for a profile, and returns the removal. A running
+   *  sign-in of a provider that its profile then keeps off stops (`optIn`), because an off provider signs in to
+   *  nothing (PI-MODEL-096). */
+  readonly watchOptIns?: (changed: () => void) => () => Promise<void>
   readonly log: OperationLogger
 }
 
@@ -253,6 +260,21 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
     }
   }
 
+  const unwatchOptIns = options.watchOptIns?.(() => {
+    const current = outstanding
+    if (current === undefined || options.optIn?.(current.providerId, current.profile.id) === undefined) return
+    options.log.info("provider login stopped: provider turned off", { providerId: current.providerId, profileId: current.profile.id })
+    const displayName = installedAccessProviderDefinitions().find(({ id }) => id === current.providerId)?.displayName ?? current.providerId
+    void cancel(`${displayName} was turned off for this profile, so its sign-in stopped.`, { operationId: current.operationId })
+  })
+
+  /** The answer to a login of a provider that `profileId` keeps off: its warning, for that profile. Undefined when the
+   *  profile has turned the provider on, or it needs no opt-in. */
+  function optInRefusal(providerId: string, profileId: string, displayName: string): RuntimeAuthLoginResult | undefined {
+    const optIn = options.optIn?.(providerId, profileId)
+    return optIn === undefined ? undefined : { kind: "needs_opt_in", providerId, profileId, displayName, warning: optIn.warning }
+  }
+
   async function login(request: AuthLoginRequest): Promise<RuntimeAuthLoginResult> {
     const { providerId, apiKey, loginQuestionId } = request
     let instanceId = request.instanceId
@@ -260,6 +282,12 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
     let profile: LoginProfile
     if (loginQuestionId !== undefined) {
       const owner = recoveryFor(providerId)
+      // The warning of a provider that the question's profile keeps off comes before the claim, so the question stays
+      // open for the login that the person's confirmation sends with `turnOn` (PI-MODEL-096).
+      const asked = owner?.loginQuestions().find(({ id }) => id === loginQuestionId)
+      const askedProfile = asked === undefined ? undefined : options.resolveLoginProfile?.(asked.authDir)
+      const refusal = askedProfile === undefined || request.turnOn === true ? undefined : optInRefusal(providerId, askedProfile.id, installedAccessProviderDefinitions().find(({ id }) => id === providerId)?.displayName ?? providerId)
+      if (refusal !== undefined) return refusal
       const question = owner?.answerLogin(loginQuestionId, "renewed")
       if (question === undefined || owner === undefined) return { kind: "ignored", providerId }
       const captured = options.resolveLoginProfile?.(question.authDir)
@@ -297,6 +325,13 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
       if (operation !== undefined && !isCurrent(operation)) return fail({ kind: "ignored", providerId })
       if (!provider) {
         return fail({ kind: "unsupported", providerId, detail: "This runtime has no such provider installed." })
+      }
+      // A provider that the profile keeps off signs in to nothing until the person confirms its warning (ARCH-PROVIDERS-088).
+      const optIn = options.optIn?.(providerId, profile.id)
+      if (optIn !== undefined) {
+        if (request.turnOn !== true) return fail(optInRefusal(providerId, profile.id, provider.displayName) ?? { kind: "ignored", providerId })
+        await optIn.turnOn()
+        options.log.info("provider turned on at sign-in", { providerId, profileId: profile.id })
       }
 
       const settleCatalog = options.settleCatalog(admission.grant)
@@ -398,6 +433,7 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
     },
 
     dispose() {
+      void unwatchOptIns?.()
       abandon()
     },
 

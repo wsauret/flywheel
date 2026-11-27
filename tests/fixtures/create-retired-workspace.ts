@@ -130,4 +130,9 @@ function runInterruptedStart(): void {
   throw new Error(`the start completed without reaching ${checkpoint}`)
 }
 
-if (import.meta.main) runInterruptedStart()
+// Run as a script, this process has no test preload, so it publishes the
+// shipped module catalog before the start reads it.
+if (import.meta.main) {
+  await import("../../scripts/shipped-modules.js")
+  runInterruptedStart()
+}

@@ -5,6 +5,9 @@ import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { providerLoginFlow } from "../../../auth/auth-actions.js"
 import type { ModulePolicy } from "../../../config/policy/module-policy.js"
 import { composeRealmModuleSnapshot } from "../../../module-contract/module-composition.js"
+import type { FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js"
+import { accessProviderRegistry, profileProviderOptIns } from "../../../config/models/access-provider-registry.js"
+import type { RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { createAuthLoginService, type AuthLoginService } from "./auth-login-service.js"
 import type { AuthRuntime } from "../auth-runtime.js"
 
@@ -14,9 +17,11 @@ export function composeAuthLogin(options: {
   readonly resolveKey: KeyResolver
   readonly launcher: LauncherScope
   readonly admit: ModulePolicy["admit"]
+  readonly runtimeConfig: Pick<RuntimeConfigOwner, "snapshot" | "subscribe" | "mutateProfileBoolean">
+  readonly moduleSelection: () => FirstPartyModuleComposition
   readonly log: OperationLogger
 }): AuthLoginService {
-  const { auth } = options
+  const { auth, runtimeConfig } = options
   return createAuthLoginService({
     resolveKey: options.resolveKey,
     launcher: options.launcher,
@@ -38,5 +43,17 @@ export function composeAuthLogin(options: {
       return profile === undefined ? [] : auth.authStatusProjection.view(profile, undefined, composeRealmModuleSnapshot(grant)).providers
     },
     loginFlows: providerLoginFlow,
+    optIn: (providerId, profileId) => {
+      const optIn = accessProviderRegistry(options.moduleSelection()).selection.definitions.find(({ id }) => id === providerId)?.profileOptIn
+      if (optIn === undefined || profileProviderOptIns(runtimeConfig.snapshot().config.profiles[profileId])[optIn.setting]) return undefined
+      return {
+        warning: optIn.warning,
+        turnOn: async () => {
+          const result = await runtimeConfig.mutateProfileBoolean(optIn.setting, profileId, false, true)
+          if (!result.ok) throw new Error(`The setting was not changed: ${result.error.message}`)
+        },
+      }
+    },
+    watchOptIns: (changed) => runtimeConfig.subscribe("profiles", changed),
   })
 }

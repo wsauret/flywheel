@@ -3,7 +3,7 @@
 export type PresentationChannel = "transcript" | "toast" | "status";
 
 /** Why an agent's model cannot serve now. These values cross the session notice wire. */
-export const CAPACITY_WAIT_REASONS = ["spent", "rate_limited", "unavailable", "not_offered"] as const;
+export const CAPACITY_WAIT_REASONS = ["spent", "rate_limited", "unavailable", "not_offered", "turned_off"] as const;
 
 export const ERROR_PRESENTATIONS = {
   // Terminal turn failures: the turn is over, the story belongs in the

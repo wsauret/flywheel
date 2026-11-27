@@ -40,6 +40,7 @@ export function completeProjectExecutionOwnership(scope: RuntimeOwnership, input
     "auth-file-watchers",
     "auth-external-login-observations",
     "auth-project-profile-subscription",
+    "auth-provider-opt-in-subscription",
     "chat-default-profiles-subscription",
     "module-selection-subscription",
     "custom-providers-subscription",

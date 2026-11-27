@@ -5,6 +5,7 @@ import type { AuthProviderStatus } from "../../../../../src/protocol/auth/auth-s
 import { formatModuleNumberList, parseModuleNumberList } from "../../../../../src/protocol/client/modules/module-number-list.js"
 import { formatAutoDeleteSessionDays, parseAutoDeleteSessionDays } from "../../../../../src/protocol/client/format.js"
 import { gitAiAttributionReading } from "../../../../../src/protocol/client/git-ai-attribution-copy.js"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../../../src/protocol/client/providers/antigravity-warning-copy.js"
 import { moduleUnavailableReason } from "../../../../../src/protocol/client/capabilities.js"
 import { autoInstallCopy, persistentProcessesCopy } from "../../../../../src/protocol/client/runtime/copy/runtime-policy-copy.js"
 import { describeUpdateStatus } from "../../../../../src/protocol/client/runtime/copy/update-status-copy.js"
@@ -315,6 +316,18 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
       set: (on) => { void state.apply({ kind: "set-git-ai-attribution", on }) },
     }) },
     "allow-training-routes": { kind: "switch", read: () => ({ ...shownFor("allow-training-routes", "training-routes", "allowTrainingRoutes"), on: current().allowTrainingRoutes, disabled: false, set: (on) => { void state.apply({ kind: "set-allow-training-routes", on }) } }) },
+    "google-antigravity": { kind: "switch", read: () => ({
+      ...shownFor("google-antigravity", "google-antigravity", "allowGoogleAntigravity"),
+      on: current().allowGoogleAntigravity,
+      disabled: false,
+      // Only a confirmed warning turns the provider on; turning it off asks nothing (PI-MODEL-096).
+      set: (on) => {
+        const shown = { kind: "set-allow-google-antigravity", profileId: current().profileId, expected: current().allowGoogleAntigravity, on } as const
+        if (!on) { void state.apply(shown); return }
+        void client.confirm({ title: named("google-antigravity").label, detail: GOOGLE_ANTIGRAVITY_WARNING, confirmLabel: "Turn on", destructive: true, cancelByDefault: true })
+          .then((confirmed) => { if (confirmed) void state.apply(shown) })
+      },
+    }) },
     "show-thinking": { kind: "switch", read: () => ({ ...shownFor("show-thinking", "thinking", "showThinking"), on: current().showThinking, disabled: false, set: (on) => { void state.apply({ kind: "set-show-thinking", on }) } }) },
     "write-syntax-theme": { kind: "choice", read: () => ({ ...shownFor("write-syntax-theme", "write-syntax-theme", "writeSyntaxTheme"), value: current().writeSyntaxTheme, options: WRITE_SYNTAX_THEME_OPTIONS.map(({ value, label }) => choice(value, label, { kind: "set-write-syntax-theme", theme: value })) }) },
     "diff-colors": { kind: "choice", read: () => ({ ...shownFor("diff-colors", "diff-colors", "diffColors"), value: current().diffColors, options: [choice("theme", "Theme", { kind: "set-diff-colors", mode: "theme" }), choice("standard", "Standard", { kind: "set-diff-colors", mode: "standard" })] }) },
@@ -364,6 +377,7 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
     authentication: () => [<SheetRow label={named("authentication").label} detail={named("authentication").description} onClick={() => client.openSheet("providers")} />],
     "auth-profiles": () => [<SheetRow label={named("auth-profiles").label} detail={named("auth-profiles").description} value={current().profile.displayName} onClick={() => client.openSheet("profiles")} />],
     "allow-training-routes": inPlace("allow-training-routes"),
+    "google-antigravity": inPlace("google-antigravity"),
     "provider-settings": () => [
       <Key each={current().providerSettings} by={(setting) => JSON.stringify([current().profileId, providerSettingId(setting)])}>{(setting) => { const row = providerSettingModel(setting); return <InPlaceSettingView row={row} /> }}</Key>,
     ],

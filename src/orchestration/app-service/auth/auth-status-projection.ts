@@ -1,7 +1,7 @@
 import { credentialProviderDisplayName, getAuthStatusWithDiagnostics, rejectedCustomProviderStatusId } from "../../auth/auth-actions.js"
 import type { AuthProfileResolution } from "../../auth/auth-profile-manager.js"
 import { customProviderRejections } from "../../../infra/providers/llm/custom-provider-registry.js"
-import type { AccessProviderCandidate } from "../../../infra/providers/llm/access/access-provider.js"
+import { providerTurnedOffMessage, type AccessProviderCandidate } from "../../../infra/providers/llm/access/access-provider.js"
 import type { ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./models/provider-model-preference-service.js"
 import type { AuthFileAttention, AuthOperationNotice, AuthProviderStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import { webAuthProviderDefinitions, installedAccessProviderDefinitions, installedCredentialSlotClassifier } from "../../module-contract/module-composition.js"
@@ -126,6 +126,7 @@ export function createAuthStatusProjection(deps: AuthStatusProjectionDeps): Auth
             displayLabel: account.label || account.identity || account.enterpriseDomain || `${displayName} ${index + 1}`,
             ...(account.plan === undefined ? {} : { plan: account.plan }),
             ...(account.attention !== undefined ? { attention: account.attention }
+              : candidateEligibility?.turnedOff !== undefined ? { attention: { kind: "turned-off" as const, message: providerTurnedOffMessage(displayName) } }
               : candidateEligibility?.idleFreePlan !== undefined ? { attention: { kind: "free-plan" as const, message: freePlanAttention(displayName) } } : {}),
             expired: account.expired,
             source: account.source,

@@ -36,6 +36,7 @@ const MutationResultSchema: Schema.Codec<MutationResult> = Schema.Union([
 const RuntimeAuthLoginResultSchema: Schema.Codec<RuntimeAuthLoginResult> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("ignored"), providerId: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("completed"), providerId: Schema.String, identity: Schema.optionalKey(Schema.String) }),
+  Schema.Struct({ kind: Schema.Literal("needs_opt_in"), providerId: Schema.String, profileId: Schema.String, displayName: Schema.String, warning: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("needs_key"), providerId: Schema.String, displayName: Schema.String, hint: Schema.optionalKey(Schema.String) }),
   Schema.Struct({ kind: Schema.Literal("device_code"), operationId: Schema.NonEmptyString, providerId: Schema.String, userCode: Schema.optionalKey(Schema.String), verificationUri: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("prompt"), operationId: Schema.NonEmptyString, providerId: Schema.String, prompt: Schema.Struct({ message: Schema.String, placeholder: Schema.optionalKey(Schema.String), allowEmpty: Schema.optionalKey(Schema.Boolean) }) }),

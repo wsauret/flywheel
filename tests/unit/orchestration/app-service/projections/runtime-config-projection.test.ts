@@ -49,8 +49,8 @@ describe("runtime config projection", () => {
       auth: { project_profiles: { "/secret/project": "private-profile" } },
       custom_providers: { private: { base_url: "https://secret.example", models: ["private-model"] } },
       profiles: {
-        work: { roles: { reviewer: { model: "safe-model", effort: "high", provider_options: { openai: { service_tier: "nested-role-secret" } } }, chat: { model: "profile-model", provider_options: { openai: { service_tier: "nested-profile-secret" } } } }, git_ai_attribution: true, allow_training_routes: true, providers: { github_copilot: { monthly_credit_cap: 1_200 } } },
-        personal: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: {} },
+        work: { roles: { reviewer: { model: "safe-model", effort: "high", provider_options: { openai: { service_tier: "nested-role-secret" } } }, chat: { model: "profile-model", provider_options: { openai: { service_tier: "nested-profile-secret" } } } }, git_ai_attribution: true, allow_training_routes: true, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 1_200 } } },
+        personal: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: {} },
       },
     }
 
@@ -70,9 +70,9 @@ describe("runtime config projection", () => {
     expect(view.values).not.toHaveProperty("roles")
     expect(view.values).not.toHaveProperty("copilotMonthlyCreditCap")
     expect(view.values.profiles).toEqual({
-      work: { roles: { reviewer: { model: "safe-model", effort: "high" }, chat: { model: "profile-model" } }, gitAiAttribution: true, allowTrainingRoutes: true, providers: { github_copilot: { monthly_credit_cap: 1_200 } } },
+      work: { roles: { reviewer: { model: "safe-model", effort: "high" }, chat: { model: "profile-model" } }, gitAiAttribution: true, allowTrainingRoutes: true, allowGoogleAntigravity: false, providers: { github_copilot: { monthly_credit_cap: 1_200 } } },
       // An unauthored key is projected with its declared default.
-      personal: { roles: {}, gitAiAttribution: false, allowTrainingRoutes: false, providers: { github_copilot: { monthly_credit_cap: 3_900 } } },
+      personal: { roles: {}, gitAiAttribution: false, allowTrainingRoutes: false, allowGoogleAntigravity: false, providers: { github_copilot: { monthly_credit_cap: 3_900 } } },
     })
   })
 
@@ -199,7 +199,7 @@ describe("runtime config projection", () => {
         if (expected !== 3_900) return { ok: false, kind: "stale", error: new ConfigWriteError("stale") }
         current = snapshot({
           revision: 5,
-          config: { ...structuredClone(CONFIG_DEFAULTS), profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: desired } } } } },
+          config: { ...structuredClone(CONFIG_DEFAULTS), profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: desired } } } } },
         })
         return { ok: true, snapshot: current, subscriberOutcome: { kind: "settled" } }
       },

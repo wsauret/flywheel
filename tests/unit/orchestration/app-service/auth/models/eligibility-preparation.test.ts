@@ -28,7 +28,7 @@ describe("eligibility preparation", () => {
     const entered = Promise.withResolvers<void>()
     const finished = Promise.withResolvers<void>()
     const calls: string[] = []
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot, resolveKey: async () => undefined,
       moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: service.prepare, publish: service.publish, current: service.state,
@@ -73,7 +73,7 @@ describe("eligibility preparation", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const modes: string[] = []
     const candidate = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -117,7 +117,7 @@ describe("eligibility preparation", () => {
     const events: string[] = []
     const refreshed = Promise.withResolvers<void>()
     let authRevision = "auth-v1"
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -160,7 +160,7 @@ describe("eligibility preparation", () => {
     ])
     const vertexOfferings: ReadonlyMap<string, readonly CatalogModelOffering[]> = new Map([["gemini-3.8-flash", [Object.freeze({ wireModelId: "gemini-3.8-flash", metadata: null, dataUse: "standard" })]]])
     const resolvedModels = (...models: string[]): ResolvedProviderModels => ({ catalog: new Set(models), curatedDefault: new Set(models), enabled: new Set(), disabled: new Set(), effective: new Set(models) })
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -212,7 +212,7 @@ describe("eligibility preparation", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "preference-revision-next", persistAllDeselected: async () => "preference-revision-next" })
     let inputRevision = { auth: "auth-v1", preferences: "preferences-v1" }
     let replaceAuthDuringCapture = false
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -249,7 +249,7 @@ describe("eligibility preparation", () => {
   test("reuses a canonically published snapshot after its preference revision changes", async () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "preferences-v2", persistAllDeselected: async () => "preferences-v2" })
     let inputRevision = { auth: "auth-v1", preferences: "preferences-v1" }
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -277,7 +277,7 @@ describe("eligibility preparation", () => {
     let activeCatalogs = 0
     let maximumActiveCatalogs = 0
     let now = 0
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -323,7 +323,7 @@ describe("eligibility preparation", () => {
     const offering: CatalogModelOffering = { wireModelId: "gpt-5.5", metadata: null, dataUse: "standard", transport: "openai-responses" }
     let refreshSettled = false
     let authRevision = "auth-v1"
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -395,7 +395,7 @@ describe("eligibility preparation", () => {
     const cachedEntered = Promise.withResolvers<void>()
     const cached = Promise.withResolvers<void>()
     const candidate = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -448,7 +448,7 @@ describe("eligibility preparation", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     let release: (() => void) | undefined
     const blocked = new Promise<void>((resolve) => { release = resolve })
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -481,7 +481,7 @@ describe("eligibility preparation", () => {
     const entered = Promise.withResolvers<void>()
     let ownerSignal: AbortSignal | undefined
     let publications = 0
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -515,7 +515,7 @@ describe("eligibility preparation", () => {
   test("bounds preparation retries when profile inputs keep changing", async () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "preference-revision-next", persistAllDeselected: async () => "preference-revision-next" })
     let revisionReads = 0
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -581,7 +581,7 @@ describe("eligibility preparation", () => {
         enabledModels: new Map(),
       }
     }
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -605,4 +605,5 @@ describe("eligibility preparation", () => {
       .toEqual(["newer", "older"])
     await service.dispose()
   })
+
 })

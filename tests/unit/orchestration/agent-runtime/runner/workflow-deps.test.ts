@@ -178,8 +178,8 @@ describe("prepareWorkflowDeps", () => {
     let profileId = "work"
     const config = makeConfig({
       profiles: {
-        work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: 1200 } } },
-        personal: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: 0 } } },
+        work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 1200 } } },
+        personal: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 0 } } },
       },
     })
     const input = depsInput(makeOverrides(), ACCOUNT, config)

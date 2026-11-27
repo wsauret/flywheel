@@ -1,7 +1,11 @@
+import { sep } from "node:path"
 import { antigravityEnginePath } from "../../../infra/providers/antigravity-engine.js"
+import { authDir as profileAuthDir, isAuthProfileName } from "../../../infra/platform/files/paths.js"
 import { pinnedAntigravityBytes } from "../../../infra/update/distribution/antigravity-engine-pin.js"
 import type { AccessProviderDefinition } from "../../../infra/providers/llm/access/access-provider.js"
 import { moduleServiceHandle } from "../../../infra/definitions/modules/module-service.js"
+import { profileProviderOptIns } from "../../config/models/access-provider-registry.js"
+import type { FlywheelConfig } from "../../config/schema/schema.js"
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
 import type { AccessProviderFactory } from "../../agent-runtime/llm/routing/client-factory.js"
 import type { ModuleServiceInstance, PortableModuleServices } from "../../app-service/executor/execution/module-service-host.js"
@@ -13,7 +17,8 @@ import { releaseLiveEngines } from "./engine/live-engines.js"
 import { loginGateHook } from "./engine/login-gate.js"
 import { antigravityLoginHealth, createLoginObservations } from "./login/login-status.js"
 import { antigravityLogins, googleAntigravityLogin } from "./login/login.js"
-import { GOOGLE_ANTIGRAVITY_CLI_FLAG, GOOGLE_ANTIGRAVITY_LABEL, GOOGLE_ANTIGRAVITY_LOGIN_COMMAND, GOOGLE_ANTIGRAVITY_MODULE_ID, GOOGLE_ANTIGRAVITY_PROVIDER_ID } from "./names.js"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../protocol/client/providers/antigravity-warning-copy.js"
+import { GOOGLE_ANTIGRAVITY_CLI_FLAG, GOOGLE_ANTIGRAVITY_LABEL, GOOGLE_ANTIGRAVITY_LOGIN_COMMAND, GOOGLE_ANTIGRAVITY_MODULE_ID, GOOGLE_ANTIGRAVITY_PROVIDER_ID, loginsDirectory } from "./names.js"
 
 /** What a test replaces. Production uses none of them. */
 export interface GoogleAntigravitySeams {
@@ -37,7 +42,8 @@ function withLoginReleased<T>(loginDir: string, signal: AbortSignal | undefined,
  *  Each login is a directory in one auth profile, which Flywheel's login creates and its logout removes after agy's
  *  own logout. The plan includes its use, so there are no paid modes and no usage windows. One request never moves
  *  between Antigravity accounts (`accountRotation: "never"`, PI-MODEL-094): a chat tree stays on the account whose
- *  engine serves it, and a failure moves the request to another provider. Rank 5 puts it below Anthropic
+ *  engine serves it, and a failure moves the request to another provider. Each auth profile keeps the provider off until
+ *  the person confirms its warning (`profileOptIn`, PI-MODEL-096). Rank 5 puts it below Anthropic
  *  Subscription and above every other route that serves Gemini models, so the included plan serves first. */
 function providerDefinition(seams: GoogleAntigravitySeams) {
   return {
@@ -52,6 +58,7 @@ function providerDefinition(seams: GoogleAntigravitySeams) {
     catalogId: undefined,
     dynamicCatalog: antigravityDynamicCatalog(),
     accountRotation: "never",
+    profileOptIn: { setting: "allowGoogleAntigravity", warning: GOOGLE_ANTIGRAVITY_WARNING },
     preferredAccount: (treeRootSessionId) => currentEngineRuntime()?.registry.preferredAccount(treeRootSessionId),
     auth: {
       ...googleAntigravityLogin(observations, (authDir) => ({
@@ -71,13 +78,24 @@ const googleAntigravityService = moduleServiceHandle<ModuleServiceInstance>(GOOG
  * and as soon as its open prompt settles otherwise. Only the service's end at the process's shutdown closes every
  * engine at once.
  */
-function createGoogleAntigravityService(services: Pick<PortableModuleServices, "enabled" | "onSelectionChanged" | "launcher">, seams: GoogleAntigravitySeams): ModuleServiceInstance {
+function createGoogleAntigravityService(services: Pick<PortableModuleServices, "enabled" | "onSelectionChanged" | "launcher" | "config" | "directories">, seams: GoogleAntigravitySeams): ModuleServiceInstance {
   const runtime = openEngineRuntime({ launcher: services.launcher, ...seams.launchEngine === undefined ? {} : { launch: seams.launchEngine } })
   const stop = services.onSelectionChanged(() => {
     if (!services.enabled()) releaseLiveEngines()
   })
+  // A profile that turns the provider off lets the engines of its own logins go, as turning the module off lets every
+  // engine go (PI-MODEL-096). A profile name that the file authors but no auth profile can have holds no login.
+  const turnedOn = (profiles: FlywheelConfig["profiles"]) => new Set(Object.entries(profiles).flatMap(([id, profile]) => isAuthProfileName(id) && profileProviderOptIns(profile).allowGoogleAntigravity ? [id] : []))
+  let on = turnedOn(services.config.snapshot().config.profiles)
+  const unsubscribe = services.config.subscribe("profiles", ({ config }) => {
+    const next = turnedOn(config.profiles)
+    const turnedOff = [...on].filter((id) => !next.has(id)).map((id) => loginsDirectory(profileAuthDir(services.directories.userDataRoot, id)) + sep)
+    on = next
+    if (turnedOff.length > 0) releaseLiveEngines((loginDir) => turnedOff.some((profileDir) => loginDir.startsWith(profileDir)))
+  })
   return {
     dispose: async () => {
+      await unsubscribe()
       await stop()
       await runtime.dispose()
     },
@@ -97,8 +115,9 @@ const createClient: AccessProviderFactory = async (build) => {
 
 /**
  * The Google Antigravity provider: Gemini models on the person's Antigravity plan, where every model request goes
- * through the unmodified `agy acp` engine that ships with Flywheel (ARCH-PROVIDERS-086). It is on by default and
- * offers no model until a login lists the models that agy offers it. `seams` exist for tests only.
+ * through the unmodified `agy acp` engine that ships with Flywheel (ARCH-PROVIDERS-086). Its module is on by default,
+ * and each auth profile keeps the provider off until the person turns it on (PI-MODEL-096). It offers no model until a
+ * login lists the models that agy offers it. `seams` exist for tests only.
  */
 export function createGoogleAntigravityModule(seams: GoogleAntigravitySeams = {}) {
   const definition = providerDefinition(seams)

@@ -44,7 +44,11 @@ export function parseJUnitReport(xml: string): Map<string, TestOutcome> {
   for (const [tag, closing, element, selfClosing] of xml.matchAll(/<(\/?)(testsuite|testcase|failure|error|skipped)\b[^>]*?(\/?)>/g)) {
     if (element === "testsuite") {
       if (closing) suites.pop();
-      else if (!selfClosing) suites.push(attribute(tag, "name") ?? "");
+      else if (!selfClosing) {
+        const name = attribute(tag, "name") ?? "";
+        // The outer suite is the file path, which Bun on Windows writes with backslashes; ids use forward slashes on every platform.
+        suites.push(suites.length === 0 ? name.replaceAll("\\", "/") : name);
+      }
     } else if (element === "testcase") {
       if (closing) {
         if (open !== undefined) settle(open, "pass");

@@ -19,7 +19,7 @@ describe("FlywheelAppService catalog discovery", () => {
     const held = Promise.withResolvers<void>()
     const entered = Promise.withResolvers<void>()
     let calls = 0
-    const owner = createEligibilityPreparation({
+    const owner = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: "/unused", resolveKey: async () => undefined,
       moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: models.prepare, publish: models.publish, current: models.state,

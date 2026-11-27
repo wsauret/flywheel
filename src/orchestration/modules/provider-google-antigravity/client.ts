@@ -131,7 +131,7 @@ export function createAntigravityClient(build: AccessProviderBuild, deps: Antigr
       async anticipate(options: StreamOptions) {
         if (lifetime.demand === undefined) return undefined
         const tools = projectTools(options.tools)
-        return sessionEngineDemand(lifetime.demand).claimEngine(JSON.stringify([treeRootSessionId, loginDir]), () => deps.registry.lease(place(tools)))
+        return sessionEngineDemand(lifetime.demand).claimEngine({ treeRootSessionId, loginDir }, () => deps.registry.lease(place(tools)))
       },
       async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         const effort = options.reasoningEffort === undefined || options.reasoningEffort === "off" ? undefined : options.reasoningEffort

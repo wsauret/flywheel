@@ -27,7 +27,8 @@ import { annotateConfigDiagnostic, annotateConfigDiagnosticGroup, createWriteRef
 import { groupDigits, parseDigits, sanitizeDigitInput, sanitizeDigitPaste } from "./settings-digit-input.js"
 import { createGitAiAttributionRow } from "./settings-git-ai-attribution-row.js"
 import { createProviderSettingRow } from "./settings-provider-setting-row.js"
-import { createTrainingRoutesRow } from "./settings-training-routes-row.js"
+import { createProfileSwitchRow } from "./settings-profile-switch-row.js"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../../../protocol/client/providers/antigravity-warning-copy.js"
 import { autoInstallCopy, persistentProcessesCopy } from "../../../../../protocol/client/runtime/copy/runtime-policy-copy.js"
 
 interface SettingsModalDeps {
@@ -348,7 +349,15 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
     update: (profileId, enabled) => settings.updateProfileBoolean(profileId, "gitAiAttribution", enabled),
     save: saveRuntimePolicy,
   })
-  const allowTrainingRoutesRow = createTrainingRoutesRow({ row: named("allow-training-routes"), profileId: activeProfileId, profileName: activeProfileName, profilePendingReason: AUTH_PROFILE_PENDING, settings, save: saveRuntimePolicy })
+  const profileSwitch = { profileId: activeProfileId, profileName: activeProfileName, profilePendingReason: AUTH_PROFILE_PENDING, settings, save: saveRuntimePolicy }
+  const allowTrainingRoutesRow = createProfileSwitchRow({ ...profileSwitch, row: named("allow-training-routes"), setting: "allowTrainingRoutes", success: (on, profile) => `Training routes ${on ? "enabled" : "disabled"} for ${profile}` })
+  const googleAntigravityRow = createProfileSwitchRow({
+    ...profileSwitch,
+    row: named("google-antigravity"),
+    setting: "allowGoogleAntigravity",
+    success: (on, profile) => `Google Antigravity turned ${on ? "on" : "off"} for ${profile}`,
+    confirmTurnOn: { message: GOOGLE_ANTIGRAVITY_WARNING, confirm: (label, message, actionLabel, onConfirm) => controller.confirmAction(label, message, actionLabel, onConfirm) },
+  })
 
   /** Every Settings entry the terminal shows, by catalog id (ARCH-PROTOCOL-066). */
   const renderers: SettingRenderers<"terminal", SettingsRow> = {
@@ -437,6 +446,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
     models: () => [{ kind: "navigation", ...named("models"), onActivate: () => { void deps.openSettingsDestination({ kind: "models" }) } }],
     authentication: () => [{ kind: "navigation", ...named("authentication"), onActivate: () => { void deps.openSettingsDestination({ kind: "auth" }) } }],
     "allow-training-routes": () => [allowTrainingRoutesRow],
+    "google-antigravity": () => [googleAntigravityRow],
     "provider-settings": () => providerSettingRows(),
     status: () => [{ kind: "navigation", ...named("status"), onActivate: deps.openStatusModal }],
     "client-modules": () => deps.moduleRows().map((row) => ({

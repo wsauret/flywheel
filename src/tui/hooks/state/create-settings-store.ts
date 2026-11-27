@@ -189,7 +189,7 @@ export function createSettingsStore(config: RuntimeConfigCache, appService: Pick
     if (result.kind !== "committed" && result.kind !== "committed-with-durability-warning" && result.kind !== "committed-with-degraded-application") return resultOf(result)
     await config.settlePublication(command, result.revision)
     const published = config.view()
-    return published !== undefined && published.revision >= result.revision && published.values.profiles[profileId]?.[key] === value
+    return published !== undefined && published.revision >= result.revision && (published.values.profiles[profileId]?.[key] ?? false) === value
       ? resultOf(result)
       : { ok: false, error: new Error("Configuration updates are unavailable.") }
   }
@@ -202,7 +202,7 @@ export function createSettingsStore(config: RuntimeConfigCache, appService: Pick
     if (result.kind !== "committed" && result.kind !== "committed-with-durability-warning" && result.kind !== "committed-with-degraded-application") return resultOf(result)
     await config.settlePublication(command, result.revision)
     const published = config.view()
-    return published !== undefined && published.revision >= result.revision && published.values.profiles[profileId]?.providers[setting.providerId]?.[setting.key] === value
+    return published !== undefined && published.revision >= result.revision && (published.values.profiles[profileId]?.providers[setting.providerId]?.[setting.key] ?? setting.defaultValue) === value
       ? resultOf(result)
       : { ok: false, error: new Error("Configuration updates are unavailable.") }
   }

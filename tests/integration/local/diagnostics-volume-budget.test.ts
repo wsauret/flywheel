@@ -42,11 +42,12 @@ const PASTED_TEXT = "fixture log line with content that stays out of diagnostics
 const LATER_TURN_CALLS = 8
 /** Every record, as `type service message`, that a turn after the first may
  *  write at the default level, whatever its number of tool calls: the
- *  person's message, the run that answered it, and the learning review that
- *  followed it, one each. */
+ *  person's message, the run that answered it, the chat's stop for the
+ *  person, and the learning review that followed it, one each. */
 const ALLOWED_LATER_TURN_RECORDS: readonly string[] = [
   "log.info app-service app-service dispatch done",
   "log.info agent-runner agent runner completed",
+  "log.info chat-turn-stops chat stopped for the person",
   "log.info learning-review learning review settled",
 ]
 const STEP_MS = 30_000

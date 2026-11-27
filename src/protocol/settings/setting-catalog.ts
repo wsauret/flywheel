@@ -38,6 +38,7 @@ const ROWS = {
   authentication: { label: "Authentication", description: "Sign in to a model provider, add an API key, or review paid use.", control: "screen" },
   "auth-profiles": { label: "Auth profiles", description: "Create, rename, bind, or delete credential profiles.", control: "screen" },
   "allow-training-routes": { label: "Allow training routes", description: "Let providers train on requests sent through contributor routes.", control: "switch" },
+  "google-antigravity": { label: "Allow Google Antigravity", description: "Let this profile sign in to and use Google Antigravity.", control: "switch" },
   status: { label: "Status", description: "Version, model, account, and connection health.", control: "screen" },
   theme: { label: "Theme", description: "Choose the interface color theme.", control: "screen", host: "terminal", setting: "theme" },
   "show-thinking": { label: "Show thinking", description: "Show the model's thinking as text in the transcript.", control: "switch", setting: "showThinking" },
@@ -119,7 +120,7 @@ export function settingGroupHead(group: string): readonly SettingCatalogRow[] {
 
 export const SETTING_SECTIONS = [
   { title: "Session", entries: [row("auth-profile"), row("project-profile"), row("show-build"), row("git-ai-attribution")] },
-  { title: "Models and auth", entries: [row("models"), row("authentication"), row("auth-profiles"), row("allow-training-routes"), slot("provider-settings")] },
+  { title: "Models and auth", entries: [row("models"), row("authentication"), row("auth-profiles"), row("allow-training-routes"), row("google-antigravity"), slot("provider-settings")] },
   { title: "Application", entries: [
     row("status"),
     slot("client-modules"),

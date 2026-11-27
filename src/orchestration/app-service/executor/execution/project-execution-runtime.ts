@@ -469,6 +469,8 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     resolveKey,
     launcher: options.launcher,
     admit: capabilities.admit,
+    runtimeConfig,
+    moduleSelection,
     log,
   }), (service) => service.dispose())
   startupTrace("runtime auth runtime created")

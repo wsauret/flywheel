@@ -4,7 +4,7 @@ import { createEffect, createMemo, createSignal, For, on, onCleanup, Show, type 
 
 import type { RuntimeAuthLoginResult } from "../../../../../src/protocol/auth/auth-login-protocol-types.js"
 import type { AuthProviderStatus, RuntimeAuthLoginQuestion } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
-import { awaitsSettlement, initialLoginStep, keptFreePlanMessage, loginConfirmation, loginOutcome, loginSettlement, REPLACING_FREE_PLAN, type LoginStep, type LoginTarget } from "../../../../../src/protocol/client/auth-login.js"
+import { awaitsSettlement, initialLoginStep, keptFreePlanMessage, keptOffMessage, loginConfirmation, loginOutcome, loginSettlement, REPLACING_FREE_PLAN, type LoginStep, type LoginTarget } from "../../../../../src/protocol/client/auth-login.js"
 import { actionKey } from "../../../client/action-key.js"
 import { describeFailure } from "../../../client/format/failure-message.js"
 import { buildProviderViewState, createProviderConsentMutation } from "./provider-view-model.js"
@@ -149,18 +149,23 @@ export function ProvidersSheet() {
     await client.actions.run(loginKey, () => signIn(provider, instanceId, apiKey))
   }
 
-  function signIn(provider: LoginTarget, instanceId: string | undefined, apiKey: string | undefined, recovery?: { readonly questionId: string; operationId?: string }): Promise<void> {
+  /** `turnedOn` follows the person's confirmation of an opt-in warning for the profile that the warning named, so the
+   *  runtime turns the provider on for that profile before it signs in (PI-MODEL-096). */
+  function signIn(provider: LoginTarget, instanceId: string | undefined, apiKey: string | undefined, recovery?: { readonly questionId: string; operationId?: string }, turnedOn?: { readonly profileId: string }): Promise<void> {
     const attempt = ++attempts
     const superseded = (): boolean => disposed || attempt !== attempts
     setStep({ kind: "working", provider, ...(instanceId === undefined ? {} : { instanceId }) })
-    // An account question names its own profile; any other login writes the profile this sheet shows.
-    const profileId = recovery === undefined ? auth()?.profile.id : undefined
+    // An account question names its own profile; a confirmed warning names the profile it was shown for; any other
+    // login writes the profile this sheet shows.
+    const profileId = recovery !== undefined ? undefined : turnedOn?.profileId ?? auth()?.profile.id
+    const turnOn = turnedOn === undefined ? undefined : true as const
     return settleStep(provider, instanceId, superseded, recovery, () => client.connection.dispatch({
       type: "auth.login",
       providerId: provider.providerId,
       ...(instanceId === undefined ? {} : { instanceId }),
       ...(recovery === undefined ? {} : { loginQuestionId: recovery.questionId }),
       ...(profileId === undefined ? {} : { profileId }),
+      ...(turnOn === undefined ? {} : { turnOn }),
       // Redacted from the first moment the client holds it as a value: the
       // wire codec unwraps at encode, and nothing between here and the frame
       // can log the plain string.
@@ -211,6 +216,12 @@ export function ProvidersSheet() {
       setStep(undefined)
       client.report("warning", `Flywheel could not connect ${provider.displayName}: ${describeFailure(cause)}`)
     }
+  }
+
+  /** Logs in again after the person confirmed the opt-in warning, for the same account and profile. An account
+   *  question that asked for this login is still open, so the new login answers it. */
+  async function confirmTurnOn(question: Extract<LoginStep, { kind: "opt-in" }>): Promise<void> {
+    await client.actions.run(loginKey, () => signIn(question.provider, question.instanceId, undefined, automatic, { profileId: question.profileId }))
   }
 
   /** Confirms the runtime's question; the runtime answers with the login's end. */
@@ -423,7 +434,7 @@ export function ProvidersSheet() {
               </Show>
             </>
           }>
-            {(current) => <LoginPanel step={current()} busy={busy()} onAccount={(instanceId) => { void login(current().provider, instanceId) }} onKey={(key) => { const now = current(); void login(now.provider, now.kind === "needs-key" ? now.instanceId : undefined, key) }} onBrowserComplete={completeBrowserLogin} onPromptAnswer={(answer) => { const now = current(); if (now.kind === "prompt") void answerPrompt(now, answer) }} onConfirm={() => { const now = current(); if (now.kind === "confirm") void confirm(now) }} onDecline={() => { const now = current(); cancel(); client.report("info", keptFreePlanMessage(now.provider.displayName)) }} onOpen={(url) => client.actions.openExternal(url)} canOpen={client.actions.canOpenExternal} onCopy={copy} />}
+            {(current) => <LoginPanel step={current()} busy={busy()} onAccount={(instanceId) => { void login(current().provider, instanceId) }} onKey={(key) => { const now = current(); void login(now.provider, now.kind === "needs-key" ? now.instanceId : undefined, key) }} onBrowserComplete={completeBrowserLogin} onPromptAnswer={(answer) => { const now = current(); if (now.kind === "prompt") void answerPrompt(now, answer) }} onConfirm={() => { const now = current(); if (now.kind === "confirm") void confirm(now); else if (now.kind === "opt-in") void confirmTurnOn(now) }} onDecline={() => { const now = current(); cancel(); client.report("info", now.kind === "opt-in" ? keptOffMessage(now.provider.displayName) : keptFreePlanMessage(now.provider.displayName)) }} onOpen={(url) => client.actions.openExternal(url)} canOpen={client.actions.canOpenExternal} onCopy={copy} />}
           </Show>
         )}
       </Show>
@@ -479,6 +490,7 @@ function LoginPanel(props: {
   const browserStep = () => { const current = step(); return current.kind === "browser" ? current : undefined }
   const accountStep = () => { const current = step(); return current.kind === "choose-account" ? current : undefined }
   const confirmStep = () => { const current = step(); return current.kind === "confirm" ? current : undefined }
+  const optInStep = () => { const current = step(); return current.kind === "opt-in" ? current : undefined }
   const workingStep = () => { const current = step(); return current.kind === "working" ? current : undefined }
   return (
     <div class="login-panel">
@@ -495,6 +507,13 @@ function LoginPanel(props: {
         <div class="login-actions">
           <button class="ghost-text" type="button" disabled={props.busy} onClick={() => props.onDecline()}>Keep free account</button>
           <button class="primary" type="button" disabled={props.busy} onClick={() => props.onConfirm()}>Replace</button>
+        </div>
+      </>}</Show>
+      <Show when={optInStep()}>{(current) => <>
+        <p class="login-lead">{current().warning}</p>
+        <div class="login-actions">
+          <button class="ghost-text" type="button" disabled={props.busy} onClick={() => props.onDecline()}>Keep it off</button>
+          <button class="danger" type="button" disabled={props.busy} onClick={() => props.onConfirm()}>Turn on</button>
         </div>
       </>}</Show>
       <Show when={workingStep()}>

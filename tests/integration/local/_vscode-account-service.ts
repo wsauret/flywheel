@@ -1,3 +1,8 @@
+// This process stands in for `flywheel serve`, whose entry loads the module
+// registries before it loads the service. It runs without the test preload,
+// so it publishes the shipped catalog first.
+import "../../../scripts/shipped-modules.js"
+
 import { readFileSync, writeFileSync } from "node:fs"
 
 import { selectStartupDirectories } from "../../../src/infra/platform/files/directory-authorities.js"

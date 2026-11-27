@@ -28,6 +28,7 @@ export function testEligibility(fields: Partial<AccessProviderModelEligibility>)
     candidateModelUnavailableReason: () => undefined,
     candidateOfferings: () => [],
     accessPending: () => false,
+    turnedOffProvider: () => undefined,
     ...fields,
   };
 }

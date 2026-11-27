@@ -244,6 +244,10 @@ The provider works the same whether or not the person has a separate install of 
 
 The Google Antigravity provider serves Gemini models on a person's Antigravity plan through the Antigravity engine that ships with Flywheel. The engine runs and keeps each Google sign-in, and Flywheel never reads its token. The engine never uses the person's own Antigravity install or settings. A request never moves from one Antigravity account to another. When an Antigravity account cannot serve, the request moves to another provider.
 
+## PI-MODEL-096: Google Antigravity is off until the person turns it on
+
+The provider is off in each auth profile until the person turns it on. Turning it on shows a warning that Google has suspended accounts used through other coding agents, and it applies only after the person confirms. While it is off, Flywheel neither signs in nor starts the engine, except to sign a kept account out when the person disconnects it or deletes its profile, and no request uses an Antigravity account.
+
 ## PI-MODEL-072: A Claude login shows its sign-in page, its account, and its state
 
 In every client, a Claude browser login shows the sign-in page and a field for the code that the page shows. Each account row shows the account's email address and, when the engine names it, its plan. When the engine cannot read an account's login and has sent no request, Flywheel sends the same request once more on a fresh engine, and the person sees nothing. When Claude refuses an account's login, or a fresh engine also cannot read it, the row says so and one notice says the same.

@@ -25,6 +25,9 @@ export type LoginStep =
   /** `message` says what the runtime does while the client waits, when it is more than starting the login. */
   | { readonly kind: "working"; readonly provider: LoginTarget; readonly instanceId?: string; readonly message?: string }
   | { readonly kind: "needs-key"; readonly provider: LoginTarget; readonly hint?: string; readonly instanceId?: string }
+  /** The profile `profileId` keeps the provider off (PI-MODEL-096): the client shows `warning`, a confirm logs in again
+   *  with `turnOn` for that same profile, and a decline ends the login with nothing stored. */
+  | { readonly kind: "opt-in"; readonly provider: LoginTarget; readonly profileId: string; readonly warning: string; readonly instanceId?: string }
   /** The flow asks this before it starts; `auth.login.answer` answers it. */
   | { readonly kind: "prompt"; readonly provider: LoginTarget; readonly operationId: string; readonly prompt: RuntimeAuthLoginPrompt }
   | { readonly kind: "device-code"; readonly provider: LoginTarget; readonly operationId: string; readonly userCode?: string; readonly verificationUri: string }
@@ -58,6 +61,8 @@ export function loginOutcome(result: RuntimeAuthLoginResult, provider: LoginTarg
     case "ignored": return { kind: "ignored" }
     case "completed":
       return { kind: "connected", provider }
+    case "needs_opt_in":
+      return { kind: "step", step: { kind: "opt-in", provider, profileId: result.profileId, warning: result.warning, ...instance } }
     case "needs_key":
       return { kind: "step", step: { kind: "needs-key", provider, ...(result.hint === undefined ? {} : { hint: result.hint }), ...instance } }
     case "prompt":
@@ -89,6 +94,12 @@ export function loginConfirmation(auth: RuntimeAuthView | undefined, provider: L
  *  it (PI-MODEL-069). It is an outcome the person chose, not a failure. */
 export function keptFreePlanMessage(displayName: string): string {
   return `${displayName} was not connected, and the free-plan account stays. Nothing was stored.`
+}
+
+/** What every client says when the person declines the warning of a provider that the profile keeps off
+ *  (PI-MODEL-096). It is an outcome the person chose, not a failure. */
+export function keptOffMessage(displayName: string): string {
+  return `${displayName} stays off. Nothing was changed.`
 }
 
 /** What every client shows after the person chose to replace the free-plan account, until the login ends. */

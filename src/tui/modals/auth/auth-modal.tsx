@@ -518,17 +518,25 @@ function LoginQuestionView(props: { view: Extract<AuthView, { kind: "login-quest
   </box>
 }
 
-/** The runtime's question before a new paid account replaces the free-plan accounts of its provider. */
+/** The labels of each login confirmation: the choice that goes on, and the one that stops. */
+const LOGIN_CONFIRMATION_LABELS = {
+  "replace-free-plan": { go: "Replace", stop: "Keep free account" },
+  "turn-on": { go: "Turn on", stop: "Keep it off" },
+} as const
+
+/** The runtime's question before a login goes on: a new paid account that replaces the free-plan accounts of its
+ *  provider, or a provider that the profile keeps off. */
 function LoginConfirmationView(props: { view: Extract<AuthView, { kind: "login-confirmation" }>; onAnswer: (replace: boolean) => void }) {
   const { theme } = useTheme()
+  const labels = () => LOGIN_CONFIRMATION_LABELS[props.view.question]
   return <box flexDirection="column" gap={1}>
     <text fg={theme.text} wrapMode="word">{props.view.message}</text>
     <Show when={!props.view.submitting} fallback={<><text fg={theme.textMuted}>{REPLACING_FREE_PLAN}</text><ModalFooter rows={["esc close"]} /></>}>
       <box flexDirection="row" gap={1}>
-        <Button label="Replace" focused={props.view.choice === "replace"} onPress={() => props.onAnswer(true)} />
-        <Button label="Keep free account" focused={props.view.choice === "keep"} onPress={() => props.onAnswer(false)} />
+        <Button label={labels().go} focused={props.view.choice === "replace"} onPress={() => props.onAnswer(true)} />
+        <Button label={labels().stop} focused={props.view.choice === "keep"} onPress={() => props.onAnswer(false)} />
       </box>
-      <ModalFooter rows={["←/→/tab choose", "enter answer", "esc keep free account"]} />
+      <ModalFooter rows={["←/→/tab choose", "enter answer", `esc ${labels().stop.toLowerCase()}`]} />
     </Show>
   </box>
 }

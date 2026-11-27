@@ -179,13 +179,13 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
   const auth = testAuthContext({ apiKeys: { openai_api: "test-key", anthropic_api: "test-key" } })
   const defaultConnection = captureProviderConnection({ profileId: "default", authDir: "/scratch/auth", auth })
   const providers = accessProviderRegistry(testCapabilityModules())
-  const access = (model: string, family: "openai" | "anthropic") => {
+  const access = (model: string, family: "openai" | "anthropic", turnedOff?: true) => {
     const candidate = { kind: "singleton", providerId: `${family}_api`, spendMode: "direct_api" } as const
     const models = new Set([model])
     return providerModelEligibilityDecision({
       profileId: "default", revision: 1, catalogs: new Map([[candidate.providerId, { effective: models, enabled: models }]]),
       enabledCandidates: new Map<string, ProviderModelEnabledCandidate>([[accessProviderAccountKey(candidate), {
-        candidate, configured: true, currentConnection: true, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
+        candidate, configured: true, currentConnection: true, ...(turnedOff === undefined ? {} : { turnedOff }), catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
         enabledOfferings: new Map([[model, [{ wireModelId: model, dataUse: "standard" as const, metadata: null, transport: family === "openai" ? "openai-responses" as const : "anthropic-messages" as const, resolvedMetadata: modelInfo(family, model, "fixture", 2, 10, "2026-10-01") }]]]),
       }]]),
     }).worker
@@ -254,6 +254,11 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
   // A saved model that no account offers stays the agent's model, and its request waits for it.
   await expect(assemble({ eligibility: luna, saved: { model: "claude-haiku-4.5", effort: "low" } })).rejects.toMatchObject(waitsFor("claude-haiku-4.5"))
   await expect(assemble({ eligibility: luna, saved: { model: "claude-haiku-4.5", effort: "low" }, unattended: true })).rejects.toMatchObject({ missing: "provider" })
+  // A model that only an account of a provider the profile keeps off offers waits for it, and says so (PI-MODEL-096).
+  const turnedOff = access("claude-haiku-4.5", "anthropic", true)
+  const offMessage = "Anthropic API Key is off for this profile. Turn it on in Settings."
+  await expect(assemble({ eligibility: turnedOff, saved: { model: "claude-haiku-4.5", effort: "low" } })).rejects.toMatchObject({ message: offMessage, unserved: { model: "claude-haiku-4.5", reason: "turned_off" } })
+  await expect(assemble({ eligibility: turnedOff, saved: { model: "claude-haiku-4.5", effort: "low" }, unattended: true })).rejects.toMatchObject({ _tag: "ModelUnavailable", missing: "turned_off", message: offMessage })
   // An id that no catalog lists is a configuration error that no wait can clear, so its request fails at once.
   const unlisted = assemble({ eligibility: luna, saved: { model: "no-such-model-x1", effort: "low" } })
   await expect(unlisted).rejects.toMatchObject({ _tag: "ModelUnavailable", missing: "offering" })

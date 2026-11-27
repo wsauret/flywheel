@@ -65,7 +65,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
           : [],
       },
     })
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot,
       resolveKey: async () => undefined,
@@ -132,7 +132,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     })
     let remaining = 2
     const audited = Promise.withResolvers<void>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -292,7 +292,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     let listingHold: Promise<void> | undefined
     let entered = Promise.withResolvers<void>()
     let published = Promise.withResolvers<void>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -410,7 +410,7 @@ function freePlanHarness(service: ReturnType<typeof createProviderModelPreferenc
   })
   let opened = 0
   let publications = 0
-  const prepare = createEligibilityPreparation({
+  const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
     allowTrainingRoutes: () => false,
     userDataRoot: DIRECTORIES.userDataRoot,
     resolveKey: async () => undefined,

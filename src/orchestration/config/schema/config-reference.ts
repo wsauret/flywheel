@@ -58,6 +58,9 @@ interface TraversalContext {
   readonly inheritedDescription?: string;
   readonly branch?: string;
   readonly exampleModel: (value: ConfigValue) => ConfigDictionary;
+  /** What the value at `schemaPath` decodes to when it is authored empty. A record entry's defaults come from its
+   *  record, because the entry's own schema is the decoded side, which has no defaults. */
+  readonly decodedEmpty?: ConfigValue;
 }
 
 function quoteSegment(segment: string): string {
@@ -126,11 +129,15 @@ function sample(ast: SchemaAST.AST, path: readonly string[]): ConfigValue {
   throw new Error(`Unsupported configuration AST node ${ast._tag} at ${displayPath(path)}`);
 }
 
-function objectExample(ast: SchemaAST.Objects, key: string, value: ConfigValue): ConfigDictionary {
+/** The example of one entry of `ast`: `value` at `key`, beside a sample of each required sibling. A sibling with a
+ *  scalar decoding default in `defaults` shows that default, so an example never turns on a setting that it does not
+ *  document, such as a consent that is off until the person turns it on. */
+function objectExample(ast: SchemaAST.Objects, key: string, value: ConfigValue, defaults: ConfigValue): ConfigDictionary {
   const object: ConfigDictionary = {};
   for (const property of ast.propertySignatures) {
     if (typeof property.name === "string" && property.name !== key && property.type.context?.isOptional !== true && !isNever(property.type)) {
-      object[property.name] = sample(property.type, [property.name]);
+      const decoded = isDictionary(defaults) ? defaults[property.name] : undefined;
+      object[property.name] = typeof decoded === "boolean" || typeof decoded === "number" || typeof decoded === "string" ? decoded : sample(property.type, [property.name]);
     }
   }
   object[key] = value;
@@ -293,6 +300,7 @@ function traverse(ast: SchemaAST.AST, context: TraversalContext, defaults: Confi
   }
   if (SchemaAST.isObjects(ast)) {
     const entries: ConfigReferenceEntry[] = [];
+    const decodedEmpty = context.decodedEmpty ?? decodedDefaults(Schema.make<Schema.Decoder<unknown, never>>(ast));
     for (const property of ast.propertySignatures) {
       if (typeof property.name !== "string" || isNever(property.type)) continue;
       const propertyName = property.name;
@@ -303,7 +311,8 @@ function traverse(ast: SchemaAST.AST, context: TraversalContext, defaults: Confi
         authoredPath: [...context.authoredPath, propertyName],
         concretePath: [...context.concretePath, propertyName],
         inheritedDescription: SchemaAST.resolveDescription(property.type) ?? context.inheritedDescription,
-        exampleModel: (value) => parentExampleModel(objectExample(ast, propertyName, value)),
+        exampleModel: (value) => parentExampleModel(objectExample(ast, propertyName, value, decodedEmpty)),
+        decodedEmpty: valueAtPath(decodedEmpty, [propertyName]),
       }, defaults));
     }
     for (const index of ast.indexSignatures) {
@@ -315,7 +324,8 @@ function traverse(ast: SchemaAST.AST, context: TraversalContext, defaults: Confi
         authoredPath: [...context.authoredPath, "*"],
         concretePath: [...context.concretePath, concrete],
         inheritedDescription: SchemaAST.resolveDescription(ast) ?? context.inheritedDescription,
-        exampleModel: (value: ConfigValue) => parentExampleModel(objectExample(ast, concrete, value)),
+        exampleModel: (value: ConfigValue) => parentExampleModel(objectExample(ast, concrete, value, decodedEmpty)),
+        decodedEmpty: valueAtPath(decodedFrom(Schema.make<Schema.Decoder<unknown, never>>(ast), { [concrete]: {} }), [concrete]),
       };
       if (SchemaAST.isUnknown(index.type) || SchemaAST.isAny(index.type)) {
         entries.push({ ...leafEntry(index.type, childContext, defaults), openVocabulary: "open record" });
@@ -413,8 +423,12 @@ function configReferenceFor(definitions: readonly Definition[], schema: Schema.D
 }
 
 function decodedDefaults(schema: Schema.Decoder<unknown, never>): ConfigValue {
+  return decodedFrom(schema, {});
+}
+
+function decodedFrom(schema: Schema.Decoder<unknown, never>, input: ConfigDictionary): ConfigValue {
   try {
-    return configValue(Schema.decodeUnknownSync(schema)({}));
+    return configValue(Schema.decodeUnknownSync(schema)(input));
   } catch {
     return {};
   }

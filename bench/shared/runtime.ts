@@ -36,7 +36,7 @@ import type { SubscriptionSpendConsentCapture } from "../../src/orchestration/au
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import type { ShellRuntimeClient } from "../../src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.js";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import { accessProviderRegistry } from "../../src/orchestration/config/models/access-provider-registry.js";
+import { accessProviderRegistry, profileProviderOptIns } from "../../src/orchestration/config/models/access-provider-registry.js";
 import { composePortableModuleServices, type ComposedModuleServices } from "../../src/orchestration/app-service/executor/execution/module-service-host.js";
 import type { ProjectDefinitionRegistry } from "../../src/workflows/definitions/definition-registry.js";
 export interface OwnedBenchmarkRuntime extends AsyncDisposable {
@@ -133,6 +133,7 @@ const PRODUCTION_COMPOSITION: BenchmarkRuntimeComposition = {
       modelsClient: getSharedModelsClient(directories.userDataRoot),
       profile: authProfile,
       allowTrainingRoutes: configOwner.snapshot().config.profiles[authProfile.id]?.allow_training_routes ?? false,
+      providerOptIns: profileProviderOptIns(configOwner.snapshot().config.profiles[authProfile.id]),
       captureRuntimeConfig: () => captureRuntimeConfigRequest(configOwner.snapshot(), authProfile.id),
       moduleSelection,
       resolveKey,

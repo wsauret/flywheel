@@ -40,7 +40,7 @@ describe("useSettingsModal", () => {
       }
       expect([...sections.keys()]).toEqual(["Session", "Models and auth", "Application", "Autonomy", "Manage"])
       expect(sections.get("Session")).toEqual(["auth-profile", "project-profile", "show-build", "git-ai-attribution"])
-      expect(sections.get("Models and auth")).toEqual(["models", "authentication", "auth-profiles", "allow-training-routes", "provider-setting:github_copilot:monthly_credit_cap"])
+      expect(sections.get("Models and auth")).toEqual(["models", "authentication", "auth-profiles", "allow-training-routes", "google-antigravity", "provider-setting:github_copilot:monthly_credit_cap"])
       expect(sections.get("Autonomy")).toEqual(["capability-preset", "workflow-mode", "capability-group:Agent capabilities", "capability-group:Tools", "capability-group:Web retrieval", "capability-group:Model providers", "capability-group:Model & spend", "capability-group:Interface", "capability-group:Remote"])
       // A module's own row sits at the catalog's client-modules slot and runs the module's action.
       expect(sections.get("Application")).toEqual(["status", "module:remote", "appearance", "maintenance"])
