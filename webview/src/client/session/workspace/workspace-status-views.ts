@@ -3,6 +3,7 @@ import { createHeldView } from "../../../../../src/protocol/client/runtime/held-
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../../src/protocol/git/git-ai-attribution-protocol-types.js"
 import { updatesCursor, type UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"
 import { waitingSessionsCursor, type WaitingSessionsView } from "../../../../../src/protocol/session/question-protocol-types.js"
+import { unreadChatsCursor, type UnreadChatsView } from "../../../../../src/protocol/session/unread-protocol-types.js"
 
 /** The workspace status views that read themselves: each one holds its own
  *  cursor, reads its snapshot, and adopts its own patches, so the session
@@ -15,14 +16,18 @@ export interface WorkspaceStatusViews {
   readonly gitAiAttribution: GitAiAttributionStatus | undefined
   /** Every session of the project that waits on a question, closed ones
    *  included (ARCH-PROTOCOL-068), with the time its docked question opened,
-   *  empty before the first read. Every waiting mark of a listed row reads
-   *  this set, never a question read for the row. */
-  readonly waitingSessions: ReadonlyMap<string, number>
+   *  or undefined before the first read. Every waiting mark of a listed row
+   *  reads this set, never a question read for the row. */
+  readonly waitingSessions: WaitingSessionsView | undefined
+  /** The stopped chats the person has not read and the working chats with
+   *  unread messages (ARCH-PROTOCOL-072), or undefined before the first read
+   *  and from a runtime that refuses it. */
+  readonly unreadChats: UnreadChatsView | undefined
   dispose(): void
 }
 
 /** The workspace domains these views own. */
-export const WORKSPACE_STATUS_DOMAINS: ReadonlySet<string> = new Set([updatesCursor().domain, gitAiAttributionCursor().domain, waitingSessionsCursor().domain])
+export const WORKSPACE_STATUS_DOMAINS: ReadonlySet<string> = new Set([updatesCursor().domain, gitAiAttributionCursor().domain, waitingSessionsCursor().domain, unreadChatsCursor().domain])
 
 export function createWorkspaceStatusViews(input: {
   readonly connection: RuntimeConnection
@@ -51,8 +56,7 @@ export function createWorkspaceStatusViews(input: {
     changed: input.changed,
     label: "Git AI attribution status",
   })
-  let waitingSessions: ReadonlyMap<string, number> = new Map()
-  // A patch carries the whole set, so it replaces the held one without a read.
+  // A patch of either set carries the whole set, so it replaces the held one without a read.
   const waiting = createHeldView<WaitingSessionsView>({
     client: connection,
     cursor: waitingSessionsCursor(),
@@ -61,20 +65,30 @@ export function createWorkspaceStatusViews(input: {
       return { view: snapshot, position: snapshot.snapshotPosition }
     },
     adopt: (payload) => (payload.kind === "waitingSessions.changed" ? payload : undefined),
-    changed: (view) => {
-      waitingSessions = new Map(view.sessions.map((entry) => [entry.sessionId, entry.openedAt]))
-      input.changed()
-    },
+    changed: input.changed,
     label: "waiting sessions",
+  })
+  const unread = createHeldView<UnreadChatsView>({
+    client: connection,
+    cursor: unreadChatsCursor(),
+    read: async () => {
+      const snapshot = await connection.query({ type: "unreadChatsSnapshot" })
+      return { view: snapshot, position: snapshot.snapshotPosition }
+    },
+    adopt: (payload) => (payload.kind === "unreadChats.changed" ? payload : undefined),
+    changed: input.changed,
+    label: "unread chats",
   })
   return {
     get update() { return updates.view },
     get gitAiAttribution() { return gitAiAttribution.view },
-    get waitingSessions() { return waitingSessions },
+    get waitingSessions() { return waiting.view },
+    get unreadChats() { return unread.view },
     dispose() {
       updates.dispose()
       gitAiAttribution.dispose()
       waiting.dispose()
+      unread.dispose()
     },
   }
 }

@@ -1265,7 +1265,7 @@ review_interval_turns = 10
 - Default: `true`
 - Application: `live`. Applies to the running interface immediately.
 
-Show a desktop notification when a session asks you a question.
+Notify on the desktop when a session asks a question or stops.
 
 ```toml
 [notifications]

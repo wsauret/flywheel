@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { createProjectControlClient, type ProjectControlClientOptions } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
 import { ProjectExecutionChannelDetached, ProjectExecutionStopping } from "../../../../src/orchestration/app-service/executor/project-execution-channel.js"
 import type { SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
+import { sessionCursor } from "../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import { projectSessionCatalogRow } from "../../../../src/orchestration/session/control/session-catalog-row.js"
 import { durableRow } from "./_frontend-projection-fixtures.js"
 import { fixture, privateExecutor } from "./_project-control-client-fixture.js"
@@ -530,6 +531,10 @@ describe("account project control client session holds", () => {
     expect(await client.dispatch({ type: "session_detail.release", sessionId: "chat" }, terminal)).toEqual({ ok: true })
     await settled()
     expect(runnerChanges(executor, "chat")).toEqual(["session.activate"])
+    expect((await client.query({ type: "snapshot" })).rows.find((row) => row.id === "chat")?.admittedActions).toContain("chat.resume")
+    // A live row of the executor keeps the admission that the held detail lays over it.
+    executor.bus.publish({ cursor: sessionCursor("chat"), payload: { kind: "session.updated", row: { ...listed, admittedActions: ["chat.interrupt", "session.delete"] } } })
+    await settled()
     expect((await client.query({ type: "snapshot" })).rows.find((row) => row.id === "chat")?.admittedActions).toContain("chat.resume")
     expect(f.failures).toEqual([])
     await client.close()

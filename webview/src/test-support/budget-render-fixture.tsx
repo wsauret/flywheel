@@ -16,6 +16,9 @@ import type { PlacementLabels, ScreenStack } from "../app/screens/screen-stack.j
 import { createCommandPanel } from "../app/composer/menus/command-panel.js"
 import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
 import { SessionList } from "../app/sessions/session-list.js"
+import { selectNeedsYou } from "../../../src/protocol/client/session/needs-you.js"
+import type { WaitingSessionsView } from "../../../src/protocol/session/question-protocol-types.js"
+import type { UnreadChatsView } from "../../../src/protocol/session/unread-protocol-types.js"
 import { StatusSheet } from "../app/sheets/workspace/status-sheet.js"
 import { Toolbar } from "../app/toolbar/toolbar.js"
 
@@ -29,6 +32,7 @@ function emptyModules(): ModuleDomainViews {
 }
 
 const EMPTY_MODULES = emptyModules()
+const NO_ONE_NEEDED = selectNeedsYou({ waiting: undefined, unread: undefined, listed: [] })
 
 const LOADING_BUDGET: BudgetSummary = { totalsLoading: true, compactionThreshold: 100_000 }
 const READY_BUDGET = {
@@ -57,6 +61,7 @@ function state(budget: BudgetSummary = LOADING_BUDGET, health: RuntimeHealth = {
     sessionId: "session-a",
     executionCwd: "/tmp/project",
     sessions: [summary()],
+    needsYou: NO_ONE_NEEDED,
     newestQuestionOpenedAt: undefined,
     children: [],
     roleAssignments: () => undefined,
@@ -161,6 +166,9 @@ export function mountToolbarBudget(layout: "wide" | "folded" | "phone" | "narrow
       setReady() { setCurrent(state(READY_BUDGET)) },
       setBudget(budget: BudgetSummary) { setCurrent(state(budget)) },
       setBusy(busy: boolean) { setCurrent((value) => ({ ...value, busy })) },
+      /** Lists `count` chats that need the person, which the header counts. */
+      setNeedsYou(count: number) { setCurrent((value) => ({ ...value, needsYou: { rows: [], unread: new Set(), count } })) },
+      needs: () => withClass(root, "toolbar-needs"),
       setLocation(executionCwd: string | undefined, git: ClientViewState["git"]) { setCurrent((value) => ({ ...value, executionCwd, git })) },
       location: () => withClass(root, layout === "phone" ? "toolbar-subtitle" : "toolbar-location"),
       locationText: () => {
@@ -300,6 +308,7 @@ export function mountSessionListBudget() {
     insert(root, createComponent(SessionList, {
       get sessions() { return sessions() },
       get errors() { return errors() },
+      needsYou: NO_ONE_NEEDED,
       selected: "session-a",
       get shown() { return shown() },
       actions: { onSelect() {}, onCopy() {}, onDelete(id) { deleted.push(id) }, working: () => false },
@@ -338,6 +347,7 @@ export function mountSessionListSearch(found: (query: string, signal: AbortSigna
     insert(root, createComponent(SessionList, {
       sessions: [summary({ id: "kafka", title: "Kafka pipeline" }), summary({ id: "other", title: "Other work" }), summary({ id: "third", title: "Third" })],
       errors: [],
+      needsYou: NO_ONE_NEEDED,
       selected: undefined,
       get filter() { return filter() },
       contentSearchDelayMs: 0,
@@ -363,6 +373,40 @@ export function mountSessionListSearch(found: (query: string, signal: AbortSigna
         const id = node.properties["data-session"] ?? node.properties["data-found"]
         return typeof id === "string" ? [id] : []
       }),
+    }
+  })
+}
+
+/** The rail's list fed the project's waiting and unread sets as the runtime
+ *  publishes them: each publication a new object. Records the marks sent. */
+export function mountSessionListUnread(sessions: readonly SessionSummary[]) {
+  return createRoot((dispose) => {
+    const [listed, setListed] = createSignal(sessions)
+    const [waiting, setWaiting] = createSignal<WaitingSessionsView | undefined>()
+    const [unread, setUnread] = createSignal<UnreadChatsView | undefined>()
+    const marked: string[] = []
+    const root = createElement("root")
+    insert(root, createComponent(SessionList, {
+      get sessions() { return listed() },
+      errors: [],
+      get needsYou() { return selectNeedsYou({ waiting: waiting(), unread: unread(), listed: listed() }) },
+      selected: undefined,
+      grouped: true,
+      actions: { onSelect() {}, working: () => false, onMarkRead(id) { marked.push(`read:${id}`) }, onMarkUnread(id) { marked.push(`unread:${id}`) } },
+    }))
+    const row = (id: string) => nodes(root).find((node) => node.properties["data-session"] === id)
+    return {
+      dispose,
+      setListed,
+      setWaiting: (waitingSessions: WaitingSessionsView["sessions"]) => setWaiting({ sessions: waitingSessions }),
+      setUnread: (view: UnreadChatsView) => setUnread({ stopped: view.stopped.map((chat) => ({ ...chat })), unread: [...view.unread] }),
+      marked,
+      row,
+      rowOrder: () => nodes(root).flatMap((node) => typeof node.properties["data-session"] === "string" ? [node.properties["data-session"]] : []),
+      headings: () => nodes(root).filter((node) => node.properties.class === "session-group-label").map(textContent),
+      rowText: (id: string) => { const found = row(id); return found === undefined ? "" : textContent(found) },
+      badges: (id: string) => { const found = row(id); return found === undefined ? [] : nodes(found).filter((node) => String(node.properties.class).startsWith("session-badge")) },
+      action: (id: string, label: string) => { const found = row(id); return found === undefined ? undefined : nodes(found).find((node) => node.tag === "button" && node.properties.title === label) },
     }
   })
 }

@@ -70,8 +70,10 @@ test("a question patch marks the row as waiting and its removal clears it", asyn
   session.dispose()
 })
 
-test("a closed chat that waits on a question is in Needs you, from the project's waiting set alone", async () => {
+test("closed chats that wait on a question or stopped unread are in Needs you, from the project's sets alone, and the sets' patches apply with no read", async () => {
   const closed: SessionCatalogRow = { ...LIVE_ROW, id: "closed", title: "Closed", lifecycleState: "inactive", activity: "absent", lastUpdated: "2025-12-01T00:00:00.000Z" }
+  const done: SessionCatalogRow = { ...closed, id: "done", title: "Done", lastUpdated: "2025-11-01T00:00:00.000Z" }
+  const stop = { sessionId: "done", ending: { kind: "completed" }, firstLine: "All set", stoppedAt: 5, stopKey: "entry-done" } as const
   const reads = new Map<string, number>()
   const listeners = new Set<(event: FrontendEvent) => void>()
   const waiting = [{ sessionId: "closed", openedAt: 1 }, { sessionId: "deleted", openedAt: 2 }]
@@ -79,10 +81,11 @@ test("a closed chat that waits on a question is in Needs you, from the project's
   const connection: RuntimeConnection = {
     ...base,
     query: recordedQuery((request) => { reads.set(request.type, (reads.get(request.type) ?? 0) + 1) }, runtimeQuery({
-      snapshot: async () => ({ rows: [LIVE_ROW, closed], activeRuntimeCount: 1, errors: [], snapshotPosition: 0, projectRoot: "/project", runtimeVersion: "test", runtimeBuildId: null, chatDefault: { kind: "none" }, executor: { kind: "serving" }, service: { kind: "serving" } }),
+      snapshot: async () => ({ rows: [LIVE_ROW, closed, done], activeRuntimeCount: 1, errors: [], snapshotPosition: 0, projectRoot: "/project", runtimeVersion: "test", runtimeBuildId: null, chatDefault: { kind: "none" }, executor: { kind: "serving" }, service: { kind: "serving" } }),
       statusSnapshot: async () => ({ snapshotPosition: 0, views: [{ sessionId: "live", view: statusView("generating") }] }),
       questionSnapshot: async () => ({ snapshotPosition: 0, views: [] }),
       waitingSessionsSnapshot: async () => ({ snapshotPosition: 0, sessions: waiting }),
+      unreadChatsSnapshot: async () => ({ snapshotPosition: 0, stopped: [stop], unread: ["live"] }),
     }, base.query)),
     subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
   }
@@ -90,15 +93,22 @@ test("a closed chat that waits on a question is in Needs you, from the project's
   await settle()
   await settle()
   const project = createViewProjection()
-  const rows = () => layoutSessionRows(project(session).sessions, true, []).map((row) => [row.session.id, row.group])
+  const rows = () => { const frame = project(session); return layoutSessionRows(frame.sessions, frame.needsYou, true, []).map((row) => [row.session.id, row.group, row.need ?? (row.unread ? "unread" : "")]) }
   // A session in the set that the catalog does not list, such as a deleted
   // one or a subagent, shows nowhere.
-  assert.deepEqual(rows(), [["closed", "Needs you"], ["live", "Working"]])
+  assert.deepEqual(rows(), [["closed", "Needs you", "question"], ["done", "Needs you", "stopped"], ["live", "Working", "unread"]])
+  assert.equal(project(session).needsYou.count, 2)
   assert.equal(session.pendingQuestions.has("closed"), false)
   // A patch carries the whole set, so the list adopts it without a read.
   for (const listener of listeners) listener({ type: "patch", patch: { cursor: { scope: "workspace", domain: "waitingSessions" }, position: 1, prevPosition: 0, payload: { kind: "waitingSessions.changed", sessions: [] } } })
   await settle()
-  assert.deepEqual(rows(), [["live", "Working"], ["closed", "Recent"]])
+  assert.deepEqual(rows(), [["done", "Needs you", "stopped"], ["live", "Working", "unread"], ["closed", "Recent", ""]])
+  for (const listener of listeners) listener({ type: "patch", patch: { cursor: { scope: "workspace", domain: "unreadChats" }, position: 1, prevPosition: 0, payload: { kind: "unreadChats.changed", stopped: [], unread: [], newStops: [] } } })
+  await settle()
+  assert.deepEqual(rows(), [["live", "Working", ""], ["closed", "Recent", ""], ["done", "Recent", ""]])
+  assert.equal(project(session).needsYou.count, 0)
+  assert.equal(session.unreadChats?.stopped.length, 0)
   assert.equal(reads.get("waitingSessionsSnapshot"), 1)
+  assert.equal(reads.get("unreadChatsSnapshot"), 1)
   session.dispose()
 })

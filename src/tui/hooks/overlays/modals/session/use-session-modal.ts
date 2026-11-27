@@ -12,6 +12,7 @@ import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../../../../
 import { flattenSessionRows, formatCompactTimeAgo, NEEDS_YOU_GROUP, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../../../../modals/session-picker/picker-helpers.js"
 import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow, SessionPickerResult } from "../../../../modals/session-picker/picker-types.js"
 import type { ModalHandle } from "../../../../components/modal-stack.js"
+import type { NeedsYou } from "../../../../../protocol/client/session/needs-you.js"
 import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionRenameState } from "./use-session-modal-types.js"
 import { createKeyedListSelection } from "../create-keyed-list-selection.js"
 
@@ -53,7 +54,7 @@ export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: n
     if (!deps.modal.stack.some((modal) => modal.element === deps.renderModal)) {
       return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
     }
-    return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute(), signals.waitingSessions())
+    return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute(), signals.needsYou().rows)
   })
   const titleMatchIds = createMemo(() => titleResult().rows.flatMap((row) => row.kind === "session" ? [row.session.id] : []), [], { equals: sameIds })
   // Chats found by their messages go below every title match, so an answer
@@ -300,11 +301,33 @@ export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: n
     // activity alone does not.
     const status = signals.statusView(session.id)
     const offered = offeredSessionControls(session, status ? isInterruptible(status) : isActiveActivity(session.activity))
-    if (offered.primary === "resume") actions.push({ key: "ctrl+r", label: "resume", onTrigger: () => resumeSession(session) })
-    if (offered.primary === "interrupt") actions.push({ key: "ctrl+g", label: "interrupt", onTrigger: () => interruptSession(session) })
-    // Last, so the footer's one line truncates it before the primary control.
+    if (offered.primary === "resume") actions.push({ key: "ctrl+r", label: "resume", essential: true, onTrigger: () => resumeSession(session) })
+    if (offered.primary === "interrupt") actions.push({ key: "ctrl+g", label: "interrupt", essential: true, onTrigger: () => interruptSession(session) })
+    const markAction = markActionFor(session)
+    if (markAction) actions.push(markAction)
     if (session.lifecycleState === "active") actions.push({ key: "ctrl+x", label: "close chat", onTrigger: () => closeChat(session) })
     return actions
+  }
+
+  /** Mark read for a chat that holds something unread, and mark unread for
+   *  any other chat, from the list (PI-INTERACTION-187). A chat that waits on
+   *  a question needs its answer, so it offers neither. The list cannot tell
+   *  which chats have something to read, so the runtime refuses a mark
+   *  unread of a chat with nothing to read, and the toast says so. The key
+   *  is one that the search field does not use. */
+  function markActionFor(session: SessionCatalogRow): SessionModalAction | undefined {
+    if (session.kind !== "chat") return undefined
+    const mark = signals.chatMark(session.id)
+    if (mark === "question") return undefined
+    const read = mark !== undefined
+    return { key: "ctrl+t", label: read ? "mark read" : "mark unread", essential: true, onTrigger: () => markChat(session, read) }
+  }
+
+  function markChat(session: SessionCatalogRow, read: boolean): void {
+    const failed = (reason: string) => showToast({ message: `Mark ${read ? "read" : "unread"} failed for ${sessionSubject(session)}: ${reason}`, variant: "error" })
+    void deps.appService.dispatch({ type: read ? "chat.mark_read" : "chat.mark_unread", sessionId: session.id })
+      .then((result) => { if (!result.ok) failed(result.error) })
+      .catch((err) => { failed(extractErrorMessage(err)) })
   }
 
   function actionsForCorrupt(row: PickerCorruptRow): SessionModalAction[] {
@@ -451,10 +474,10 @@ function pickerRowsFor(
   errors: readonly SessionCatalogError[],
   query: string,
   now: number,
-  waiting: ReadonlySet<string>,
+  needsYou: NeedsYou["rows"],
 ): PickerRowsResult {
   const corrupt = corruptPickerRows(errors)
-  const sessionRows = allSessionRows(sessionList, now, waiting)
+  const sessionRows = allSessionRows(sessionList, now, needsYou)
   const knownIds = new Set([...sessionRows.map((row) => row.session.id), ...corrupt.map((row) => row.sessionId)])
   const exactId = parseSessionIdQuery(query, knownIds)
   if (exactId) {
@@ -467,7 +490,7 @@ function pickerRowsFor(
   const activeQuery = query.trim()
   if (activeQuery) return matchingRows(sessionRows, corrupt, activeQuery)
 
-  const rows = withCorruptRows(flattenSessionRows(sessionList, now, waiting), corrupt)
+  const rows = withCorruptRows(flattenSessionRows(sessionList, now, needsYou), corrupt)
   const totalMatches = rows.filter(isSelectablePickerRow).length
   const capped = rows.filter(isCappedRow).length > MAX_RENDERED_ROWS
   return {
@@ -517,8 +540,8 @@ function matchingRows(sessionRows: readonly PickerSessionRow[], corrupt: readonl
   }
 }
 
-function allSessionRows(sessionList: readonly SessionCatalogRow[], now: number, waiting: ReadonlySet<string>): PickerSessionRow[] {
-  return flattenSessionRows(sessionList, now, waiting)
+function allSessionRows(sessionList: readonly SessionCatalogRow[], now: number, needsYou: NeedsYou["rows"]): PickerSessionRow[] {
+  return flattenSessionRows(sessionList, now, needsYou)
     .filter((row): row is PickerSessionRow => row.kind === "session")
 }
 

@@ -37,6 +37,7 @@ import { liveWorkflowConversations } from "../../../../workflows/view/live-conve
 import { createMutationEvidenceRecovery } from "../../../session/history/mutation-evidence-recovery.js"
 import { createSessionRecoveryGate, settlingGuardReads, type OwedRecovery, type SessionRecoveryGate } from "./session-recovery-gate.js"
 import { createProjectStateSessionsService } from "../project-state-sessions.js"
+import { recoverChatTurnStop } from "../../../session/control/chat-turn-stops.js"
 
 const log = Log.create({ service: "project-state-recovery" })
 
@@ -232,7 +233,7 @@ function createProjectRecovery(input: ProjectRecoveryPorts & {
       errors.push(...reconcileErrors)
       if (!workflow) {
         const settled = row?.kind === "workflow-agent" && await isSettledMember(projectionReader, row.workflowMembership.workflowId, sessionId)
-        await recoverSessionConversations(sessionId, cause, row?.conversationId, settled)
+        await recoverSessionConversations(sessionId, cause, row?.conversationId, settled, row?.kind === "chat")
       }
     } catch (error) {
       errors.push(error)
@@ -256,7 +257,9 @@ function createProjectRecovery(input: ProjectRecoveryPorts & {
     return error
   }
 
-  async function recoverSessionConversations(sessionId: string, cause: OwedRecovery["cause"], fallbackConversationId: string | undefined, settledMember: boolean): Promise<void> {
+  /** `rootChat` marks a root chat, whose dead owner may have left out the
+   *  stop that its last answered turn owed (ARCH-SESSIONS-051). */
+  async function recoverSessionConversations(sessionId: string, cause: OwedRecovery["cause"], fallbackConversationId: string | undefined, settledMember: boolean, rootChat: boolean): Promise<void> {
     const owner = { kind: "session" as const, sessionId }
     const facts = createSessionFactWriter({ owner, writer })
     const tools = createSessionToolExecutionStore({ sessionId, projectionReader })
@@ -282,6 +285,13 @@ function createProjectRecovery(input: ProjectRecoveryPorts & {
       const cutsRestoredWait = await readPlannedSessionContinuationAsync(projectionReader, sessionId) === null
       const openReplyWaits = new Set((await readReplyWaits(projectionReader, sessionId)).map((wait) => wait.toolUseId))
       const protectedToolUseIds = new Set(childWorkflows.linkedNonterminalWorkflowToolUseIds)
+      // A stop is owed only when no work of the dead owner still owes the
+      // chat a result: no person's interrupt, no successor or capacity wait
+      // that holds its continuation, no open reply wait, and, below, no
+      // question or running child workflow.
+      const stopMayBeOwed = rootChat && cause === "crash" && cutsRestoredWait && openReplyWaits.size === 0
+      // Conversations whose unanswered turn recovery recorded; any other is held back.
+      const recovered = new Set<string>()
       for (const conversationId of conversationIds) {
         const options = { conversationId, sessionId, store: projectionReader, writer, projectRoot: directories.projectRoot }
         const tree = await tryOpenConversationTree({ ...options, store: projectionReader })
@@ -295,11 +305,25 @@ function createProjectRecovery(input: ProjectRecoveryPorts & {
             // The owner is gone, so an unanswered message is a turn it never
             // finished: recorded here, it is what Resume continues.
             await tree.recordInterruptedTurn(cause, { ownerDead: true, cutsRestoredWait, holdsWait: (id) => openReplyWaits.has(id) })
+            recovered.add(conversationId)
           }
         } finally { tree.dispose() }
       }
       await recoverSessionHistory({ sessionId, reader: projectionReader, projectionReader, writer, projectRoot: directories.projectRoot, fallbackConversationId, protectedToolUseIds })
       await repairInterruptedToolExecutions(tools, facts, protectedToolUseIds)
+      if (stopMayBeOwed && protectedToolUseIds.size === 0) {
+        // Only the conversation that the newest start names is read, once that
+        // start shows that a stop can be owed.
+        await recoverChatTurnStop({
+          reader: projectionReader, writer: facts, sessionId,
+          branchOf: async (conversationId) => {
+            if (!recovered.has(conversationId)) return undefined
+            const tree = await tryOpenConversationTree({ conversationId, sessionId, store: projectionReader, writer })
+            if (!tree) return undefined
+            try { return await tree.getBranch() } finally { tree.dispose() }
+          },
+        })
+      }
     } finally {
       tools.dispose()
       facts.dispose()

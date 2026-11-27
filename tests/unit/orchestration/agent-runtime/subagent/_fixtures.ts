@@ -422,6 +422,7 @@ function memoryConversation(): ConversationTreeWriterController {
     commitQueuedUserInput: async () => "committed",
     acceptRetainedOperation: async () => {},
     holdsForQuestion: () => false,
+    newestSincePersonMessage: () => undefined,
     awaitsAnswer: async () => false,
     readHeldMessages: async () => [],
     releaseHeldInput: async () => {},

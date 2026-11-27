@@ -3,6 +3,7 @@
 import { StyledText, fg as stFg, type MouseEvent, type RGBA, type TextRenderable } from "@opentui/core"
 import { createEffect, createMemo, type Accessor } from "solid-js"
 import { useSpinnerFrame } from "../activity/use-spinner-frame.js"
+import { displayWidth } from "../../terminal/text.js"
 
 const BAR = "─"
 
@@ -25,6 +26,9 @@ export interface CellColumnState {
   rightBreak: boolean
   // Col-0 gutter for tab cells; undefined for non-tab cells (brand, gaps, arrows).
   gutter?: Gutter
+  // A mark in the last text column, in its own colour, beside the gutter
+  // rather than in place of it. The caller leaves that column free.
+  badge?: { char: string; fg: RGBA }
   onClick?: () => void
   onMouseDown?: (event: MouseEvent) => void
 }
@@ -50,13 +54,17 @@ export function CellColumn(props: CellColumnProps) {
   const displayText = () => {
     const cell = props.cell()
     const inner = textWidth()
-    const pad = Math.max(0, inner - cell.text.length)
+    const pad = Math.max(0, inner - displayWidth(cell.text))
     const leftPad = pad >> 1
     const glyph = cell.gutter?.kind === "spinner" ? spinner() : cell.gutter?.char
     const left = glyph ? " ".repeat(Math.max(0, leftPad - 2)) + glyph + " " : " ".repeat(leftPad)
-    return left + cell.text + " ".repeat(pad - leftPad)
+    return left + cell.text + " ".repeat(Math.max(0, pad - leftPad - (cell.badge ? 1 : 0)))
   }
-  const textContent = createMemo(() => new StyledText([stFg(effectiveTextFg())(displayText())]))
+  const textContent = createMemo(() => {
+    const badge = props.cell().badge
+    const text = stFg(effectiveTextFg())(displayText())
+    return new StyledText(badge ? [text, stFg(badge.fg)(badge.char)] : [text])
+  })
   const barText = () => {
     const cell = props.cell()
     const w = cell.width

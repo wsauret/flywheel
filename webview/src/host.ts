@@ -93,6 +93,14 @@ export interface PushHostCapability {
   readonly onChange?: (listener: () => void) => () => void
 }
 
+/** Whether the person is at this client now, as a host that knows better
+ *  than the document tells it. `onChange` calls its listener after each
+ *  change and returns the unsubscribe. */
+export interface HostAttention {
+  present(): boolean
+  onChange(listener: () => void): () => void
+}
+
 /** What this host can do for the client. Every entry is optional, and the
  *  client degrades by absence: a path is a link when the host can open files
  *  and plain text when it cannot. */
@@ -133,6 +141,10 @@ export interface HostCapabilities {
    *  whose frame goes away with the page, sets it. Absent, the client stays
    *  mounted through a pagehide and only saves the place. */
   readonly releaseOnPageHide?: true
+  /** Whether the person is at the client, from a host whose page cannot
+   *  tell: the editor knows window focus and view visibility, and its
+   *  webview knows neither. Absent, the client reads the document. */
+  readonly attention?: HostAttention
 }
 
 export interface ClientHost {

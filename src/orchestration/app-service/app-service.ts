@@ -6,6 +6,7 @@ import type { RuntimeConfigProjection } from "./projections/runtime-config-proje
 import type { ProviderModelPreferenceService } from "./auth/models/provider-model-preference-service.js"
 import { readAppVersion } from "../../infra/update/distribution/app-version.js"
 import { runningDisplayBuildId } from "../../infra/update/distribution/running-build.js"
+import { isUnreadChatsMutation } from "../../protocol/session/unread-protocol-types.js"
 import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/runtime/app-service-types.js"
 import { mergeCatalogRow } from "../../protocol/client/session/known-totals.js"
 import { commandCatalogCursor } from "../../protocol/commands/command-catalog-protocol-types.js"
@@ -61,6 +62,7 @@ const ACCOUNT_SESSION_DETAIL_ONLY = "Session detail is held through the account 
 const ACCOUNT_OUTPUT_WATCH_ONLY = "Output watches are stated through the account service, never to a project executor"
 /** A restart moves the account service, so only that service answers it. */
 const ACCOUNT_RESTART_ONLY = "A restart is answered by the account service, never by a project executor"
+const ACCOUNT_UNREAD_ONLY = "Read state is held through the account service, never through a project executor"
 
 const log = Log.create({ service: "app-service" })
 
@@ -263,6 +265,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       })
       case "questionSnapshot": return sessionViews(request.sessionIds, "question", (sessionId) => questionProjection.snapshot(sessionId))
       case "waitingSessionsSnapshot": throw new Error("The sessions that wait on a question are held through the account service, never through a project executor")
+      case "unreadChatsSnapshot": throw new Error(ACCOUNT_UNREAD_ONLY)
       case "roleSnapshot": return sessionViews(request.sessionIds, "roles", (sessionId) => deps.roleProjection.snapshot(sessionId))
       case "authStatusSnapshot": {
         const snapshotPosition = bus.snapshotPosition({ kind: "cursor", cursor: authStatusCursor(request.scope) })
@@ -399,6 +402,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     if (mutation.type === "session_detail.release") throw new Error(ACCOUNT_SESSION_DETAIL_ONLY)
     if (mutation.type === "output.watch") throw new Error(ACCOUNT_OUTPUT_WATCH_ONLY)
     if (mutation.type === "service.restart") throw new Error(ACCOUNT_RESTART_ONLY)
+    if (isUnreadChatsMutation(mutation)) throw new Error(ACCOUNT_UNREAD_ONLY)
     // The account sends it once no client follows the session's index.
     if (mutation.type === "background.release") {
       deps.backgroundIndex.release(mutation.sessionId)

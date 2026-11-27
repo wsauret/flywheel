@@ -4,12 +4,14 @@ import type { ScrollBoxRenderable } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { BOLD } from "@tui/terminal/text-attributes.js"
+import { displayWidth } from "@tui/terminal/text.js"
 import { createMemo, createSignal, Show, type JSX } from "solid-js"
 import { useListSelectionReveal } from "../../components/modal/scroll/use-list-selection-reveal.js"
 import { Key } from "@solid-primitives/keyed"
 import { isWorkingStatus, type StatusView } from "../../../protocol/session/status-protocol-types.js"
 import { SessionPickerRow } from "./session-picker-row.js"
 import type { PickerRow, SessionPickerResult } from "./picker-types.js"
+import type { ChatMark } from "../../components/notices/chat-marks.js"
 import { pickerRowLines } from "./picker-helpers.js"
 import { ModalFooter } from "../../components/modal/modal-footer.js"
 import { SESSION_CONTROL_COPY } from "../../components/modal/modal-copy.js"
@@ -20,6 +22,7 @@ import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/runtime/app-service-typ
 interface SessionPickerAction {
   key: string
   label: string
+  essential?: true
 }
 
 interface SessionPickerListProps {
@@ -33,7 +36,7 @@ interface SessionPickerListProps {
   rowWidth: number
   foregroundId?: string
   statusView: (sessionId: string) => StatusView | undefined
-  waitingSessions: ReadonlySet<string>
+  chatMark: (sessionId: string) => ChatMark | undefined
   now: number
   confirmDeleteSessionId?: string
   filterQuery: string
@@ -90,6 +93,10 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
     layout: () => [props.result.rows, viewportHeight()],
     // One key per line, so the reader's anchor survives rows of more than one line.
     fixedKeys: () => props.result.rows.flatMap((row) => Array.from({ length: pickerRowLines(row) }, (_, line) => line === 0 ? pickerIdentity(row) : `${pickerIdentity(row)}:${line}`)),
+    selectedKey: () => {
+      const row = props.result.rows[props.cursor]
+      return row === undefined ? undefined : pickerIdentity(row)
+    },
     elements: () => [],
     reveal: syncCursorScroll,
   })
@@ -154,7 +161,7 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
                 rowWidth={props.rowWidth}
                 foregroundId={props.foregroundId}
                 statusView={props.statusView}
-                waitingSessions={props.waitingSessions}
+                chatMark={props.chatMark}
                 now={props.now}
                 blinkOn={blinkOn()}
                 timeAgoWidth={props.result.timeAgoWidth}
@@ -172,7 +179,7 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
           </text>
         </box>
       </Show>
-      <box paddingTop={1}><ModalFooter rows={[props.actions.length > 0 ? props.actions.map((action) => `${action.key} ${action.label}`).join(" · ") : footerHint()]} /></box>
+      <box paddingTop={1}><ModalFooter rows={[props.actions.length > 0 ? actionHints(props.actions, props.rowWidth) : footerHint()]} /></box>
     </>
   )
 }
@@ -185,7 +192,7 @@ function PickerListRow(props: {
   rowWidth: number
   foregroundId?: string
   statusView: (sessionId: string) => StatusView | undefined
-  waitingSessions: ReadonlySet<string>
+  chatMark: (sessionId: string) => ChatMark | undefined
   now: number
   blinkOn: boolean
   timeAgoWidth: number
@@ -202,9 +209,9 @@ function PickerListRow(props: {
           const current = row()
           return current.kind === "corrupt" ? false : isWorkingStatus(props.statusView(current.session.id))
         }
-        const waiting = () => {
+        const mark = () => {
           const current = row()
-          return current.kind !== "corrupt" && props.waitingSessions.has(current.session.id)
+          return current.kind === "corrupt" ? undefined : props.chatMark(current.session.id)
         }
         return (
           <SessionPickerRow
@@ -215,7 +222,7 @@ function PickerListRow(props: {
             selected={props.cursor === props.rowIndex}
             foregroundId={props.foregroundId}
             isWorking={working()}
-            isWaiting={waiting()}
+            mark={mark()}
             blinkOn={props.blinkOn}
             now={props.now}
             timeAgoWidth={props.timeAgoWidth}
@@ -238,6 +245,22 @@ function HeaderRow(props: { label: string; theme: TuiTheme }): JSX.Element {
   )
 }
 
+
+const HINT_SEPARATOR = " · "
+
+/** The row's action hints that fit `width` columns, each whole, in the
+ *  order the row gives them. When not all fit, the footer drops the last
+ *  hint that is not essential first, so the control that the row's state
+ *  asks for stays the longest. */
+function actionHints(actions: readonly SessionPickerAction[], width: number): string {
+  const text = (shown: readonly SessionPickerAction[]) => shown.map((action) => `${action.key} ${action.label}`).join(HINT_SEPARATOR)
+  const shown = [...actions]
+  while (shown.length > 1 && displayWidth(text(shown)) > width) {
+    const optional = shown.findLastIndex((action) => action.essential !== true)
+    shown.splice(optional === -1 ? shown.length - 1 : optional, 1)
+  }
+  return text(shown)
+}
 
 function selectableRowCount(rows: readonly PickerRow[]): number {
   return rows.filter((row) => row.kind !== "header" && row.kind !== "found").length

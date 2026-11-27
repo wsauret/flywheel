@@ -169,7 +169,7 @@ describe("active session delete fallback", () => {
     const deleteActiveSession = createActiveSessionDelete({
       appService: { dispatch: runtimeDispatch({ "session.delete": dispatch }) },
       signals: { foregroundRevision: () => state.foregroundRevision },
-      tabs: () => state.tabs.map((id) => ({ kind: "session" as const, id, title: id, isForeground: id === state.foregroundId, isBusy: false, isBlocked: false })),
+      tabs: () => state.tabs.map((id) => ({ kind: "session" as const, id, title: id, isForeground: id === state.foregroundId, isBusy: false })),
       closeSessionTab: (id) => { state.tabs = state.tabs.filter((tab) => tab !== id) },
       switchForeground: async (id) => {
         switched.push(id)
@@ -224,7 +224,7 @@ describe("active session delete fallback", () => {
     const deleteActiveSession = createActiveSessionDelete({
       appService: { dispatch: runtimeDispatch({ "session.delete": async () => ({ ok: true }) }) },
       signals: { foregroundRevision: () => 0 },
-      tabs: () => tabs.map((id) => ({ kind: "session" as const, id, title: id, isForeground: id === "a", isBusy: false, isBlocked: false })),
+      tabs: () => tabs.map((id) => ({ kind: "session" as const, id, title: id, isForeground: id === "a", isBusy: false })),
       closeSessionTab: () => {},
       switchForeground: async (id) => { switched.push(id) },
       startChat: async () => ({ kind: "foregrounded", sessionId: "fresh" }),

@@ -6,6 +6,7 @@ import { createCommandPanel } from "../composer/menus/command-panel.js"
 import { createElement, insert, nodes, textContent, type FixtureEvent } from "../../test-support/render-ownership-host-fixture.js"
 import { useSessionActions } from "./session-actions.js"
 import { SessionList } from "./session-list.js"
+import { selectNeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
 
 const session: SessionSummary = {
   id: "session-full-id",
@@ -47,6 +48,7 @@ export function mountSessionCopyActions(currentSessionId: string | null = sessio
     insert(root, createComponent(SessionList, {
       sessions: [session],
       errors: [],
+      needsYou: selectNeedsYou({ waiting: undefined, unread: undefined, listed: [] }),
       selected: session.id,
       actions,
     }))

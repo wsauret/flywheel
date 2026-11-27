@@ -11,7 +11,7 @@ import { UNKNOWN_COMMAND_NOTICE } from "../../../../src/protocol/client/commands
 import { isGlobalRuntimeInvalidation } from "../../../../src/protocol/rpc/runtime-invalidation.js"
 import { createCommandRoster } from "../commands/command-choices.js"
 import { readWorkspaceSettings, type PanelSettings, type WorkspaceSettings } from "../session-settings.js"
-import { browserDesktopNotifier, type DesktopNotifier } from "../desktop-notifier.js"
+import { browserDesktopNotifier, type DesktopNotifier } from "../notifications/desktop-notifier.js"
 import { createSessionCatalog } from "./workspace/session-catalog.js"
 import { createWorkspaceReader } from "./workspace/session-workspace.js"
 import { createHeldSessionDetails } from "../../../../src/protocol/client/session/held-session-details.js"
@@ -548,6 +548,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     refreshSettings,
     get pendingQuestions() { return readings.pendingQuestions },
     get waitingSessions() { return statusViews.waitingSessions },
+    get unreadChats() { return statusViews.unreadChats },
     get backgroundIndex() { return visible()?.background },
     row: rowOf,
     get modules() { return modules.views(visible()?.modules) },

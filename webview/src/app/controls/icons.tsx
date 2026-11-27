@@ -46,6 +46,7 @@ export const ICONS = {
   list: "M3 4.5h10M3 8h10M3 11.5h10",
   terminal: "M3 4l4 4-4 4M9 12h4",
   check: "M3.5 8.5l2.8 2.8L12.5 5",
+  unread: "M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
   arrowUpRight: "M5 11l6-6M6 5h5v5",
   arrowUp: "M8 12.5v-9M4.5 7L8 3.5 11.5 7",
   arrowDown: "M8 3.5v9M4.5 9L8 12.5 11.5 9",

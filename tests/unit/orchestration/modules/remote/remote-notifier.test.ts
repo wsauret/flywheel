@@ -1,15 +1,18 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { Redacted } from "effect"
 
 import type { WebPushMessage, WebPushOutcome } from "../../../../../src/infra/substrate/output/notify/web-push.js"
 import type { PushTarget } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { createRemoteNotifier, type RemoteNotifierOptions } from "../../../../../src/orchestration/modules/remote/remote-notifier.js"
+import { Log } from "../../../../../src/infra/diagnostics/log.js"
 import type { FrontendEvent, SessionCatalogRow } from "../../../../../src/protocol/runtime/app-service-types.js"
 import type { StatusView } from "../../../../../src/protocol/session/status-protocol-types.js"
+import { unreadChatsCursor, type StoppedChat } from "../../../../../src/protocol/session/unread-protocol-types.js"
 
 /** The notifier reads the same patches every client reads. These tests feed it
- *  the patch shapes the runtime publishes and check its one rule: a phone hears
- *  only about a chat that waits on the person's answer. */
+ *  the patch shapes the runtime publishes and check its rule: a phone hears
+ *  only about a chat that waits on the person's answer or that stopped for
+ *  the person unread. */
 
 const status = (activity: StatusView["activity"]): StatusView => ({
   activity,
@@ -43,7 +46,7 @@ const target: PushTarget = {
 }
 
 describe("remote notifier", () => {
-  function harness(overrides: Pick<RemoteNotifierOptions, "send"> & Partial<Pick<RemoteNotifierOptions, "forgetSubscription">> = {}) {
+  function harness(overrides: Pick<RemoteNotifierOptions, "send"> & Partial<Pick<RemoteNotifierOptions, "forgetSubscription" | "readUnreadChats" | "coalesceMs">> = {}) {
     const listeners = new Set<(event: FrontendEvent) => void>()
     const sent: WebPushMessage[] = []
     const forgotten: string[] = []
@@ -51,16 +54,24 @@ describe("remote notifier", () => {
     const notifier = createRemoteNotifier({
       addListener: (listener) => { listeners.add(listener) },
       removeListener: (listener) => { listeners.delete(listener) },
+      readUnreadChats: overrides.readUnreadChats ?? (async () => ({ stopped: [], unread: [], snapshotPosition: 0 })),
       targets: () => [target],
       forgetSubscription: async (deviceId, subscription) => { forgotten.push(deviceId); expect(subscription).toEqual(target.subscription); await overrides.forgetSubscription?.(deviceId, subscription) },
       appOrigin: "https://remote.example.test",
       address: async () => ({ runtimeId: "machine", placementId: "project", machine: "Laptop", project: "Flywheel" }),
       subject: "https://flywl.sh",
       send: async (input) => { sent.push(input.message); return overrides.send ? overrides.send(input) : outcome },
-      coalesceMs: 0,
+      coalesceMs: overrides.coalesceMs ?? 0,
     })
     const emit = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
-    return { notifier, sent, forgotten, emit, setOutcome: (next: WebPushOutcome) => { outcome = next } }
+    let unreadPosition = 0
+    /** Publishes the project's set of stopped unread chats, as the account
+     *  service does, announcing the stops in `newStops`. */
+    const publishStopped = (stopped: readonly StoppedChat[], newStops: readonly StoppedChat[] = []) => {
+      unreadPosition += 1
+      emit({ type: "patch", patch: { cursor: unreadChatsCursor(), position: unreadPosition, prevPosition: unreadPosition - 1, payload: { kind: "unreadChats.changed", stopped, unread: [], newStops } } })
+    }
+    return { notifier, sent, forgotten, emit, publishStopped, setOutcome: (next: WebPushOutcome) => { outcome = next } }
   }
   const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
 
@@ -71,6 +82,59 @@ describe("remote notifier", () => {
     await settle()
     expect(h.sent).toEqual([{ title: "Flywheel has a question · Laptop · Flywheel", body: "Fix the flaky test", url: "https://remote.example.test/#runtime=machine&placement=project&session=s1&attention=question", tag: "s1:q1" }])
     await h.notifier.dispose()
+  })
+
+  const stop = (stopKey: string, ending: StoppedChat["ending"] = { kind: "completed" }): StoppedChat => ({ sessionId: "s1", ending, stoppedAt: 0, stopKey })
+
+  test("pushes once for each stop that the set announces, with the words for finished or for an error and a link that opens the chat", async () => {
+    let reads = 0
+    const h = harness({ readUnreadChats: async () => { reads += 1; return { stopped: [stop("earlier")], unread: [], snapshotPosition: 0 } } })
+    await settle()
+    // The read starts the set; what it holds at start sends none.
+    expect(reads).toBe(1)
+    h.emit(patch("s1", { kind: "session.added", row: row("Fix the flaky test") }, "session"))
+    h.publishStopped([stop("answer-1")], [stop("answer-1")])
+    // A later view that lists the same stop, as a mark unread or a stop recorded again does, announces none.
+    h.publishStopped([{ ...stop("answer-1"), stoppedAt: 5 }])
+    await settle()
+    h.publishStopped([])
+    h.publishStopped([stop("answer-1")])
+    const failed = stop("stop:9", { kind: "failed", failure: "api_error" })
+    h.publishStopped([failed], [failed])
+    await settle()
+    expect(h.sent).toEqual([
+      { title: "Flywheel · Laptop · Flywheel", body: "Fix the flaky test finished", url: "https://remote.example.test/#runtime=machine&placement=project&session=s1", tag: "s1:stop:answer-1" },
+      { title: "Flywheel · Laptop · Flywheel", body: "Fix the flaky test stopped on an error", url: "https://remote.example.test/#runtime=machine&placement=project&session=s1", tag: "s1:stop:stop:9" },
+    ])
+    await h.notifier.dispose()
+  })
+
+  test("a stop read, marked unread again, or replaced by a new turn inside the coalescing delay sends none, and each decision is recorded once", async () => {
+    const info = spyOn(Log.create({ service: "remote-notifier" }), "info")
+    try {
+      const h = harness({ coalesceMs: 5 })
+      await settle()
+      h.publishStopped([stop("read")], [stop("read")])
+      // Read, then marked unread: the same stop returns inside the delay.
+      h.publishStopped([])
+      h.publishStopped([stop("read")])
+      await settle()
+      h.publishStopped([stop("restarted")], [stop("restarted")])
+      // The new turn takes the chat out of the set; its unread messages leave it in `unread` only.
+      h.publishStopped([])
+      await settle()
+      expect(h.sent).toEqual([])
+      h.setOutcome({ kind: "failed", status: 500, detail: "unavailable" })
+      h.publishStopped([stop("sent")], [stop("sent")])
+      await settle()
+      expect(h.sent.map((message) => message.tag)).toEqual(["s1:stop:sent"])
+      expect(info.mock.calls.filter(([message]) => typeof message === "string" && message.startsWith("push "))).toEqual([
+        ["push sent", { sessionId: "s1", kind: "stop", tag: "s1:stop:sent", delivered: 0, notDelivered: 1 }],
+      ])
+      await h.notifier.dispose()
+    } finally {
+      info.mockRestore()
+    }
   })
 
   test("stays silent when a turn ends or a workflow pauses or fails", async () => {

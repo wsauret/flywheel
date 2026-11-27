@@ -401,7 +401,7 @@ export function createModalModals(deps: ModalsDeps) {
           renamePresentation={sessionModal.renamePresentation}
           foregroundId={signals.foregroundId()}
           statusView={signals.statusView}
-          waitingSessions={signals.waitingSessions()}
+          chatMark={signals.chatMark}
           now={sessionModal.pickerNow()}
           confirmDeleteSessionId={sessionModal.modalConfirmDelete()}
           showThinking={signals.display.showThinking}

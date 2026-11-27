@@ -1,4 +1,4 @@
-import type { ChildSessionRow, SessionRow, SessionDiffStats, WorkflowDefinitionDrift } from "../../../protocol/runtime/app-service-types.js"
+import type { ChildSessionRow, SessionCatalogRow, SessionRow, SessionDiffStats, WorkflowDefinitionDrift } from "../../../protocol/runtime/app-service-types.js"
 import type { DurableSessionCatalogRow, SessionLaunchedFrom } from "../metadata/catalog/session-catalog-types.js"
 import type { ReplayedSession } from "../metadata/schemas.js"
 import { subagentRunOutcome, subagentSessionActions, subagentStoppedBy, type ChildSessionRunEvidence } from "./child-session-run-evidence.js"
@@ -158,6 +158,20 @@ export function replaceCatalogTotals<Row extends SessionRow>(
 ): Row {
   if (summary.totalsLoading) return loadingCatalogRow(row)
   return readyCatalogRow(row, summary.row)
+}
+
+/** The account's row of a session after the executor answers with its own:
+ *  the executor's row carries the live presentation (notices, activity, the
+ *  actions its runner admits, and the totals), and `prior` keeps the durable
+ *  metadata. */
+export function mergeExecutionRow(prior: SessionCatalogRow, execution: SessionCatalogRow): SessionCatalogRow {
+  const presentation = {
+    ...prior,
+    notices: execution.notices,
+    ...(execution.activity === undefined ? {} : { activity: execution.activity }),
+    ...(execution.admittedActions === undefined ? {} : { admittedActions: execution.admittedActions }),
+  }
+  return replaceCatalogTotals(presentation, execution.totalsLoading ? { totalsLoading: true } : { totalsLoading: false, row: execution })
 }
 
 /** Completes one catalog row with an exact aggregate replacement. */

@@ -12,7 +12,6 @@ function tab(id: string, overrides: Partial<TabInfo> = {}): TabInfo {
     title: "Chat",
     isForeground: false,
     isBusy: false,
-    isBlocked: false,
     ...overrides,
   }
 }

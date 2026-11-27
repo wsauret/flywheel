@@ -1,6 +1,7 @@
 /** Tests for tab hooks: tab rows come from this shell's open-session ids,
- * while busy comes from the status cache and blocked comes from the project's
- * waiting set -- the sole isBlocked authority, never the transcript. */
+ * while busy comes from the status cache and the mark comes from the
+ * project's waiting and unread sets -- the sole mark authority, never the
+ * transcript. */
 
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
@@ -10,6 +11,7 @@ import { createTabState } from "../../../../src/tui/hooks/create-tabs.js"
 import type { OutputView } from "../../../../src/protocol/transcript/output-protocol-types.js"
 import type { ForegroundTarget } from "../../../../src/tui/hooks/state/shell-state.js"
 import type { StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
+import type { ChatMark } from "../../../../src/tui/components/notices/chat-marks.js"
 
 type Status = Pick<StatusView, "activity" | "activeSubagentCount" | "waitingOnBackgroundWork">
 interface StatusesById { [id: string]: Status }
@@ -31,13 +33,13 @@ function catalogRow(overrides: Partial<Omit<LoadingCatalogRow, "totalsLoading">>
 }
 
 function makeSignals(
-  waitingSessions: () => ReadonlySet<string> = () => new Set(),
+  chatMark: (id: string) => ChatMark | undefined = () => undefined,
   statusView: (id: string) => Status | undefined = () => undefined,
   outputView: (id: string) => OutputView | undefined = () => undefined,
 ) {
   const [foregroundId, setForegroundId] = createSignal<string | undefined>(undefined)
   const [sessionShortTitle, setSessionShortTitle] = createSignal("")
-  return { foregroundId, setForegroundId, foregroundTarget: () => { const sessionId = foregroundId(); return sessionId ? { kind: "session" as const, sessionId } : undefined }, sessionShortTitle, setSessionShortTitle, waitingSessions, statusView: (id: string): StatusView | undefined => {
+  return { foregroundId, setForegroundId, foregroundTarget: () => { const sessionId = foregroundId(); return sessionId ? { kind: "session" as const, sessionId } : undefined }, sessionShortTitle, setSessionShortTitle, chatMark, statusView: (id: string): StatusView | undefined => {
     const status = statusView(id)
     return status ? { activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [], ...status } : undefined
   }, outputView }
@@ -74,25 +76,26 @@ describe("createTabState", () => {
       dispose()
     })
   })
-  it("derives isBusy from status cache and isBlocked from the waiting set per session", () => {
+  it("derives isBusy from status cache and the mark from the project's sets per session, in tab order", () => {
     createRoot((dispose) => {
-      const [waiting, setWaiting] = createSignal<ReadonlySet<string>>(new Set(["b"]))
+      const [marks, setMarks] = createSignal<ReadonlyMap<string, ChatMark>>(new Map([["a", "unread"], ["b", "question"], ["c", "stopped"]]))
       const [statuses, setStatuses] = createStore<StatusesById>({})
       setStatuses("a", { activity: "generating", activeSubagentCount: 0, waitingOnBackgroundWork: false })
 
       const tabs = openTabs({
         sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "c" })],
         openSessionIds: ["a", "b", "c"],
-        signals: makeSignals(waiting, (id) => statuses[id]),
+        signals: makeSignals((id) => marks().get(id), (id) => statuses[id]),
       })
 
-      expect(tabs().map((t) => [t.id, t.isBusy, t.isBlocked])).toEqual([
-        ["a", true, false],
-        ["b", false, true],
-        ["c", false, false],
+      // A working chat with unread messages keeps its place and its busy state.
+      expect(tabs().map((t) => [t.id, t.isBusy, t.mark])).toEqual([
+        ["a", true, "unread"],
+        ["b", false, "question"],
+        ["c", false, "stopped"],
       ])
-      setWaiting(new Set<string>())
-      expect(tabs().find((t) => t.id === "b")?.isBlocked).toBe(false)
+      setMarks(new Map())
+      expect(tabs().map((t) => [t.id, t.mark])).toEqual([["a", undefined], ["b", undefined], ["c", undefined]])
       dispose()
     })
   })
@@ -103,12 +106,12 @@ describe("createTabState", () => {
         sessions: () => [catalogRow({ id: "a" })],
         openSessionIds: ["a"],
         signals: makeSignals(
-          () => new Set(["a"]),
+          () => "question",
           () => ({ activity: "awaiting_user", activeSubagentCount: 0, waitingOnBackgroundWork: false }),
         ),
       })
 
-      expect(tabs().find((t) => t.id === "a")).toMatchObject({ isBusy: false, isBlocked: true })
+      expect(tabs().find((t) => t.id === "a")).toMatchObject({ isBusy: false, mark: "question" })
       dispose()
     })
   })
@@ -121,7 +124,7 @@ describe("createTabState", () => {
         sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "c" })],
         openSessionIds: ["a", "b", "c"],
         signals: makeSignals(
-          () => new Set(),
+          () => undefined,
           (id) => {
             if (id === "a") return { activity: "idle", activeSubagentCount: 1, waitingOnBackgroundWork: false }
             if (id === "c") return { activity: "idle", activeSubagentCount: 0, waitingOnBackgroundWork: true }
@@ -132,7 +135,7 @@ describe("createTabState", () => {
 
       expect(tabs().find((t) => t.id === "a")?.isBusy).toBe(true)
       expect(tabs().find((t) => t.id === "c")?.isBusy).toBe(true)
-      expect(tabs().find((t) => t.id === "b")?.isBlocked).toBe(false)
+      expect(tabs().find((t) => t.id === "b")?.mark).toBeUndefined()
       dispose()
     })
   })
@@ -177,7 +180,6 @@ describe("createTabState", () => {
         title: "New Chat",
         isForeground: true,
         isBusy: false,
-        isBlocked: false,
       }])
       dispose()
     })

@@ -69,5 +69,7 @@ export function useSessionActions(): SessionListActions {
       if (confirmed) client.actions.removeSession(sessionId)
     },
     onRename: (sessionId) => promptSessionRename(client, sessionId),
+    onMarkRead: (sessionId) => client.actions.markRead(sessionId),
+    onMarkUnread: (sessionId) => client.actions.markUnread(sessionId),
   }
 }

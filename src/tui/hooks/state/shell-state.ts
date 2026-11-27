@@ -9,6 +9,7 @@ import type { OutputTranscriptCache, OutputTranscriptView } from "../../transcri
 import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { BudgetView } from "../../../protocol/session/budget-protocol-types.js"
 import { waitingSessionsCursor, type PendingQuestionView, type WaitingSessionsView } from "../../../protocol/session/question-protocol-types.js"
+import { unreadChatsCursor, type UnreadChatsView } from "../../../protocol/session/unread-protocol-types.js"
 import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import { createToastPresenter } from "../../context/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../../protocol/runtime/app-service-types.js"
@@ -26,13 +27,15 @@ import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../pr
 import type { SessionLifecycleState } from "../../../orchestration/session/metadata/types.js"
 import type { RuntimeDomainIntakeBindings } from "../../../protocol/rpc/runtime-delivery-policy.js"
 import { createHeldView } from "../../../protocol/client/runtime/held-view.js"
+import { selectNeedsYou, type NeedsYou } from "../../../protocol/client/session/needs-you.js"
+import { chatMarks, type ChatMark } from "../../components/notices/chat-marks.js"
 import { childCardStatus, type ChildCardStatus } from "../../../protocol/client/work/session-controls.js"
 import { runtimeHealth as deriveRuntimeHealth } from "../../../protocol/client/runtime/runtime-health.js"
 import { createOutputTranscriptCache } from "../../transcript/transcript-store/create-output-transcript-cache.js"
 import { createBudgetCache } from "./sessions/create-budget-cache.js"
 import { createModuleDomainIntakes, ensureModuleSessionDomains, type ModuleDomainIntakes } from "./domains/create-module-domain-intakes.js"
 import { createQuestionCache } from "./sessions/create-question-cache.js"
-import { useQuestionPages } from "./use-question-pages.js"
+import { useDesktopPages } from "./use-desktop-pages.js"
 import { createUpdateStatusCache } from "./runtime/create-update-status-cache.js"
 import { createModuleCache } from "./domains/create-module-cache.js"
 import { createCommandCatalog } from "./create-command-catalog.js"
@@ -115,10 +118,13 @@ export interface ShellSignals {
   /** Every module domain in the protocol registry, by domain name. A module's
    *  terminal home reads its own through a `DomainReader`; the shell names none. */
   modules: ModuleDomainIntakes
-  /** Every session of the project that waits on a question, closed ones
-   *  included: the one source of every waiting mark (ARCH-PROTOCOL-068). A
-   *  list joins it with the rows it shows. */
-  waitingSessions: Accessor<ReadonlySet<string>>
+  /** The listed chats that need the person, questions first and then the
+   *  chats that stopped unread, and the listed chats with unread messages:
+   *  the one source of every such row, mark, and count (ARCH-PROTOCOL-068,
+   *  ARCH-PROTOCOL-072). Closed chats are included. */
+  needsYou: Accessor<NeedsYou>
+  /** The mark that a chat's tab and row carry, from `needsYou`. */
+  chatMark: (sessionId: string) => ChatMark | undefined
   /** Session role assignments from the ordered roles cache. */
   roleView: (sessionId: string) => RoleAssignmentView | undefined
   /** Starts following ordered role cursors in one batched snapshot. */
@@ -295,8 +301,10 @@ function createGitCache(deps: { appService: Pick<AttachedRuntimeClient, "query" 
   return { view }
 }
 
+/** The project's sessions that wait on a question, held live. Undefined
+ *  until the first read answers. */
 function createWaitingSessionsCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
-  const [sessionIds, setSessionIds] = createSignal<ReadonlySet<string>>(new Set())
+  const [view, setView] = createSignal<WaitingSessionsView | undefined>()
   const held = createHeldView<WaitingSessionsView>({
     client: deps.appService,
     cursor: waitingSessionsCursor(),
@@ -305,11 +313,31 @@ function createWaitingSessionsCache(deps: { appService: Pick<AttachedRuntimeClie
       return { view: snapshot, position: snapshot.snapshotPosition }
     },
     adopt: (payload) => (payload.kind === "waitingSessions.changed" ? payload : undefined),
-    changed: (view) => setSessionIds(new Set(view.sessions.map((waiting) => waiting.sessionId))),
+    changed: (next) => setView(next),
     label: "waiting sessions",
   })
   onCleanup(held.dispose)
-  return { sessionIds }
+  return { view }
+}
+
+/** The project's stopped unread chats and chats with unread messages, held
+ *  live. Undefined until the first read answers, and for as long as an older
+ *  runtime refuses the read. */
+function createUnreadChatsCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
+  const [view, setView] = createSignal<UnreadChatsView | undefined>()
+  const held = createHeldView<UnreadChatsView>({
+    client: deps.appService,
+    cursor: unreadChatsCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "unreadChatsSnapshot" })
+      return { view: snapshot, position: snapshot.snapshotPosition }
+    },
+    adopt: (payload) => (payload.kind === "unreadChats.changed" ? payload : undefined),
+    changed: (next) => setView(next),
+    label: "unread chats",
+  })
+  onCleanup(held.dispose)
+  return { view }
 }
 
 function createCommandUsageCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
@@ -432,6 +460,7 @@ export function createShellState(deps: {
     executor: sessionCatalog,
     service: sessionCatalog,
     waitingSessions: createWaitingSessionsCache({ appService: deps.appService }),
+    unreadChats: createUnreadChatsCache({ appService: deps.appService }),
     // Only a headless client waits on a chat's settlement; the terminal shows the work itself.
     settlement: "query-only",
     // Every module domain in the protocol registry, bound generically: a new
@@ -446,10 +475,19 @@ export function createShellState(deps: {
   })
   // The one rule for which sessions the Sessions list shows. The status line
   // counts these rows, so the count never includes a row the list hides.
-  const listedSessions = createMemo(() => {
+  // Names the foreground only while it is an empty new chat, so a new
+  // transcript block reruns the list only when it ends that state.
+  const hiddenForeground = createMemo(() => {
     const foreground = foregroundId()
-    return sessionCatalog.rows().filter((row) => row.id !== foreground || !isEmptyNewChat(row, transcriptCache.view(row.id)))
+    return foreground !== undefined && isEmptyNewChat(sessionCatalog.row(foreground), transcriptCache.view(foreground)) ? foreground : undefined
   })
+  const listedSessions = createMemo(() => {
+    const hidden = hiddenForeground()
+    const rows = sessionCatalog.rows()
+    return hidden === undefined ? rows : rows.filter((row) => row.id !== hidden)
+  })
+  const needsYou = createMemo(() => selectNeedsYou({ waiting: intake.waitingSessions.view(), unread: intake.unreadChats.view(), listed: listedSessions() }))
+  const marks = createMemo(() => chatMarks(needsYou()))
   const runtimeHealth = createMemo(() => deriveRuntimeHealth(transportHealth(), sessionCatalog.service(), sessionCatalog.executor()))
 
   let transcriptFailureForeground = ""
@@ -508,7 +546,7 @@ export function createShellState(deps: {
   // client's `desktopNotificationsOn` does.
   const desktopPaging = createMemo(() => (deps.runtimeConfig.view()?.values.notificationsDesktop ?? false)
     && (moduleCache.view()?.modules.some((module) => module.effective && module.configSettings?.some((setting) => setting.control === "config-boolean" && !("section" in setting) && setting.setting === "notificationsDesktop")) ?? false))
-  useQuestionPages({ client: deps.appService, row: sessionCatalog.row, enabled: desktopPaging })
+  useDesktopPages({ client: deps.appService, row: sessionCatalog.row, enabled: desktopPaging })
 
   const loadFailure = () => {
     return sessionLoadFailure({
@@ -617,7 +655,8 @@ export function createShellState(deps: {
     statusView: statusCache.view,
     budgetView: budgetCache.view,
     modules: moduleIntakes,
-    waitingSessions: intake.waitingSessions.sessionIds,
+    needsYou,
+    chatMark: (sessionId: string) => marks().get(sessionId),
     roleView: roleCache.view,
     ensureRoleViews: roleCache.ensureMany,
     ensureChildViews: (sessionIds: readonly string[]) => {

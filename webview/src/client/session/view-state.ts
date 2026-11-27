@@ -1,5 +1,7 @@
 import type { CommandUse } from "../../../../src/protocol/commands/command-usage-protocol-types.js"
-import type { PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
+import type { PendingQuestionView, WaitingSessionsView } from "../../../../src/protocol/session/question-protocol-types.js"
+import type { UnreadChatsView } from "../../../../src/protocol/session/unread-protocol-types.js"
+import { selectNeedsYou, type NeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { effectiveSessionShortTitle, type FrontendActivity, type FrontendOutputBlock, type FrontendToolEntry, type FrontendToolStreamingText, type RuntimeHealth, type SessionCatalogError, type SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { TranscriptStore } from "../../../../src/protocol/client/chat/transcript/transcript-store.js"
@@ -17,7 +19,7 @@ import { isWorkingStatus, type StatusView } from "../../../../src/protocol/sessi
 import type { SessionChangesSnapshot } from "../../../../src/protocol/client/session/changes/session-changes.js"
 import type { BackgroundIndexState } from "../../../../src/protocol/client/work/background-index.js"
 import type { PanelSettings } from "../session-settings.js"
-import type { DesktopPermission } from "../desktop-notifier.js"
+import type { DesktopPermission } from "../notifications/desktop-notifier.js"
 import type { BudgetSummary } from "../../../../src/protocol/client/host/host-contract.js"
 import type { ProviderSummary } from "../../../../src/protocol/client/providers/provider-summary.js"
 import type { ModuleDomainViews } from "../domains/module-domain-views.js"
@@ -75,6 +77,10 @@ export interface ClientViewState {
   readonly executionCwd?: string
   /** The catalog: every session the lists draw. */
   readonly sessions: readonly SessionSummary[]
+  /** The listed chats that need the person, in the order the list shows
+   *  them, and the listed chats with unread messages (PI-INTERACTION-057,
+   *  PI-INTERACTION-188). The object keeps its identity while its inputs do. */
+  readonly needsYou: NeedsYou
   /** The newest known open time among waiting questions, absent when none are known. */
   readonly newestQuestionOpenedAt: number | undefined
   /** The question the open session waits on, from the durable question
@@ -243,10 +249,41 @@ export function offeredControls(state: Pick<ClientViewState, "interruptible" | "
   return offered.primary === "resume" && !state.windowCurrent ? { ...offered, primary: null } : offered
 }
 
+/** The waiting set's ids, kept while the set keeps its identity. */
+interface HeldWaitingIds {
+  readonly view: WaitingSessionsView | undefined
+  readonly ids: ReadonlySet<string>
+}
+
+/** The Needs you selection and the inputs it was selected from. */
+interface HeldNeedsYou {
+  readonly waiting: WaitingSessionsView | undefined
+  readonly unread: UnreadChatsView | undefined
+  readonly listed: readonly SessionSummary[]
+  readonly value: NeedsYou
+}
+
 export function createViewProjection(): (session: SessionState) => ClientViewState {
   const held = new Map<string, { readonly row: SessionRow; readonly reading: SessionReading; readonly summary: SessionSummary }>()
   let sessions: readonly SessionSummary[] = []
   let children: readonly SessionSummary[] = []
+  let waiting: HeldWaitingIds = { view: undefined, ids: new Set() }
+  let needsYou: HeldNeedsYou | undefined
+
+  function waitingIds(session: SessionState): ReadonlySet<string> {
+    if (waiting.view !== session.waitingSessions) waiting = { view: session.waitingSessions, ids: new Set(session.waitingSessions?.sessions.map((entry) => entry.sessionId)) }
+    return waiting.ids
+  }
+
+  // Selected again only when one of its inputs changed identity, so a frame
+  // per token neither walks the list nor hands the list a new value.
+  function needsYouOf(session: SessionState, listed: readonly SessionSummary[]): NeedsYou {
+    const kept = needsYou
+    if (kept !== undefined && kept.waiting === session.waitingSessions && kept.unread === session.unreadChats && kept.listed === listed) return kept.value
+    const value = selectNeedsYou({ waiting: session.waitingSessions, unread: session.unreadChats, listed })
+    needsYou = { waiting: session.waitingSessions, unread: session.unreadChats, listed, value }
+    return value
+  }
 
   function summarize(session: SessionState): SessionSummaryLists {
     const seen = new Set<string>()
@@ -265,7 +302,7 @@ export function createViewProjection(): (session: SessionState) => ClientViewSta
     const next = rows.map((row) => {
       seen.add(row.id)
       const reading: SessionReading = {
-        awaitingAnswer: session.waitingSessions.has(row.id),
+        awaitingAnswer: waitingIds(session).has(row.id),
         working: isWorkingStatus(session.statuses.get(row.id)),
       }
       const current = held.get(row.id)
@@ -284,7 +321,10 @@ export function createViewProjection(): (session: SessionState) => ClientViewSta
     return next
   }
 
-  return (session) => buildViewState(session, summarize(session))
+  return (session) => {
+    const lists = summarize(session)
+    return buildViewState(session, lists, needsYouOf(session, lists.sessions))
+  }
 }
 
 function outputPositionsOf(sessionId: string | undefined, transcript: TranscriptStore | undefined, status: StatusView | undefined): Pick<ClientViewState, "settledOutputPosition" | "appliedOutputPosition"> {
@@ -295,7 +335,7 @@ function outputPositionsOf(sessionId: string | undefined, transcript: Transcript
   }
 }
 
-function buildViewState(session: SessionState, lists: SessionSummaryLists): ClientViewState {
+function buildViewState(session: SessionState, lists: SessionSummaryLists, needsYou: NeedsYou): ClientViewState {
   const transcript = session.transcript
   const status = session.sessionId === undefined ? undefined : session.statuses.get(session.sessionId)
   // Starting means there is nothing to show yet, not that the socket is down
@@ -334,7 +374,8 @@ function buildViewState(session: SessionState, lists: SessionSummaryLists): Clie
     ...(session.rootSessionId === undefined ? {} : { rootSessionId: session.rootSessionId }),
     ...(session.executionCwd === undefined ? {} : { executionCwd: session.executionCwd }),
     sessions: lists.sessions,
-    newestQuestionOpenedAt: newestQuestionOpenedAt(session, lists.sessions, pendingQuestion),
+    needsYou,
+    newestQuestionOpenedAt: newestQuestionOpenedAt(needsYou, pendingQuestion),
     ...(pendingQuestion === undefined ? {} : { pendingQuestion }),
     ...(session.backgroundIndex === undefined ? {} : { backgroundIndex: session.backgroundIndex }),
     children: lists.children,
@@ -385,13 +426,11 @@ export function sessionLocationOf(state: Pick<ClientViewState, "executionCwd" | 
  *  a listed chat in the project's waiting set, closed chats included. A push
  *  offer compares it with when the person last dismissed the offer
  *  (PI-REMOTE-031). */
-function newestQuestionOpenedAt(session: SessionState, listed: readonly SessionSummary[], docked: PendingQuestionView | undefined): number | undefined {
-  let newest = docked?.timestamp
-  for (const row of listed) {
-    const openedAt = session.waitingSessions.get(row.id)
-    if (openedAt !== undefined && (newest === undefined || openedAt > newest)) newest = openedAt
-  }
-  return newest
+function newestQuestionOpenedAt(needsYou: NeedsYou, docked: PendingQuestionView | undefined): number | undefined {
+  // Question rows come first, newest first.
+  const listed = needsYou.rows[0]?.kind === "question" ? needsYou.rows[0].since : undefined
+  if (docked === undefined) return listed
+  return listed === undefined || docked.timestamp > listed ? docked.timestamp : listed
 }
 
 function waitingOnOf(status: StatusView | undefined, parentSessionId: string | undefined): Pick<ClientViewState, "waitingOn"> {

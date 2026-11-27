@@ -13,6 +13,7 @@ import type { BinaryModule, ModulePreset, RuntimeModuleSnapshotResult, Workflows
 import type { RuntimeStatusSnapshotResult } from "../session/status-protocol-types.js"
 import type { ProtocolModuleMutation, ProtocolModuleMutationResult, ProtocolModuleMutationType, ProtocolModuleQuery, ProtocolModuleQueryResult, ProtocolModuleQueryType } from "../modules.js"
 import type { AgentInputAnswer, RuntimeQuestionSnapshotResult, RuntimeWaitingSessionsSnapshotResult } from "../session/question-protocol-types.js"
+import type { RuntimeUnreadChatsSnapshotResult, UnreadChatsMutation } from "../session/unread-protocol-types.js"
 import type { RuntimeSessionDetailQuery, RuntimeSessionDetailResult, RuntimeSessionDetailSnapshotResult } from "../session/session-detail-protocol-types.js"
 import type { RuntimeRoleSnapshotResult } from "../auth/role-protocol-types.js"
 import type { HydratedOutputGroupChildrenBatch, HydratedOutputRange, HydratedOutputBlockBody, OutputGroupChildrenRequest, OutputRangeRequest, OutputBlockBodyRequest, OutputWindowRequest, OutputWindowSnapshot,
@@ -99,6 +100,7 @@ type RuntimeKernelQuery =
   | { readonly type: "budgetSnapshot"; readonly sessionIds: readonly string[] }
   | { readonly type: "questionSnapshot"; readonly sessionIds: readonly string[] }
   | { readonly type: "waitingSessionsSnapshot" }
+  | { readonly type: "unreadChatsSnapshot" }
   | { readonly type: "roleSnapshot"; readonly sessionIds: readonly string[] }
   | { readonly type: "authStatusSnapshot"; readonly scope: RuntimeAuthStatusScope }
   | { readonly type: "authProfileDeletionPreview"; readonly id: string }
@@ -146,6 +148,7 @@ export type RuntimeQueryResult<Q extends RuntimeQuery> =
               : Q extends { readonly type: "budgetSnapshot" } ? RuntimeBudgetSnapshotResult
                   : Q extends { readonly type: "questionSnapshot" } ? RuntimeQuestionSnapshotResult
                   : Q extends { readonly type: "waitingSessionsSnapshot" } ? RuntimeWaitingSessionsSnapshotResult
+                  : Q extends { readonly type: "unreadChatsSnapshot" } ? RuntimeUnreadChatsSnapshotResult
                   : Q extends { readonly type: "roleSnapshot" } ? RuntimeRoleSnapshotResult
                     : Q extends { readonly type: "authStatusSnapshot" } ? RuntimeAuthStatusSnapshotResult
                     : Q extends { readonly type: "authProfileDeletionPreview" } ? RuntimeAuthProfileDeletionPreview
@@ -390,6 +393,7 @@ export type FrontendMutation =
   | { type: "session.claim_composer_returns"; sessionId: string; submissionIds: readonly string[] }
   | SessionChangesUndo
   | SessionChangesSetViewed
+  | UnreadChatsMutation
   /** Opens a chat. A client that names the chat's `sessionId` can send the
    *  open again when its answer was lost: the runtime opens that chat once,
    *  and answers a later copy with the chat that exists. Only an open with

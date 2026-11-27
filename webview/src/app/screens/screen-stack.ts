@@ -183,11 +183,15 @@ export function createScreenStack(
     navigation.go(-from)
   }
 
+  // One batch, so nothing that follows the screen and the selection, such as
+  // presence, sees the chat screen with the chat that was left.
   function showChat(sessionId: string | undefined, link: SessionLink | undefined, write: () => void) {
-    write()
-    setCanForward(false)
-    setScreen("chat")
-    if (sessionId !== undefined) selection?.selectSession(sessionId, link)
+    batch(() => {
+      write()
+      setCanForward(false)
+      setScreen("chat")
+      if (sessionId !== undefined) selection?.selectSession(sessionId, link)
+    })
   }
 
   function idle(event: StackEvent): void {

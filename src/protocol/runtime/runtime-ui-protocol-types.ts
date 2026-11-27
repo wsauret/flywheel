@@ -4,6 +4,7 @@ import type { CommandCatalogPatchPayload } from "../commands/command-catalog-pro
 import type { BudgetPatchPayload } from "../session/budget-protocol-types.js"
 import type { OutputPatchPayload } from "../transcript/output-protocol-types.js"
 import type { QuestionPatchPayload, WaitingSessionsPatchPayload } from "../session/question-protocol-types.js"
+import type { UnreadChatsPatchPayload } from "../session/unread-protocol-types.js"
 import type { RolePatchPayload } from "../auth/role-protocol-types.js"
 import type { StatusPatchPayload } from "../session/status-protocol-types.js"
 import type { UpdatePatchPayload } from "./update-protocol-types.js"
@@ -30,7 +31,7 @@ export type RuntimePosition = number
  *  here; a module states its own in its protocol home and the registry in
  *  `modules.ts` composes them in. */
 export const KERNEL_SESSION_DOMAINS = ["session", "session_detail", "output", "status", "budget", "question", "roles", "auth", "changes", "background"] as const
-export const KERNEL_WORKSPACE_DOMAINS = ["runtime", "auth", "commands", "updates", "modules", "config", "gitAiAttribution", "git", "commandUsage", "chat_default", "executor", "service", "settlement", "waitingSessions"] as const
+export const KERNEL_WORKSPACE_DOMAINS = ["runtime", "auth", "commands", "updates", "modules", "config", "gitAiAttribution", "git", "commandUsage", "chat_default", "executor", "service", "settlement", "waitingSessions", "unreadChats"] as const
 export type RuntimeKernelDomain = (typeof KERNEL_SESSION_DOMAINS)[number] | (typeof KERNEL_WORKSPACE_DOMAINS)[number]
 type RuntimeSessionScopedDomain = (typeof KERNEL_SESSION_DOMAINS)[number] | ProtocolModuleSessionDomain
 type RuntimeWorkspaceScopedDomain = (typeof KERNEL_WORKSPACE_DOMAINS)[number] | ProtocolModuleWorkspaceDomain
@@ -90,6 +91,7 @@ export type RuntimeUiPatchPayload =
   | BudgetPatchPayload
   | QuestionPatchPayload
   | WaitingSessionsPatchPayload
+  | UnreadChatsPatchPayload
   | RolePatchPayload
   | AuthPatchPayload
   | CommandCatalogPatchPayload

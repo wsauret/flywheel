@@ -295,8 +295,15 @@
  *  Version 92: a system row may carry `watch`, the watch whose event or end
  *  it shows, and a command row of the background index may carry `watch`.
  *  An older client rejects such rows.
+ *  Version 93: the `unreadChatsSnapshot` query answers which chats of the
+ *  project stopped for the person unread and which hold unread messages,
+ *  and the `unreadChats` workspace domain carries `unreadChats.changed`
+ *  with the whole view and the stops that the change announces. The `chat.presence` mutation reports the chat that
+ *  the person is at on the connection, and `chat.mark_read` and
+ *  `chat.mark_unread` mark one chat. An older peer rejects the query, the
+ *  patch, and the mutations.
  */
-export const RUNTIME_PROTOCOL_VERSION = 92
+export const RUNTIME_PROTOCOL_VERSION = 93
 
 const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

@@ -1,5 +1,6 @@
 import type { SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
 import type { FoundChat } from "../../../protocol/transcript/transcript-protocol-types.js"
+import type { StoppedChat } from "../../../protocol/session/unread-protocol-types.js"
 
 export type PickerRow = PickerHeaderRow | PickerSessionRow | PickerCorruptRow | PickerFoundRow
 
@@ -18,6 +19,9 @@ export interface PickerSessionRow {
   readonly id: string
   readonly session: SessionCatalogRow
   readonly category: string
+  /** The stop of a chat that stopped for the person unread, which the row
+   *  shows under its title (PI-INTERACTION-186). */
+  readonly stopped?: StoppedChat
 }
 
 /** A session whose metadata facts cannot be projected. Synthesized by the

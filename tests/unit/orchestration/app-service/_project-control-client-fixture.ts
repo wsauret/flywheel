@@ -10,7 +10,7 @@ import { durableRow, durableSessionFromCatalogRow, storedEvents } from "./_front
 import { servingAccountService } from "../../../helpers/account-service-state.js"
 import { idleAccountUpdates } from "../../../helpers/account-updates.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
+import { asAsyncEventReadSurface, storedFact, type StoredFact } from "../../../../src/infra/substrate/store/event-store-types.js"
 
 export const never = <T>(): Promise<T> => new Promise(() => {})
 
@@ -65,6 +65,15 @@ export function fixture(executor: ProjectControlClientOptions["executor"] = neve
     onStored: stored.onStored,
     capturePosition: reader.capturePosition,
     readPage: reader.readPage,
+    readSlice: reader.readSlice,
+    writer: {
+      async append(event) {
+        const fact = storedFact(event, { id: `fact-${facts.length + 1}`, position: (facts.at(-1)?.position ?? 0) + 1, seq: facts.length })
+        facts.push(fact)
+        stored.emit([fact])
+        return fact
+      },
+    },
     sessions: {
       allocateId: () => `local-${++nextId}`,
       async createChat(input) {

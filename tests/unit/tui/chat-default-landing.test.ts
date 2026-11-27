@@ -101,7 +101,7 @@ function createLandingHarness(id?: string, mode: "chat" | null = null) {
       sessionState: () => null,
       sessionShortTitle: () => "",
       statusView: () => undefined,
-      waitingSessions: () => new Set<string>(),
+      chatMark: () => undefined,
       outputView: () => undefined,
     }
     const draftCache = createDraftCache()

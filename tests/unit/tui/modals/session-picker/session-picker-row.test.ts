@@ -45,11 +45,11 @@ function pickerRow(rowSession: SessionCatalogRow, overrides: Partial<PickerSessi
   }
 }
 
-type RowInput = Omit<Parameters<typeof SessionPickerRow>[0], "rowIndex" | "onRowClick" | "isWaiting"> & { isWaiting?: boolean }
+type RowInput = Omit<Parameters<typeof SessionPickerRow>[0], "rowIndex" | "onRowClick">
 
 /** The styled chunks that a mounted SessionPickerRow shows. */
 async function rowChunks(input: RowInput): Promise<TextChunk[]> {
-  const result = await testRender(() => createComponent(SessionPickerRow, { isWaiting: false, ...input, rowIndex: 0, onRowClick: () => {} }), { width: 120, height: 1 })
+  const result = await testRender(() => createComponent(SessionPickerRow, { ...input, rowIndex: 0, onRowClick: () => {} }), { width: 120, height: 1 })
   try {
     await result.renderOnce()
     const text = result.renderer.root.getChildren()[0]?.getChildren()[0]
@@ -130,12 +130,90 @@ describe("SessionPickerRow", () => {
     { lifecycleState: "active", isWorking: false },
     { lifecycleState: "active", isWorking: true },
   ] as const)("marks a waiting $lifecycleState chat, working=$isWorking, with the question mark in the warning colour", async ({ lifecycleState, isWorking }) => {
-    const chunks = await rowChunks({ row: pickerRow(session({ lifecycleState })), theme, rowWidth: 80, selected: false, isWorking, isWaiting: true, blinkOn: false, now, timeAgoWidth: 3 })
+    const chunks = await rowChunks({ row: pickerRow(session({ lifecycleState })), theme, rowWidth: 80, selected: false, isWorking, mark: "question", blinkOn: false, now, timeAgoWidth: 3 })
     const mark = chunks[1]
     expect(mark?.text).toBe("? ")
     expect(mark?.fg).toEqual(theme.warning)
     expect(chunks.some((chunk) => chunk.text === "● " || chunk.text === "○ ")).toBe(false)
     expect(chunks.map((chunk) => chunk.text).join("").startsWith("  ? Session")).toBe(true)
+  })
+
+  // A chat that stopped unread shows what it stopped with under its title,
+  // and an error stop carries the error mark (PI-INTERACTION-186).
+  it.each([
+    { mark: "stopped", ending: { kind: "completed" }, glyph: "✓ ", markTone: "info", detail: "    All tests pass.", detailTone: "textMuted" },
+    { mark: "failed", ending: { kind: "failed", failure: "api_overloaded" }, glyph: "! ", markTone: "error", detail: "    The model provider is overloaded", detailTone: "error" },
+  ] as const)("renders a $mark stop with its mark, its detail line, and the age of the stop", async ({ mark, ending, glyph, markTone, detail, detailTone }) => {
+    const stopped = { sessionId: "session-1", ending, firstLine: "All tests pass.", stoppedAt: now - 2 * 3_600_000, stopKey: "entry-1" }
+    const row = pickerRow(session({ lastUpdated: new Date(now - 60_000).toISOString() }), { category: "Needs you", stopped })
+    const result = await testRender(() => createComponent(SessionPickerRow, { row, theme, rowWidth: 60, selected: false, isWorking: false, mark, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 2 })
+    try {
+      await result.renderOnce()
+      const lines = result.renderer.root.getChildren()[0]?.getChildren().map((text) => {
+        if (!(text instanceof TextRenderable)) throw new Error("expected a row line")
+        return [...text.content.chunks]
+      }) ?? []
+      const plainLines = lines.map((chunks) => chunks.map((chunk) => chunk.text).join("").trimEnd())
+      expect(plainLines[0]?.startsWith(`  ${glyph}Session`)).toBe(true)
+      expect(plainLines[0]?.endsWith(" 2h")).toBe(true)
+      expect(plainLines[1]).toBe(detail)
+      expect(lines[0]?.find((chunk) => chunk.text === glyph)?.fg).toEqual(theme[markTone])
+      expect(lines[1]?.find((chunk) => detail.endsWith(chunk.text) && chunk.text.trim() !== "")?.fg).toEqual(theme[detailTone])
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
+  // Unread messages mark a working chat beside its working dot, so the row
+  // still says that its agent works (PI-INTERACTION-188). The mark keeps one
+  // column on every row, whatever the diff stats after the title take.
+  it("marks unread messages of a working chat in the accent in one column beside its working dot", async () => {
+    const unread = await rowChunks({ row: pickerRow(session({ lifecycleState: "active", diffStats: { added: 12, modified: 345, removed: 6 } })), theme, rowWidth: 80, selected: false, isWorking: true, mark: "unread", blinkOn: true, now, timeAgoWidth: 3 })
+    const selected = await rowChunks({ row: pickerRow(session({ lifecycleState: "active" })), theme, rowWidth: 80, selected: true, isWorking: true, mark: "unread", blinkOn: true, now, timeAgoWidth: 3 })
+    const unmarked = await rowChunks({ row: pickerRow(session({ lifecycleState: "active" })), theme, rowWidth: 80, selected: false, isWorking: true, blinkOn: true, now, timeAgoWidth: 3 })
+    for (const chunks of [unread, selected]) {
+      const text = chunks.map((chunk) => chunk.text).join("")
+      expect(text.indexOf("•")).toBe(1)
+      expect(text.slice(2).startsWith("● Session")).toBe(true)
+      expect(chunks.find((chunk) => chunk.text === "•")?.fg).toEqual(theme.accent)
+      expect(text.indexOf("•", 2)).toBe(-1)
+    }
+    expect(unmarked.map((chunk) => chunk.text).join("").indexOf("Session")).toBe(unread.map((chunk) => chunk.text).join("").indexOf("Session"))
+  })
+
+  it("keeps the age of a stop in its column after a title of wide characters", async () => {
+    const stopped = { sessionId: "session-1", ending: { kind: "completed" }, firstLine: "完了しました。", stoppedAt: now - 2 * 3_600_000, stopKey: "entry-1" } as const
+    const row = pickerRow(session({ title: "日本語のとても長いタイトルがここにあります。日本語のとても長いタイトル" }), { category: "Needs you", stopped })
+    const result = await testRender(() => createComponent(SessionPickerRow, { row, theme, rowWidth: 40, selected: false, isWorking: false, mark: "stopped", blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 40, height: 2 })
+    try {
+      await result.renderOnce()
+      const frame = result.captureSpans()
+      const first = frame.lines[0]?.spans ?? []
+      expect(result.captureCharFrame().split("\n")[0]?.trimEnd().endsWith(" 2h")).toBe(true)
+      expect(first.find((span) => span.text.includes("2h"))?.fg.equals(theme.textMuted)).toBe(true)
+      expect(first.find((span) => span.text.includes("✓"))?.fg.equals(theme.info)).toBe(true)
+      expect(first.find((span) => span.text.includes("…"))).toBeDefined()
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
+  it("keeps every line of a stopped row legible while its delete waits on the confirmation", async () => {
+    const stopped = { sessionId: "session-1", ending: { kind: "failed", failure: "api_overloaded" }, firstLine: "", stoppedAt: now - 60_000, stopKey: "entry-1" } as const
+    const row = pickerRow(session(), { category: "Needs you", stopped })
+    const result = await testRender(() => createComponent(SessionPickerRow, { row, theme, rowWidth: 60, selected: true, isWorking: false, mark: "failed", blinkOn: true, now, timeAgoWidth: 3, confirmDeleteSessionId: "session-1", rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 2 })
+    try {
+      await result.renderOnce()
+      const lines = result.renderer.root.getChildren()[0]?.getChildren().map((text) => {
+        if (!(text instanceof TextRenderable)) throw new Error("expected a row line")
+        return [...text.content.chunks]
+      }) ?? []
+      expect(lines).toHaveLength(2)
+      expect(lines[1]?.map((chunk) => chunk.text).join("")).toContain("overloaded")
+      for (const chunk of lines.flat()) expect(chunk.fg).toEqual(theme.background)
+    } finally {
+      result.renderer.destroy()
+    }
   })
 
   it("distinguishes inactive, active idle, and working sessions without shifting titles", async () => {
@@ -219,7 +297,7 @@ describe("SessionPickerRow", () => {
       session: session({ title: "Graph matcher" }),
       found: { sessionId: "session-1", lastActivityAt: now - 2 * 3_600_000, entryId: "e1", snippet: "fix the [kafka]\nconsumer lag", excerpt: { source: "checkpoint", text: "PR 5132 waits on review" } },
     }
-    const result = await testRender(() => createComponent(SessionPickerRow, { row: found, theme, rowWidth: 60, selected: false, isWorking: false, isWaiting: false, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 3 })
+    const result = await testRender(() => createComponent(SessionPickerRow, { row: found, theme, rowWidth: 60, selected: false, isWorking: false, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 3 })
     try {
       await result.renderOnce()
       const lines = result.renderer.root.getChildren()[0]?.getChildren().map((text) => {

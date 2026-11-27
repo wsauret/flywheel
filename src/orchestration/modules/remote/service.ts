@@ -68,6 +68,7 @@ export function createRemoteService(services: AccountProjectModuleServices, fact
       notifier = (factories.notifier ?? createRemoteNotifier)({
         addListener: (listener) => { listeners.set(listener, services.onFrontendEvent(listener)) },
         removeListener: (listener) => { listeners.get(listener)?.(); listeners.delete(listener) },
+        readUnreadChats: services.readUnreadChats,
         targets: () => remote.pushTargets(),
         forgetSubscription: (deviceId, subscription) => remote.forgetPushSubscription(deviceId, subscription),
         appOrigin: DEFAULT_REMOTE_APP_ORIGIN, subject: "https://flywl.sh",

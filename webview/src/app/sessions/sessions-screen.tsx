@@ -52,6 +52,7 @@ export function SessionsScreen() {
       <div class="rail-list scroll-edges" ref={scrollEdges} role="listbox" aria-label="Chats">
         <SessionList
           sessions={client.state().sessions}
+          needsYou={client.state().needsYou}
           errors={client.state().sessionErrors}
           selected={client.state().sessionId}
           shown={client.stack?.screen() === "sessions"}

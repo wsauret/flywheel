@@ -682,7 +682,7 @@ export function Composer(props: ComposerProps) {
             onAnswer={(answers) => props.onAnswerQuestion(pq().question.toolUseId, answers)}
             onCancel={() => props.onCancelQuestion(pq().question.toolUseId)}
             captureFocus={props.captureFocus} onMeasured={setDockMeasured}
-            waitingCount={props.waitingCount()}
+            needsYouCount={props.needsYouCount()}
             onOpenSessions={props.onOpenSessions}
           />
         )}

@@ -226,6 +226,24 @@ export class ConversationTree {
     return walked.toReversed();
   }
 
+  /** The newest value that `select` returns for an entry of the selected
+   *  branch since the person's last message, as of open or the last read.
+   *  The walk goes from the leaf to that message (a user message of origin
+   *  `human`) or the root, skips the records a turn walk skips, and passes
+   *  through compactions and every other entry. Undefined when no entry
+   *  gives a value. No new read; the walk costs the entries since that
+   *  message. */
+  newestSincePersonMessage<T>(select: (entry: ConversationEntry) => T | undefined): T | undefined {
+    const state = this.storage.openedState();
+    for (let entry = state.leafId === null ? undefined : state.entriesById[state.leafId]; entry; entry = entry.parentId === null ? undefined : state.entriesById[entry.parentId]) {
+      if (entry.kind === "message" && entry.message.kind === "user" && entry.message.origin === "human") return undefined;
+      if (isSkippedByWalk(entry)) continue;
+      const selected = select(entry);
+      if (selected !== undefined) return selected;
+    }
+    return undefined;
+  }
+
   /** Whether the selected branch, as of open or the last read, ends at an
    *  exchange whose `ask_user` call has no result: a question waits for the
    *  person, and the conversation takes only that exchange's results until

@@ -35,7 +35,7 @@ describe("background foreground policy", () => {
     const switchForeground = createForegroundSwitcher({
       signals: { setForegroundId, setForegroundTarget },
       sessions: () => [],
-      tabs: () => [{ kind: "pending", id: "local", title: "Opening", isForeground: false, isBusy: false, isBlocked: false }],
+      tabs: () => [{ kind: "pending", id: "local", title: "Opening", isForeground: false, isBusy: false }],
     })
     await switchForeground("removed")
     expect(setForegroundTarget).not.toHaveBeenCalled()

@@ -41,6 +41,7 @@ import { createChatCapacityWait } from "./chat-capacity-wait.js"
 import { createChatBackground } from "./chat-background.js"
 import { createSessionEngines } from "./session-engines.js"
 import { createChatRequestOptions } from "./chat-request-options.js"
+import { createChatTurnStops } from "../../session/control/chat-turn-stops.js"
 
 const log = Log.create({ service: "chat" })
 
@@ -101,6 +102,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   const durability = createChatTurnDurability(() => deps.treeWriter.endTurn(), (error) => deps.onTreeFailure(error))
   // How the last turn ended, until the chat accepts input or starts a turn (`ChatPorts.lastTurnEnding`).
   let lastTurnEnding: ChatTurnEnding | undefined
+  // A run that no person reads records no stop for the person (ARCH-SESSIONS-051).
+  const turnStops = createChatTurnStops({ sessionId, conversationId: deps.conversationId, writer: deps.infra.sessionEventWriter, branch: deps.treeWriter, attended: deps.rootChatCompletion?.unattended !== true })
   const { background, notifications, onBackgroundEvent } = createChatBackground({
     deps, emit, mailbox, awaitDurableFacts, admitsInput: () => !state.ended && !deps.rootChatCompletion?.sealed,
     deliver: (text, notificationKey) => submit(text, { source: "background", notificationKey }),
@@ -133,7 +136,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   const chatProviderSessionKey = (): string => state.providerConversationId ?? (mintedProviderSessionKey ??= `agent-${randomUUID()}`)
 
   const requestOptions = createChatRequestOptions({
-    deps, surfaces: { background, foregroundBashHold, askUser }, applyNestedStoredFact, providerSessionKey: chatProviderSessionKey,
+    deps, surfaces: { background, foregroundBashHold, askUser }, applyNestedStoredFact, awaitDurableFacts, providerSessionKey: chatProviderSessionKey,
   })
   // The session's engines live while a client shows it, which the session's owner reports (`ChatRunner.setShown`).
   const engines = createSessionEngines({
@@ -188,6 +191,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   ): Promise<AgentHostContextOptions> {
     turn.completion.bindInputSource(() => mailbox.hasPending)
     turn.completion.beginAttempt()
+    const firstBuild = !turn.preparatoryContextBuilt
     let requestContext: string | undefined
     if (mailbox.pendingInput?.kind === "request-context") {
       const pending = mailbox.pendingInput
@@ -198,6 +202,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       if (!isLiveTurn(turn)) throw new AgentTurnAborted()
       requestContext = pending.text
       emit("agent.logical_turn.started", { sessionId, data: { origin: "user", reason: "queued_input" } })
+      turnStops.started()
     }
     const roles = await deps.resolveRoles()
     if (!isLiveTurn(turn)) throw new AgentTurnAborted()
@@ -231,34 +236,19 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     const restoredWait = maintenance && !maintenance.personWait ? restored?.restoredWait : undefined
     const continuedWait = maintenance?.personWait || turn.resumes ? restored?.continuedWait : undefined
     if (!isLiveTurn(turn)) throw new AgentTurnAborted()
+    // Input that landed while a planned cut held the wait continues the turn
+    // with a request and no logical start.
+    if (firstBuild && restoredWait?.requestOwed) turnStops.started()
     await moduleHosts.replay(treeContext.messages)
 
     const busBridge = createRunnerBusBridge({ emit, sessionId, isLive: () => isLiveTurn(turn) })
 
     return {
       ...requestOptions.send(selectedModel, engines.chat),
-      conversation: {
-        kind: "durable-tree",
-        sessionId,
-        conversationId: deps.conversationId,
-        providerSessionKey: providerConversationId,
-        priorMessages: treeContext.messages,
-        resolveLeafId: () => deps.treeWriter.getLeafId(),
-        committedTree: () => deps.treeWriter.getState(),
-        captureCommittedForkMessages: () => deps.treeWriter.captureCommittedForkMessages(),
-        recordInterruption: () => deps.treeWriter.commitTurnEnd("person"),
-        reserveMessageId: deps.treeWriter.reserveMessageId,
-        releaseMessageId: deps.treeWriter.releaseMessageId,
-        append: (message, entryId) => {
-          if (!isLiveTurn(turn)) return
-          if (message.kind === "assistant") moduleHosts.noteAssistantMessage(message.content)
-          return deps.treeWriter.recordCanonicalMessage(message, entryId)
-        },
-        recordCompaction: (compactionInput) => deps.treeWriter.recordCompaction(compactionInput).then((result) => result?.messages),
-        flush: (protectedToolUseIds, finalizedCheckpointSwaps) =>
-          deps.treeWriter.flushSavePoint(protectedToolUseIds, finalizedCheckpointSwaps),
-        awaitDurableFacts,
-      },
+      conversation: requestOptions.conversation({
+        providerSessionKey: providerConversationId, priorMessages: treeContext.messages, isLive: () => isLiveTurn(turn),
+        onAssistantMessage: (message) => { moduleHosts.noteAssistantMessage(message.content) },
+      }),
       ...(requestContext ? { requestContext } : {}),
       ...busBridge,
       waitForEventCapacity: (signal) => lifecycleInput.eventBus.waitForCapacity(signal),
@@ -284,7 +274,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
           wait.resumed()
           durability.begin()
           if (ctx.origin === "user") wait.clearStall()
-          if (isLiveTurn(turn)) deps.treeWriter.beginTurn()
+          if (isLiveTurn(turn)) {
+            deps.treeWriter.beginTurn()
+            turnStops.started()
+          }
           busBridge.lifecycle.onLogicalTurnStarted(ctx)
         },
         onTurnParked: async (ctx) => {
@@ -292,6 +285,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
           await capacity.parked(ctx.park)
           busBridge.lifecycle.onTurnParked(ctx)
           if (isLiveTurn(turn)) await durability.end()
+          // The loop parks idle only when its turn was answered, no wait is
+          // open, and no work that owes it a result runs: the turn's entries
+          // are durable here, so the stop follows its final message.
+          if (isLiveTurn(turn) && !state.ended) await turnStops.parked(ctx.park)
           if (isLiveTurn(turn) && !mailbox.hasPending) idleCompaction.park(ctx)
           durability.finish()
           // A turn that waits on its background work still uses the chat's client; its settle ends it.
@@ -306,7 +303,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         },
         onCompactionContinuation: () => moduleObserver.onCompactionContinuation(),
         onTurnEnded: ({ runtimeConfig, contentRefused }) => {
-          if (isLiveTurn(turn)) lastTurnEnding = turn.completion.turnEnded(contentRefused === true)
+          if (isLiveTurn(turn)) {
+            lastTurnEnding = turn.completion.turnEnded(contentRefused === true)
+            turnStops.turnEnded(lastTurnEnding)
+          }
           return completeCurrentModelTurn(turn, runtimeConfig)
         },
         onConnectionState: (next) => { setCurrentTurnConnectionState(turn, next) },
@@ -362,6 +362,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
           reason: opts.reason ?? "new_input",
         },
       })
+      turnStops.started()
     }
 
     emit("agent.run.started", { sessionId, data: { stepIndex: 0 } })
@@ -397,6 +398,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         state.ended || terminal.kind === "completed" || terminal.kind === "budget_exhausted" ? "completed" : "paused"
 
       let result: AgentRunResult | undefined
+      // How a run that failed or that the provider refused ended its turn.
+      let runEnding: ChatTurnEnding | undefined
       try {
         // A command a previous build handed to this conversation is this
         // chat's before any request, so the turn parks on it as on its own.
@@ -451,7 +454,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // The runner is done: pending assistant/tool_result entries become
         // durable as one batch before any next provider request observes
         // them via `buildContext`, and the writer is idle for the next one.
-        lastTurnEnding = await turn.completion.finish(result.terminal, durability.end) ?? lastTurnEnding
+        runEnding = await turn.completion.finish(result.terminal, durability.end)
+        lastTurnEnding = runEnding ?? lastTurnEnding
         if (result.terminal.kind === "stream_stalled") wait.stall()
         state.detachRunner(session, detachStatus(result.terminal))
       } catch (err) {
@@ -485,6 +489,13 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // interrupt of the parked ask leaves it, waits for the answer's turn.
         if (ownsRunningTurn(turn) && authorized && !state.ended && !turn.completion.sealed && mailbox.hasPending && canResume && !deps.treeWriter.holdsForQuestion()) {
           turns.continueAfterTurn(turn.lease, startQueuedInputTurn)
+        } else if (runEnding && isLiveTurn(turn) && !state.ended && background.tasks.awaitedTaskCount() === 0) {
+          // A failed run stopped the chat, under the rule of the loop's idle
+          // park: nothing continues it, the person did not cut it, and no
+          // work owes it a result. That work's own turn stops it instead.
+          // The write queues without holding the turn slot, so the start of
+          // a later turn lands after it.
+          void turnStops.runEnded(runEnding)
         }
       }
     }
@@ -643,6 +654,9 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       wait.clearStall()
       mailbox.enqueueResume()
     }
+    // A person's Resume starts its turn in the loop; the wake after a
+    // settled question continues the turn with no logical start.
+    if (!options?.explicit) turnStops.started()
     if (turns.turnState === "active") {
       if (!options?.explicit) mailbox.enqueueWake()
       return true

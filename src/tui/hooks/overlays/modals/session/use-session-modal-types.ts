@@ -29,6 +29,10 @@ export interface SessionModalDeps {
 export interface SessionModalAction {
   readonly key: string
   readonly label: string
+  /** The footer keeps this control while it has room for any: it is the
+   *  control that the row's state asks for. The footer drops the others
+   *  first when the line is too narrow for all. */
+  readonly essential?: true
   onTrigger(): void
 }
 

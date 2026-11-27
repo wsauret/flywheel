@@ -96,6 +96,12 @@ export interface ConversationTreeWriterController {
   holdsForQuestion(): boolean
   /** `holdsForQuestion` once the writer has opened the tree. */
   awaitsAnswer(): Promise<boolean>
+  /** The newest value that `select` returns for an entry since the person's
+   *  last message (`ConversationTree.newestSincePersonMessage`), as this
+   *  writer last read the conversation or appended to it. No read, so a
+   *  turn's park can decide in its caller's tick. Undefined before the
+   *  writer opens the tree. */
+  newestSincePersonMessage<T>(select: (entry: ConversationEntry) => T | undefined): T | undefined
   /** The messages that wait in the held cells of this conversation, in the
    *  order they arrived, for a queue that lets the person recall one. */
   readHeldMessages(): Promise<HeldMessage[]>
@@ -312,6 +318,10 @@ export function createConversationTreeWriterController(
 
   async function awaitsAnswer(): Promise<boolean> {
     return (await ensureResolved()).tree.awaitsAnswer()
+  }
+
+  function newestSincePersonMessage<T>(select: (entry: ConversationEntry) => T | undefined): T | undefined {
+    return resolved?.tree.newestSincePersonMessage(select)
   }
 
   async function readHeldMessages(): Promise<HeldMessage[]> {
@@ -562,7 +572,7 @@ export function createConversationTreeWriterController(
     }
   }
 
-  return { commitUserTurn, commitQueuedUserInput, acceptRetainedOperation, holdsForQuestion, awaitsAnswer, readHeldMessages, releaseHeldInput, commitSystemTurn, commitBackgroundNotification, commitSystemMessage, commitTurnEnd, beginTurn, endTurn, recordCanonicalMessage, reserveMessageId, releaseMessageId, suspendPending, settleSuspendedTurn, holdQueuedUserInput, recordedPersonMessage, commitHeldMessage, holdBackgroundNotification, waitForBackgroundNotification, holdsBackgroundNotification: (key) => liveNotificationKeys.has(key), dropQueuedUserInputs, ownQueuedUserInputs: (owns) => { liveQueuedInputOwner = owns }, flushSavePoint, buildContext, captureCommittedForkMessages, captureRawLiveMessages, recordCompaction, getLeafId, getState, recall, dispose }
+  return { commitUserTurn, commitQueuedUserInput, acceptRetainedOperation, holdsForQuestion, awaitsAnswer, newestSincePersonMessage, readHeldMessages, releaseHeldInput, commitSystemTurn, commitBackgroundNotification, commitSystemMessage, commitTurnEnd, beginTurn, endTurn, recordCanonicalMessage, reserveMessageId, releaseMessageId, suspendPending, settleSuspendedTurn, holdQueuedUserInput, recordedPersonMessage, commitHeldMessage, holdBackgroundNotification, waitForBackgroundNotification, holdsBackgroundNotification: (key) => liveNotificationKeys.has(key), dropQueuedUserInputs, ownQueuedUserInputs: (owns) => { liveQueuedInputOwner = owns }, flushSavePoint, buildContext, captureCommittedForkMessages, captureRawLiveMessages, recordCompaction, getLeafId, getState, recall, dispose }
 }
 
 /** Post-compaction working history, computed from a hypothetical rebuild BEFORE

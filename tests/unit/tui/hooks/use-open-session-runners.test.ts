@@ -8,10 +8,10 @@ import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { recordedDispatch, runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 
 function sessionTab(id: string): TabInfo {
-  return { kind: "session", id, title: id, isForeground: false, isBusy: false, isBlocked: false }
+  return { kind: "session", id, title: id, isForeground: false, isBusy: false }
 }
 
-const pendingTab: TabInfo = { kind: "pending", id: "p", title: "Opening", isForeground: false, isBusy: false, isBlocked: false }
+const pendingTab: TabInfo = { kind: "pending", id: "p", title: "Opening", isForeground: false, isBusy: false }
 
 describe("useOpenSessionRunners", () => {
   it("focuses the visible tab first on startup and reattach, and promotes a waiting tab on switch", async () => {

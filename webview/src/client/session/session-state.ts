@@ -1,6 +1,7 @@
 import type { CommandUse } from "../../../../src/protocol/commands/command-usage-protocol-types.js"
 import type { ChildSessionRow, FrontendActivity, RuntimeHealth, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
-import type { PendingQuestionView } from "../../../../src/protocol/session/question-protocol-types.js"
+import type { PendingQuestionView, WaitingSessionsView } from "../../../../src/protocol/session/question-protocol-types.js"
+import type { UnreadChatsView } from "../../../../src/protocol/session/unread-protocol-types.js"
 import type { RoleAssignmentView } from "../../../../src/protocol/auth/role-protocol-types.js"
 import type { RuntimeAuthStatusSnapshotResult } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js"
@@ -16,7 +17,7 @@ import type { SessionChangesController } from "../../../../src/protocol/client/s
 import type { LocalChatSubmission } from "../../../../src/protocol/client/chat/chat-submissions.js"
 import type { CommandRoster } from "../commands/command-choices.js"
 import type { PanelSettings } from "../session-settings.js"
-import type { DesktopNotifier } from "../desktop-notifier.js"
+import type { DesktopNotifier } from "../notifications/desktop-notifier.js"
 import type { ModuleDomainViews } from "../domains/module-domain-views.js"
 import type { ActiveModel } from "./residents/active-model.js"
 import type { SessionDestination } from "./navigation/session-navigation.js"
@@ -37,7 +38,8 @@ export interface SessionNoticeSummary {
 export interface SessionState {
   readonly changes: SessionChangesController | undefined
   /** The browser's notification surface, which pages the person when a
-   *  session asks a question while the desktop notifications setting is on. */
+   *  session asks a question or a chat stops for the person unread, while the
+   *  desktop notifications setting is on. */
   readonly desktopNotifier: DesktopNotifier
   readonly sessionId: string | undefined
   /** The chat at the top of the selection's parent chain, or undefined while
@@ -125,10 +127,13 @@ export interface SessionState {
    *  for the dock. A session that is only listed reads no question. */
   readonly pendingQuestions: ReadonlyMap<string, PendingQuestionView>
   /** Every session of the project that waits on a question, closed ones
-   *  included (ARCH-PROTOCOL-068), with the time its docked question opened.
-   *  Every waiting mark of a listed row reads this set, never a question read
-   *  for the row. */
-  readonly waitingSessions: ReadonlyMap<string, number>
+   *  included (ARCH-PROTOCOL-068), with the time its docked question opened,
+   *  or undefined before the first read. Every waiting mark of a listed row
+   *  reads this set, never a question read for the row. */
+  readonly waitingSessions: WaitingSessionsView | undefined
+  /** The project's stopped unread chats and working chats with unread
+   *  messages (ARCH-PROTOCOL-072), or undefined before the first read. */
+  readonly unreadChats: UnreadChatsView | undefined
   /** The background index of the shown session, which its resident views
    *  follow, or undefined while no session is shown. */
   readonly backgroundIndex: BackgroundIndexState | undefined

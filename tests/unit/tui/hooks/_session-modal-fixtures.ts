@@ -1,5 +1,8 @@
 import { mock, spyOn } from "bun:test"
 import { createSignal } from "solid-js"
+import { selectNeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
+import type { UnreadChatsView } from "../../../../src/protocol/session/unread-protocol-types.js"
+import { chatMarks } from "../../../../src/tui/components/notices/chat-marks.js"
 import type { RuntimeClient, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { FrontendWorkflowView } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
 import { createShellState, type ShellSignals } from "../../../../src/tui/hooks/state/shell-state.js"
@@ -70,6 +73,7 @@ function createAppService(dispatch?: (command: { type: string; sessionId?: strin
     "workflow.interrupt": async () => ({ kind: "interrupt", interrupted: true }),
     "workflow.resume": accept, "chat.resume": accept, "chat.interrupt": accept,
     "session.delete": answer, "session.rename": answer, "session.close": answer,
+    "chat.mark_read": answer, "chat.mark_unread": answer,
   }), query }
   spyOn(appService, "dispatch")
   return { appService, querySignals }
@@ -81,8 +85,10 @@ export function createModal(options: {
   queueViews?: QueueViews
   foregroundId?: string
   now?: () => number
-  /** The project's sessions that wait on a question. */
-  waitingSessions?: ReadonlySet<string>
+  /** The project's sessions that wait on a question, oldest question first. */
+  waitingSessions?: readonly string[]
+  /** The project's stopped unread chats and chats with unread messages. */
+  unreadChats?: () => UnreadChatsView | undefined
   activateSession?: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   deleteActiveSession?: (sessionId: string) => Promise<void>
   closeChat?: (sessionId: string) => Promise<void>
@@ -99,8 +105,16 @@ export function createModal(options: {
   const closeChat = mock(options.closeChat ?? (async (_id: string) => {}))
   const signals = createSignals(options.queueViews, options.foregroundId)
   if (options.now) signals.now = options.now
-  const waiting = options.waitingSessions
-  if (waiting) signals.waitingSessions = () => waiting
+  const waiting = { sessions: (options.waitingSessions ?? []).map((sessionId, index) => ({ sessionId, openedAt: index })) }
+  // Every chat that the sets name is listed here, so the fixture never reads
+  // the catalog that the tests count reads of.
+  const needsYou = () => {
+    const unread = options.unreadChats?.()
+    const listed = [...waiting.sessions, ...(unread?.stopped ?? [])].map((chat) => ({ id: chat.sessionId })).concat((unread?.unread ?? []).map((id) => ({ id })))
+    return selectNeedsYou({ waiting, unread, listed })
+  }
+  signals.needsYou = needsYou
+  signals.chatMark = (sessionId) => chatMarks(needsYou()).get(sessionId)
   const hook = useSessionModal({
     modal: modals,
     renderModal: () => "mock-element",

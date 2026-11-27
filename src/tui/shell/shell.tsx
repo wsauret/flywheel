@@ -27,6 +27,7 @@ import { OutputWindow, type OutputWindowCommand, type OutputWindowCommandType } 
 import { createTranscriptLayoutCache } from "../transcript/output-window/output-window-scroll.js"
 import { createTerminalBackground, type TerminalBackgroundWriter } from "../hooks/create-terminal-background.js"
 import { createTranscriptSelectionDrag } from "../hooks/transcript/create-transcript-selection-drag.js"
+import { createTerminalPresence } from "../hooks/foreground/create-terminal-presence.js"
 import { createFindBar } from "../transcript/output-window/create-find-bar.js"
 import { FindBar } from "../transcript/output-window/find-bar.js"
 import { createSessionProcessControls } from "../hooks/sessions/create-session-process-controls.js"
@@ -108,6 +109,7 @@ function ShellLayout(props: FlywheelShellProps) {
   usePaste((event) => {
     if (!overlay.isOpen() && findBar.paste(new TextDecoder().decode(event.bytes))) event.preventDefault()
   })
+  createTerminalPresence({ renderer, client: appService, frontChat: signals.foregroundId, multiplexed: Boolean(process.env.TMUX || process.env.STY) })
   // A press anywhere but the find bar hands the keys back to the prompt; the
   // bar stays open.
   const onShellMouseDown: typeof transcriptSelectionDrag.onMouseDown = (event) => {

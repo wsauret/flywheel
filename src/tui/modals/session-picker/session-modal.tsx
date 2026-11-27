@@ -10,6 +10,7 @@ import { SessionPreviewPane } from "./session-preview-pane.js"
 import { useSessionPreview, type SessionPreviewAppService, type SessionPreviewReader } from "./use-session-preview.js"
 import type { SessionModalAction } from "../../hooks/overlays/modals/session/use-session-modal-types.js"
 import type { PickerCorruptRow, SessionPickerResult } from "./picker-types.js"
+import type { ChatMark } from "../../components/notices/chat-marks.js"
 import type { StatusView } from "../../../protocol/session/status-protocol-types.js"
 import type { DiffColorMode } from "../../../orchestration/config/schema/schema.js"
 import { createMemo, Show, untrack, type Accessor, type JSX } from "solid-js"
@@ -32,7 +33,7 @@ interface SessionModalProps {
   renamePresentation: (field: "title" | "shortTitle") => TextEditorPresentation
   foregroundId?: string
   statusView: (sessionId: string) => StatusView | undefined
-  waitingSessions: ReadonlySet<string>
+  chatMark: (sessionId: string) => ChatMark | undefined
   now: number
   confirmDeleteSessionId?: string
   showThinking?: boolean
@@ -78,7 +79,7 @@ export function SessionModal(props: SessionModalProps) {
           rowWidth={Math.max(0, layout().listWidth)}
           foregroundId={props.foregroundId}
           statusView={props.statusView}
-          waitingSessions={props.waitingSessions}
+          chatMark={props.chatMark}
           now={props.now}
           confirmDeleteSessionId={props.confirmDeleteSessionId}
           onRowClick={props.onRowClick}

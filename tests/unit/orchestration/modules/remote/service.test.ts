@@ -74,6 +74,7 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
     projectionReader: asAsyncEventReadSurface(inMemoryEventReader([])),
     eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     onStored: () => () => {},
+    readUnreadChats: async () => ({ stopped: [], unread: [], snapshotPosition: 0 }),
     accountModuleFaults,
     config: { snapshot: () => { throw new Error("the remote service reads no config here") }, subscribe: () => async () => {}, mutateSection: async () => { throw new Error("the remote service writes no config") }, useTimeObserver: () => async () => { throw new Error("the remote service reads no config at use time") } },
     snapshotPosition: () => 0,

@@ -177,7 +177,7 @@ describe("computeComposerBorderLayout", () => {
   it("paints the count of other waiting chats in the warning colour before the model, and opens Sessions on a click", async () => {
     const theme = { ...resolvedTheme, textMuted: RGBA.fromInts(80, 80, 80), warning: RGBA.fromInts(220, 170, 20), border: RGBA.fromInts(230, 230, 230) }
     let opens = 0
-    const result = await renderPromptLabelsFrame({ theme, modelLabel: "claude-opus-4", waitingLabel: "? 2 waiting", hints: [], onOpenSessions: () => { opens++ } })
+    const result = await renderPromptLabelsFrame({ theme, modelLabel: "claude-opus-4", needsYouLabel: "? 2 waiting", hints: [], onOpenSessions: () => { opens++ } })
     try {
       await result.renderOnce()
       const top = result.captureCharFrame().split("\n")[0]!

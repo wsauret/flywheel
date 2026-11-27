@@ -43,9 +43,20 @@ const filesystemWrites: unknown[] = []
 const clipboardWrites: string[] = []
 const executed: unknown[][] = []
 
-function panel() {
+/** The editor window's focus, which the mocked `window.state` reports. */
+const editorWindow = { focused: true, listeners: new Set<() => void>() }
+function focusWindow(focused: boolean) {
+  editorWindow.focused = focused
+  for (const listener of editorWindow.listeners) listener()
+}
+
+/** A webview: the Changes editor's panel, or with `reportsVisibility` the
+ *  chat view, which VS Code tells of each visibility change. */
+function panel(options: { readonly reportsVisibility?: boolean } = {}) {
   const messages: HostMessage[] = []
   const disposed = new Set<() => void>()
+  const visibility = new Set<() => void>()
+  let visible = true
   let receive: ((message: ViewMessage | PageMessage) => void) | undefined
   let reveals = 0
   return {
@@ -54,6 +65,9 @@ function panel() {
     reveal() { reveals++ },
     send(message: ViewMessage | PageMessage) { receive?.(message) },
     dispose() { for (const listener of disposed) listener(); disposed.clear() },
+    get visible() { return visible },
+    setVisible(next: boolean) { visible = next; for (const listener of visibility) listener() },
+    ...(options.reportsVisibility === true ? { onDidChangeVisibility(listener: () => void) { visibility.add(listener); return { dispose() { visibility.delete(listener) } } } } : {}),
     onDidDispose(listener: () => void) { disposed.add(listener); return { dispose() { disposed.delete(listener) } } },
     webview: {
       options: {}, html: "", cspSource: "test:",
@@ -76,10 +90,12 @@ mock.module("vscode", () => ({
   },
   env: { clipboard: { writeText: async (text: string) => { clipboardWrites.push(text) } } },
   window: {
+    state: { get focused() { return editorWindow.focused } },
+    onDidChangeWindowState(listener: () => void) { editorWindow.listeners.add(listener); return { dispose() { editorWindow.listeners.delete(listener) } } },
     createWebviewPanel() { const view = panel(); panels.push(view); return view },
     // The sidebar view is resolved by VS Code once the provider is registered.
     registerWebviewViewProvider(_viewType: string, provider: { resolveWebviewView(view: ReturnType<typeof panel>): void }) {
-      const view = panel()
+      const view = panel({ reportsVisibility: true })
       sidebars.push(view)
       provider.resolveWebviewView(view)
       return { dispose() {} }
@@ -494,5 +510,38 @@ test("the Changes editor keeps its page across runtime changes and attaches to t
     host.dispose()
     for (const socket of held) socket.destroy()
     for (const { service } of lanes) service.close()
+  }
+})
+
+test("the chat view tells its client whether the window has focus and the view shows, and the Changes editor tells nothing", async () => {
+  const host = new ChatViewProvider(line => diagnostics.push(line), () => {}, { content: client })
+  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
+  const view = sidebars.at(-1)!
+  try {
+    await served(view)
+    view.send({ type: "ready" })
+    await settle()
+    assert.deepEqual(view.messages.find(message => message.type === "hostCommands"), { type: "hostCommands", ids: [...callbacks.keys()], attention: { windowFocused: true, viewVisible: true } })
+    view.setVisible(false)
+    focusWindow(false)
+    view.setVisible(true)
+    focusWindow(true)
+    assert.deepEqual(view.messages.filter(message => message.type === "attention"), [
+      { type: "attention", attention: { windowFocused: true, viewVisible: false } },
+      { type: "attention", attention: { windowFocused: false, viewVisible: false } },
+      { type: "attention", attention: { windowFocused: false, viewVisible: true } },
+      { type: "attention", attention: { windowFocused: true, viewVisible: true } },
+    ])
+    host.openChanges({ sessionId: "attention-review" })
+    const editor = panels.at(-1)!
+    await served(editor)
+    editor.send({ type: "ready" })
+    await settle()
+    focusWindow(false)
+    focusWindow(true)
+    assert.equal(editor.messages.some(message => message.type === "attention"), false)
+  } finally {
+    view.dispose()
+    host.dispose()
   }
 })

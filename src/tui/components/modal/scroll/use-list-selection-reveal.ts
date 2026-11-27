@@ -10,6 +10,10 @@ export function useListSelectionReveal(deps: {
   revision: Accessor<number>
   layout: Accessor<unknown>
   fixedKeys?: Accessor<readonly string[]>
+  /** The fixed key of the selected line. When a data change moves the
+   *  selected line while it is in view, it keeps its screen line, so the
+   *  selection never leaves the screen; else the top line keeps its place. */
+  selectedKey?: Accessor<string | undefined>
   elements: (viewport: ScrollBoxRenderable) => readonly Renderable[]
   reveal: (viewport: ScrollBoxRenderable) => boolean
 }): void {
@@ -62,10 +66,15 @@ export function useListSelectionReveal(deps: {
       if (!viewport) return
       if (keys) {
         const top = viewport.scrollTop
-        const key = oldKeys[Math.floor(top)]
+        const line = Math.floor(top)
+        const selected = deps.selectedKey?.()
+        const selectedLine = selected === undefined ? -1 : oldKeys.indexOf(selected)
+        const inView = selectedLine >= line && selectedLine < line + viewport.viewport.height && keys.includes(selected ?? "")
+        const anchorLine = inView ? selectedLine : line
+        const key = oldKeys[anchorLine]
         const index = key === undefined ? -1 : keys.indexOf(key)
         if (index >= 0) {
-          const restore = () => viewport.scrollTo(index + top - Math.floor(top))
+          const restore = () => viewport.scrollTo(Math.max(0, index - (anchorLine - line)) + top - line)
           restore()
           anchorCompletion = restore
           renderer.once("frame", restore)

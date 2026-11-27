@@ -5,8 +5,8 @@ import type { LaneEndCause, RuntimeClientDiagnostic } from "../../runtime/runtim
  *  first, because the runtime sends a session's live output only once it is
  *  watched, and a transcript read must not see output that its lane then
  *  withholds. The transcript read goes next, because it is what the person
- *  waits for. A hold (an activation, a held detail read, or a release of
- *  either or of a followed background index) lasts only as long as the
+ *  waits for. A hold (an activation, a held detail read, a presence report,
+ *  or a release of either or of a followed background index) lasts only as long as the
  *  connection that carries it, and every holder holds again on each new
  *  lane, so a hold that waited for the lane is dropped instead of sent
  *  twice. */
@@ -22,6 +22,7 @@ export function laneCallOf(request: RuntimeQuery | FrontendMutation): LaneCall {
     case "session.release":
     case "session_detail.release":
     case "background.release":
+    case "chat.presence":
     case "sessionDetailSnapshot":
       return "hold"
     default:

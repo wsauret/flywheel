@@ -1,6 +1,6 @@
-import type { CapabilityRequest, HostMessage, ViewMessage } from "../../src/protocol/client/host/editor-host.js"
+import type { CapabilityRequest, EditorAttention, HostMessage, ViewMessage } from "../../src/protocol/client/host/editor-host.js"
 import { mutationTypeExposure } from "../../src/protocol/client/host/editor-protocol-coverage.js"
-import type { ClientHandle, HostCapabilities } from "../src/host.js"
+import type { ClientHandle, HostAttention, HostCapabilities } from "../src/host.js"
 import { mountClient } from "../src/index.js"
 import { postMessageSocketLayer, ViewBridge } from "./post-message-socket.js"
 import "./vscode-theme.css"
@@ -40,6 +40,22 @@ function request(payload: CapabilityRequest): Promise<void> {
 }
 
 let hostCommandIds = new Set<string>()
+
+/** The person is at the chat while the window has focus and the view shows,
+ *  as the extension host reports both. */
+let attention: EditorAttention | undefined
+const attentionListeners = new Set<() => void>()
+const hostAttention: HostAttention = {
+  present: () => attention !== undefined && attention.windowFocused && attention.viewVisible,
+  onChange(listener) {
+    attentionListeners.add(listener)
+    return () => { attentionListeners.delete(listener) }
+  },
+}
+const attend = (next: EditorAttention): void => {
+  attention = next
+  for (const listener of attentionListeners) listener()
+}
 let handle: ClientHandle | undefined
 const generation = Number(root.dataset.pageGeneration)
 const scope = `editor:${root.dataset.inputScope ?? ""}`
@@ -67,6 +83,7 @@ window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
   switch (message.type) {
     case "hostCommands":
       hostCommandIds = new Set(message.ids)
+      if (message.attention !== undefined) attend(message.attention)
       // Mounted only once the command list is present, so the client's
       // synchronous `has` never answers from an empty set during first paint.
       handle ??= mountClient(root, {
@@ -76,7 +93,11 @@ window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
         socket: postMessageSocketLayer(bridge),
         ...(root.dataset.clientIdentity === undefined ? {} : { clientIdentity: root.dataset.clientIdentity }),
         ...(root.dataset.hostContract === undefined ? {} : { hostContract: Number(root.dataset.hostContract) }),
-        capabilities,
+        // The document cannot tell a hidden view, because VS Code hides a
+        // retained webview without telling its document. So an extension
+        // older than the attention bridge, which never reports attention,
+        // leaves the person present at no chat.
+        capabilities: { ...capabilities, attention: hostAttention },
         ...(message.review === undefined ? {} : { review: message.review }),
         onSummary: (summary) => vscode.postMessage({ type: "summary", summary }),
         // oxlint-disable-next-line no-console -- boundary: the webview developer tools console is the only diagnostics sink this page has
@@ -93,6 +114,9 @@ window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
     }
     case "command":
       handle?.command(message.command)
+      return
+    case "attention":
+      attend(message.attention)
       return
   }
 })

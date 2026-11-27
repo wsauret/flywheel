@@ -11,7 +11,7 @@ export type TabInfo = TabPresentation & ({ readonly kind: "session" } | { readon
 interface TabsDeps {
   sessions: Accessor<readonly SessionCatalogRow[]>
   openSessionIds: Accessor<readonly string[]>
-  signals: Pick<ShellSignals, "foregroundId" | "sessionShortTitle" | "statusView" | "waitingSessions">
+  signals: Pick<ShellSignals, "foregroundId" | "sessionShortTitle" | "statusView" | "chatMark">
 }
 
 interface TabStateDeps {
@@ -30,19 +30,16 @@ export interface TabState {
   reorderTab(tabId: string, beforeTabId: string | null): void
 }
 
-interface LiveState { isBusy: boolean; isBlocked: boolean }
+type LiveState = Pick<TabPresentation, "isBusy" | "mark">
 
 function deriveLiveState(deps: TabsDeps, id: string): LiveState {
-  const status = deps.signals.statusView(id)
-  const isBusy = isWorkingStatus(status)
-  const isBlocked = deps.signals.waitingSessions().has(id)
-  return { isBusy, isBlocked }
+  return { isBusy: isWorkingStatus(deps.signals.statusView(id)), mark: deps.signals.chatMark(id) }
 }
 
 /** Tabs are the sessions this shell instance explicitly opened. The catalog still
  *  supplies titles and live lifecycle metadata, but global runtime
  *  `active` state is not tab membership. Busy state is a status read, and
- *  blocked state is a read of the project's waiting set. */
+ *  the mark is a read of the project's waiting and unread sets. */
 function createTabs(deps: TabsDeps): Accessor<readonly TabInfo[]> {
   const summariesById = createMemo(() => new Map(deps.sessions().map((session) => [session.id, session])))
 
@@ -92,7 +89,7 @@ export function createTabState(deps: TabStateDeps): TabState {
     const rows: TabInfo[] = []
     for (const target of openTargets()) {
       if (target.kind === "pending") {
-        rows.push({ kind: "pending", id: target.key, title: "Opening", isForeground: foreground?.kind === "pending" && foreground.key === target.key, isBusy: false, isBlocked: false })
+        rows.push({ kind: "pending", id: target.key, title: "Opening", isForeground: foreground?.kind === "pending" && foreground.key === target.key, isBusy: false })
       } else {
         const row = durable.get(target.sessionId)
         if (row) rows.push(row)

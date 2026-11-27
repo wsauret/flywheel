@@ -260,12 +260,12 @@
   color: color-mix(in srgb, var(--fw-warning) 70%, var(--fw-fg));
   background: color-mix(in srgb, var(--fw-warning) 15%, transparent);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 @container pane (max-width: 40rem) {
   .toolbar-sessions > .toolbar-location { display: none; }
   .toolbar-sessions .toolbar-title { flex: 1 1 auto; }
-  .toolbar-needs { padding: 0; width: var(--fw-s2); height: var(--fw-s2); background: var(--fw-warning); }
-  .toolbar-needs > span { display: none; }
+  .toolbar-needs-words { display: none; }
 }
 
 /* The phone's chat header: the chevron back to the list, then the chat's

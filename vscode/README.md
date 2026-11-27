@@ -64,7 +64,7 @@ The panel attaches to the same live session as every other Flywheel client. Star
 - `flywheel web` opens the web client. Only your machine can reach it.
 - `/remote` pairs your phone with a QR code. No account, no password.
 - Every message is sealed end to end. The relay cannot read it.
-- Your phone notifies you only when a chat asks you a question.
+- Your phone notifies you only when a chat asks you a question or stops for you.
 
 ## Built for the editor
 

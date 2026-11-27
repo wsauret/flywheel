@@ -3,7 +3,7 @@ import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat
 import { ChatSessionState, type ChatCallbacks, type ChatSessionDeps } from "../../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types"
 import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution/background-execution-owner"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../../../src/infra/substrate/store/event-store-types"
 import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer"
@@ -61,13 +61,15 @@ export function makeLifecycle(selection?: Pick<ChatSessionDeps, "moduleSelection
   return { lifecycle, resolvers, sends, state, background: () => background, deps, runnerOptions, awaitDurableFacts, eventBus, failures, session, callbacks, ended, runnerStarted: runnerStarted.promise }
 }
 
-/** Points the lifecycle's reads and its tree writer at a real store under `projectRoot`. */
-export function useStore(deps: ChatSessionDeps, projectRoot: string) {
+/** Gives the lifecycle and its tree writer one real store. `read` wraps the
+ *  surface that every reader of the lifecycle reads, such as a request counter. */
+export function useStore(deps: ChatSessionDeps, projectRoot: string, read: (surface: AsyncEventStateReadSurface) => AsyncEventStateReadSurface = (surface) => surface) {
   const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
-  deps.infra.eventStore = asAsyncEventReadSurface(store)
-  deps.infra.projectionReader = asAsyncEventReadSurface(store)
+  const surface = read(asAsyncEventReadSurface(store))
+  deps.infra.eventStore = surface
+  deps.infra.projectionReader = surface
   deps.treeWriter = createConversationTreeWriterController({
-    projectRoot, sessionId: deps.sessionId, conversationId: deps.conversationId, store: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store),
+    projectRoot, sessionId: deps.sessionId, conversationId: deps.conversationId, store: surface, projectionReader: surface, writer: asAsyncEventWriter(store),
   })
   return store
 }

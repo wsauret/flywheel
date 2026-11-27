@@ -8,6 +8,7 @@ import { restoreSessionAddress, takeSessionAddress } from "./session-address.js"
 import type { PhoneBootstrap } from "../../src/protocol/modules/remote/phone-bootstrap.js"
 import { decodeCurrentClient } from "../../src/protocol/modules/remote/relay-protocol.js"
 import { inputScopeOf, movePhoneSelectionState } from "./selection-state.js"
+import { needsYouTitle } from "../local/tab.js"
 import "../local/theme.css"
 import "./host-theme.css"
 
@@ -186,6 +187,9 @@ async function main(): Promise<void> {
     moveSelectionState: movePhoneSelectionState,
   })
   const push = createPushCapability()
+  // The page's own title, which the count of chats that need the person
+  // leads. The installed app's name comes from its own meta tag.
+  const pageTitle = document.title
   const initialAddress = takeSessionAddress(window)
   if (initialAddress?.selection) relay.capability.select(initialAddress.selection)
   const client = mountPerPlacement(relay, (initialSessionId, initialAttention) => {
@@ -228,7 +232,10 @@ async function main(): Promise<void> {
           },
         },
       },
-      onSummary: (summary) => { if (summary.ready) pendingAddress = undefined },
+      onSummary: (summary) => {
+        if (summary.ready) pendingAddress = undefined
+        document.title = needsYouTitle(summary.needsYou ?? 0, pageTitle)
+      },
       // oxlint-disable-next-line no-console -- boundary: the browser console is the only diagnostics sink this page has
       onDiagnostic: (message, detail) => console.warn(message, detail),
     })

@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto"
 import * as vscode from "vscode"
 
 import type { ClientBundle } from "../../../src/protocol/runtime/account-attach.js"
-import type { CapabilityRequest, HostMessage, ViewMessage } from "../../../src/protocol/client/host/editor-host.js"
+import type { CapabilityRequest, EditorAttention, HostMessage, ViewMessage } from "../../../src/protocol/client/host/editor-host.js"
 import { HOST_CONTRACT_VERSION, type ChangesReviewTarget, type ClientSummary } from "../../../src/protocol/client/host/host-contract.js"
 import { resolveContainedPath } from "../runtime/contained-path.js"
 import { resolveEditorClient } from "../runtime/connection/editor-client.js"
@@ -19,7 +19,9 @@ export type PanelContent =
 /** What a status page posts when a person chooses one of its actions. */
 type PageMessage = { readonly type: "pageAction"; readonly id: PageActionId }
 
-export type MountView = Pick<vscode.WebviewView, "webview" | "onDidDispose" | "visible">
+/** A view that reports its visibility changes is the chat panel, whose
+ *  client is told whether the person is at it. */
+export type MountView = Pick<vscode.WebviewView, "webview" | "onDidDispose" | "visible"> & Partial<Pick<vscode.WebviewView, "onDidChangeVisibility">>
 
 /** The session a Changes editor reviews and the project that session belongs
  *  to. They are written together, from the client that named the session, so
@@ -68,7 +70,17 @@ export class PanelMount {
         owner.onDiagnostic(`chat view message failed: ${describe(cause)}`)
       })
     }, undefined, this.disposables)
+    if (view.onDidChangeVisibility !== undefined) {
+      const tell = () => { if (this.listening) this.post({ type: "attention", attention: this.attention() }) }
+      this.disposables.push(view.onDidChangeVisibility(tell), vscode.window.onDidChangeWindowState(tell))
+    }
     this.render()
+  }
+
+  /** Whether the person is at this view, which only the extension host can
+   *  tell: its window has focus and the view shows. */
+  private attention(): EditorAttention {
+    return { windowFocused: vscode.window.state.focused, viewVisible: this.view.visible === true }
   }
 
   get ready(): boolean {
@@ -201,7 +213,11 @@ export class PanelMount {
         // The client mounts only after it knows which commands this editor
         // carries, so it can hide a row for one it does not.
         const ids = (await vscode.commands.getCommands(true)).filter((id) => id.startsWith("flywheel."))
-        this.post({ type: "hostCommands", ids, ...(this.review === undefined ? {} : { review: this.review.target }) })
+        this.post({
+          type: "hostCommands", ids,
+          ...(this.review === undefined ? {} : { review: this.review.target }),
+          ...(this.view.onDidChangeVisibility === undefined ? {} : { attention: this.attention() }),
+        })
         this.listening = true
         if (this.bundle) this.owner.onDiagnostic(`client served from ${this.bundle.dir} (${this.bundle.identity})`)
         this.owner.onReady?.()

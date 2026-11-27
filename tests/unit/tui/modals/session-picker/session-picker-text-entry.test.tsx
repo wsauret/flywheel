@@ -6,7 +6,7 @@ import { createRoot } from "solid-js"
 import type { TextEditorPresentation } from "../../../../../src/tui/terminal/keymap/text-entry.js"
 import type { SessionModalAction } from "../../../../../src/tui/hooks/overlays/modals/session/use-session-modal-types.js"
 import type { SessionPickerResult } from "../../../../../src/tui/modals/session-picker/picker-types.js"
-import { createModal, session } from "../../hooks/_session-modal-fixtures.js"
+import { createModal, pressCtrl, session } from "../../hooks/_session-modal-fixtures.js"
 
 const presentation: TextEditorPresentation = {
   value: "alpha",
@@ -18,7 +18,7 @@ const presentation: TextEditorPresentation = {
 const EMPTY_RESULT: SessionPickerResult = { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0, searchingMessages: false }
 
 /** Renders the picker list and returns its character frame. */
-async function renderPickerFrame(field: { result: SessionPickerResult; filterQuery: string; inputPresentation: TextEditorPresentation; renaming?: boolean; actions?: readonly SessionModalAction[] }): Promise<string> {
+async function renderPickerFrame(field: { result: SessionPickerResult; filterQuery: string; inputPresentation: TextEditorPresentation; renaming?: boolean; actions?: readonly SessionModalAction[]; rowWidth?: number }): Promise<string> {
   const [{ SessionPickerList }, { ThemeProvider, useTheme }, { TickPoolProvider }] = await Promise.all([
     import("../../../../../src/tui/modals/session-picker/session-picker-list.js"),
     import("../../../../../src/tui/context/theme.js"),
@@ -34,9 +34,9 @@ async function renderPickerFrame(field: { result: SessionPickerResult; filterQue
       actions={field.actions ?? []}
       theme={theme}
       height={10}
-      rowWidth={90}
+      rowWidth={field.rowWidth ?? 90}
       statusView={() => undefined}
-      waitingSessions={new Set<string>()}
+      chatMark={() => undefined}
       now={0}
       inputPlaceholder="Search"
       renaming={field.renaming ?? false}
@@ -89,7 +89,34 @@ describe("session picker text entry", () => {
       dispose()
       return typed
     })
-    const frame = await renderPickerFrame(field)
-    expect(frame).toContain("ctrl+d delete · ctrl+e rename · ctrl+y copy session ID · ctrl+r resume")
+    const frame = await renderPickerFrame({ ...field, rowWidth: 96 })
+    expect(frame).toContain("ctrl+d delete · ctrl+e rename · ctrl+y copy session ID · ctrl+r resume · ctrl+t mark unread")
+  })
+
+  // At the list width of a split pane, the footer drops whole hints, the
+  // ones that the row's state does not ask for first.
+  it("keeps the primary control and the mark whole in a narrow footer", async () => {
+    const field = createRoot((dispose) => {
+      const { hook } = createModal({ sessions: [session({ id: "alpha", title: "Alpha", lifecycleState: "active", admittedActions: ["chat.resume", "session.delete"] })] })
+      hook.openSessionsModal()
+      const typed = { result: hook.sessionModalResult(), filterQuery: hook.filterQuery(), inputPresentation: hook.inputPresentation(), actions: hook.sessionModalActions() }
+      dispose()
+      return typed
+    })
+    const footer = (await renderPickerFrame({ ...field, rowWidth: 55 })).split("\n").find((line) => line.includes("ctrl+")) ?? ""
+    expect(footer.trim()).toBe("ctrl+d delete · ctrl+r resume · ctrl+t mark unread")
+  })
+
+  it("deletes to the line start with ctrl+u in the search field and marks no chat", () => {
+    createRoot((dispose) => {
+      const { hook, modals, appService } = createModal({ sessions: [session({ id: "alpha", title: "Alpha" })] })
+      hook.openSessionsModal()
+      for (const name of ["a", "l", "p"]) modals.input({ name, raw: name, sequence: name })
+      expect(hook.filterQuery()).toBe("alp")
+      pressCtrl(modals, "u")
+      expect(hook.filterQuery()).toBe("")
+      expect(appService.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "chat.mark_unread" }))
+      dispose()
+    })
   })
 })

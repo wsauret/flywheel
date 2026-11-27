@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { createRoot, createSignal } from "solid-js"
+import { createEffect, createRoot, createSignal } from "solid-js"
 
 import type { SessionLink } from "../../client/session/navigation/session-navigation.js"
 import { createScreenStack, type ScreenStackNavigation } from "./screen-stack.js"
@@ -330,6 +330,26 @@ test("reactive selection changes replace the chat and Sessions leaves a child di
     assert.equal(mounted.selectedSessionId(), "child")
     mounted.stack.back()
     assert.equal(mounted.selectedSessionId(), "parent")
+  } finally {
+    mounted.dispose()
+  }
+})
+
+test("a tap on a row after a return from another chat shows only the tapped chat, never the one left", () => {
+  const memory = memoryNavigation()
+  const mounted = createRoot((dispose) => {
+    const [selectedSessionId, selectSession] = createSignal<string>()
+    const stack = createScreenStack(() => undefined, { selectedSessionId, selectSession, parentSessionId: () => undefined }, memory.navigation)
+    // What presence reports: the selected chat while the chat screen is in front.
+    const shown: (string | undefined)[] = []
+    createEffect(() => { shown.push(stack.screen() === "chat" ? selectedSessionId() : undefined) })
+    return { dispose, stack, shown }
+  })
+  try {
+    mounted.stack.openChat("a")
+    mounted.stack.showSessions()
+    mounted.stack.openChat("b")
+    assert.deepEqual(mounted.shown, [undefined, "a", undefined, "b"])
   } finally {
     mounted.dispose()
   }

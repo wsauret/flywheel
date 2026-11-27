@@ -29,6 +29,7 @@ import { spawnProjectStateWorker } from "../../project-state/project-state-worke
 import type { ProjectStateStandby } from "../../project-state/project-state-standby.js"
 import { createModuleTransports } from "../../executor/execution/module-transports.js"
 import { createNotifySeam } from "../../executor/execution/module-service-host.js"
+import type { RuntimeUnreadChatsSnapshotResult } from "../../../../protocol/session/unread-protocol-types.js"
 import { composeAccountProjectModuleServices, type AccountModuleFaults } from "./account-module-services.js"
 import { composeAccountModuleProtocolRuntimes } from "../../module-protocol-host.js"
 import { containNotifyFailures } from "../../executor/execution/contained-notify.js"
@@ -386,6 +387,8 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       transports, eventStore: state, projectionReader: state, eventWriter: state.writer, onStored: state.onStored,
       publish: bus.publish, snapshotPosition: bus.snapshotPosition, notify: accountNotify.notify,
       onFrontendEvent(listener) { bus.addListener(listener); return () => bus.removeListener(listener) },
+      // Module services start with the project's deferred work, after the client exists.
+      readUnreadChats: (): Promise<RuntimeUnreadChatsSnapshotResult> => client.query({ type: "unreadChatsSnapshot" }),
       onSelectionChanged: (listener) => config.subscribe("moduleSelection", listener),
     }), async (owner) => {
       await Promise.all(writes)

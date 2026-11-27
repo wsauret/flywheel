@@ -156,7 +156,7 @@ describe("useSessionModal search by what was said", () => {
       await pause()
       modals.input({ name: "down" })
       expect(hook.sessionModalResult().rows[hook.modalCursor()]?.kind).toBe("found")
-      expect(hook.sessionModalActions().map((action) => action.label)).toEqual(["delete", "rename", "copy session ID"])
+      expect(hook.sessionModalActions().map((action) => action.label)).toEqual(["delete", "rename", "copy session ID", "mark unread"])
 
       pressCtrl(modals, "y")
       expect(mockClipboardCopy).toHaveBeenCalledWith("beta")

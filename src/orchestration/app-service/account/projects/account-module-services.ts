@@ -4,6 +4,7 @@ import type { LauncherContext } from "../../../../infra/process-supervisor.js"
 import type { AsyncEventStateReadSurface } from "../../../../infra/substrate/store/event-store-types.js"
 import { errorMessage } from "../../../../infra/diagnostics/error-message.js"
 import type { AccountModuleRequest } from "../../../../protocol/runtime/account-attach.js"
+import type { RuntimeUnreadChatsSnapshotResult } from "../../../../protocol/session/unread-protocol-types.js"
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../../../module-contract/module-catalog.js"
 import { composeServiceInstances, type ComposedModuleServices, type ModuleProcessServices } from "../../executor/execution/module-service-host.js"
 import type { RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
@@ -21,6 +22,10 @@ export type AccountProjectModuleServices = Pick<ModuleProcessServices,
     /** The account's configuration authority, with the use-time read that a decision made as it acts needs. */
     readonly config: Pick<RuntimeConfigOwner, "snapshot" | "subscribe" | "mutateSection" | "useTimeObserver">
     readonly eventStore: AsyncEventStateReadSurface
+    /** Reads the project's set of stopped unread chats, as a client's
+     *  `unreadChatsSnapshot` does (ARCH-PROTOCOL-072). The set publishes its
+     *  changes on the frontend events once something has read it. */
+    readonly readUnreadChats: () => Promise<RuntimeUnreadChatsSnapshotResult>
     /** The project's store usage and its Reclaim storage command (ARCH-RUNTIME-083). */
     readonly storage: ProjectStorage
     readonly projectRegistry: Omit<AccountProjectRegistry, "dispose">

@@ -6,8 +6,12 @@ import {
   flattenSessionRows,
   formatCompactTimeAgo,
   parseSessionIdQuery,
+  pickerRowLastActive,
+  pickerRowLines,
+  stopDetail,
   timeAgoColumnWidth,
 } from "../../../../../src/tui/modals/session-picker/picker-helpers.js"
+import { selectNeedsYou } from "../../../../../src/protocol/client/session/needs-you.js"
 import type { PickerRow, PickerSessionRow } from "../../../../../src/tui/modals/session-picker/picker-types.js"
 
 function session(id: string, lastUpdated: string, options: {
@@ -112,19 +116,31 @@ describe("picker helpers", () => {
     ])
   })
 
-  it("leads with the chats that wait on the person, closed ones included, newest first", () => {
+  it("leads with the chats that need the person, questions before stops, closed ones included, newest first", () => {
     const now = new Date(2026, 6, 5, 12)
-    const rows = flattenSessionRows([
+    const listed = [
       session("today", new Date(2026, 6, 5, 11).toISOString()),
       session("waiting-old", new Date(2026, 5, 1, 10).toISOString()),
-      { ...session("waiting-new", new Date(2026, 6, 5, 10).toISOString()), lifecycleState: "active" },
+      { ...session("waiting-new", new Date(2026, 6, 5, 10).toISOString()), lifecycleState: "active" as const },
       session("yesterday", new Date(2026, 6, 4, 10).toISOString()),
-    ], now, new Set(["waiting-old", "waiting-new", "deleted"]))
+      session("stopped-old", new Date(2026, 6, 5, 9).toISOString()),
+      session("failed-new", new Date(2026, 6, 5, 8).toISOString()),
+    ]
+    const failed = { sessionId: "failed-new", ending: { kind: "failed", failure: "api_overloaded" }, stoppedAt: now.getTime() - 60_000, stopKey: "stop:9" } as const
+    const stopped = { sessionId: "stopped-old", ending: { kind: "completed" }, firstLine: "All tests pass.", stoppedAt: now.getTime() - 3 * 60 * 60_000, stopKey: "entry-1" } as const
+    const needsYou = selectNeedsYou({
+      waiting: { sessions: [{ sessionId: "waiting-old", openedAt: 1 }, { sessionId: "waiting-new", openedAt: 2 }, { sessionId: "deleted", openedAt: 3 }] },
+      unread: { stopped: [failed, stopped], unread: ["today"] },
+      listed,
+    })
+    const rows = flattenSessionRows(listed, now, needsYou.rows)
 
     expect(rows.map(rowLabel)).toEqual([
       "header:Needs you",
       "session:waiting-new",
       "session:waiting-old",
+      "session:failed-new",
+      "session:stopped-old",
       "header:",
       "header:Today",
       "session:today",
@@ -132,6 +148,14 @@ describe("picker helpers", () => {
       "header:Yesterday",
       "session:yesterday",
     ])
+    // A stopped row shows what it stopped with on a second line, and its age
+    // counts from the stop; a working chat with unread messages keeps its place.
+    const row = (id: string) => rows.find((candidate): candidate is PickerSessionRow => candidate.kind === "session" && candidate.session.id === id)
+    expect(row("stopped-old")).toMatchObject({ category: "Needs you", stopped })
+    expect([pickerRowLines(row("stopped-old")!), pickerRowLines(row("waiting-new")!)]).toEqual([2, 1])
+    expect(formatCompactTimeAgo(now.getTime(), pickerRowLastActive(row("stopped-old")!))).toBe("3h")
+    expect([stopDetail(stopped), stopDetail(failed)]).toEqual(["All tests pass.", "The model provider is overloaded"])
+    expect(row("today")?.category).toBe("Today")
   })
 
   it("formats compact time ago labels with coarse thresholds", () => {
