@@ -1,6 +1,7 @@
 import type { SessionCatalogRow } from "../../../protocol/runtime/app-service-types.js"
 import type { FoundChat } from "../../../protocol/transcript/transcript-protocol-types.js"
 import type { StoppedChat } from "../../../protocol/session/unread-protocol-types.js"
+import type { SessionListGroup } from "../../../protocol/client/session/session-list-groups.js"
 
 export type PickerRow = PickerHeaderRow | PickerSessionRow | PickerCorruptRow | PickerFoundRow
 
@@ -18,7 +19,10 @@ export interface PickerSessionRow {
   readonly kind: "session"
   readonly id: string
   readonly session: SessionCatalogRow
-  readonly category: string
+  readonly group: SessionListGroup
+  /** When the chat was last active, in epoch milliseconds, which the time
+   *  column shows: its stop, or else its latest turn. */
+  readonly lastActiveAt: number
   /** The stop of a chat that stopped for the person unread, which the row
    *  shows under its title (PI-INTERACTION-186). */
   readonly stopped?: StoppedChat

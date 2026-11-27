@@ -13,6 +13,7 @@ import { mergeExecutionRow, projectSessionCatalogRow, replaceCatalogTotals } fro
 import { editedSessionLabels } from "../../../session/metadata/session-label.js"
 import type { DurableSessionCatalogRow } from "../../../session/metadata/catalog/session-catalog-types.js"
 import type { ProjectStateClient } from "../../project-state/project-state-client.js"
+import { readNewestPerAggregate } from "../../project-state/project-state-newest-reads.js"
 import type { ProjectExecutorWaiter } from "../../executor/project-executor-client.js"
 import { executionAskerOf, readAskerOf } from "../../executor/project-executor-generations.js"
 import { createRuntimeUiBus, type RuntimeUiBus } from "../../projections/runtime-ui-bus.js"
@@ -200,7 +201,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
   const admissions = new Map<string, SessionRow>()
   const git = createGitProjection({ projectRoot: options.directories.projectRoot, publish: bus.publish })
   const waitingSessions = createWaitingSessionsProjection({ reader: state, onStored: state.onStored, bus })
-  const unreadChats = createUnreadChatsProjection<SessionHolder>({ reader: state, writer: state.writer, onStored: state.onStored, bus })
+  const unreadChats = createUnreadChatsProjection<SessionHolder>({ reader: state, readNewest: (...args) => readNewestPerAggregate(state, ...args), writer: state.writer, onStored: state.onStored, bus })
   const details = createSessionDetailPublisher({
     state, bus, own, closing: () => closing,
     read: (sessionId) => queryRaw({ type: "sessionDetail", sessionId }),

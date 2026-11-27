@@ -549,6 +549,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     get pendingQuestions() { return readings.pendingQuestions },
     get waitingSessions() { return statusViews.waitingSessions },
     get unreadChats() { return statusViews.unreadChats },
+    get chatTurns() { return statusViews.chatTurns },
     get backgroundIndex() { return visible()?.background },
     row: rowOf,
     get modules() { return modules.views(visible()?.modules) },

@@ -4,6 +4,7 @@ import { createComputed, createEffect, createMemo, createSignal, For, on, onClea
 import type { SessionCatalogError } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { NeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
 import type { StoppedChat } from "../../../../src/protocol/session/unread-protocol-types.js"
+import type { ListedTurns } from "../../../../src/protocol/client/session/session-list-groups.js"
 import { contentResults, createContentSearch, type ContentAnswer } from "../../../../src/protocol/client/chat/search/chat-content-search.js"
 import { snippetParts } from "../../../../src/protocol/client/chat/search/search-snippet.js"
 import { sessionTitleMatcher } from "../../../../src/protocol/client/chat/search/session-title-match.js"
@@ -100,6 +101,8 @@ export function SessionList(props: {
   readonly filter?: string
   /** The chats that need the person and the chats with unread messages. */
   readonly needsYou: NeedsYou
+  /** The latest turn time of each chat, which orders Working and Recent. */
+  readonly turns: ListedTurns
   readonly actions: SessionListActions
   /** The pause in typing before the messages are searched; the shared default when absent. */
   readonly contentSearchDelayMs?: number
@@ -108,7 +111,7 @@ export function SessionList(props: {
     const query = props.filter?.trim() ?? ""
     const matches = sessionTitleMatcher(query)
     const visible = query.length === 0 ? props.sessions : props.sessions.filter((session) => matches([session.title, session.subtitle, session.id]))
-    return layoutSessionRows(visible, props.needsYou, props.grouped === true, previous)
+    return layoutSessionRows(visible, props.needsYou, props.turns, props.grouped === true, previous)
   }, [])
 
   // A keyed move inserts a row's node again, and a browser drops the focus
@@ -195,6 +198,7 @@ export function SessionList(props: {
 
   return (
     <div class="session-list" ref={(root) => { listRoot = root; onCleanup(bindRowSwipe(root, tray, setTray)) }}>
+      {/* While the times are read, Working and Recent wait, so the list is not empty. */}
       <Show when={rows().length === 0 && found().length === 0 && props.errors.length === 0}>
         <div class="session-list-empty">{searchingMessages() ? "Searching messages..." : (props.filter?.trim().length ?? 0) > 0 ? "No chats match." : "No chats yet."}</div>
       </Show>
@@ -277,7 +281,7 @@ function SessionRow(props: {
   const hasDiff = () => { const stats = diff(); return stats !== undefined && (stats.added > 0 || stats.removed > 0 || stats.modified > 0) }
   const stopped = () => props.row.stopped
   const description = () => { const stop = stopped(); return (stop === undefined ? undefined : stopLine(stop)) ?? session().subtitle }
-  const when = () => { const stop = stopped(); return stop === undefined ? session().lastUpdated : new Date(stop.stoppedAt).toISOString() }
+  const when = () => new Date(props.row.lastActiveAt).toISOString()
   const errored = () => { const stop = stopped(); return props.row.need === "error" || (stop !== undefined && stoppedOnError(stop)) }
   // Mark read clears what the row marks; Mark unread brings a read chat
   // back. A question is answered, not read.

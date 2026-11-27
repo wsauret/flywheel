@@ -2,9 +2,11 @@ import { describe, expect, it, mock } from "bun:test"
 import { createRenderEffect, createRoot, createSignal } from "solid-js"
 import { createModal, pressCtrl, rowLabels, session } from "../../../_session-modal-fixtures.js"
 import type { UnreadChatsView } from "../../../../../../../src/protocol/session/unread-protocol-types.js"
+import type { StatusView } from "../../../../../../../src/protocol/session/status-protocol-types.js"
+import { statusView } from "../../../../../../helpers/runtime-views.js"
 
 describe("useSessionModal catalog lifecycle", () => {
-  it("keeps the selected session through prepend, minute regrouping, and the presentation cap", () => {
+  it("keeps the selected session through prepend, a minute tick, and the presentation cap", () => {
     createRoot((dispose) => {
       try {
         const [now, setNow] = createSignal(Date.parse("2026-05-22T23:59:00.000Z"))
@@ -26,6 +28,22 @@ describe("useSessionModal catalog lifecycle", () => {
       } finally { dispose() }
     })
   })
+  it("files a chat under Working by the status its dot reads, and files no row again for a status change that keeps every group", () => {
+    createRoot((dispose) => {
+      try {
+        const [statuses, setStatuses] = createSignal<ReadonlyMap<string, StatusView>>(new Map([["busy", statusView("thinking")]]))
+        const rows = ["busy", "rest"].map((id, index) => session({ id, lastUpdated: new Date(Date.parse("2026-05-22T00:04:00.000Z") - index * 60_000).toISOString() }))
+        const { hook } = createModal({ sessions: rows, statusView: (id) => statuses().get(id) })
+        hook.openSessionsModal()
+        expect(rowLabels(hook)).toEqual(["Working", "busy", "", "Recent", "rest"])
+        const before = hook.sessionModalResult()
+        setStatuses(new Map([["busy", statusView("generating")]]))
+        expect(hook.sessionModalResult()).toBe(before)
+        setStatuses(new Map([["busy", statusView("idle")]]))
+        expect(rowLabels(hook)).toEqual(["Recent", "busy", "rest"])
+      } finally { dispose() }
+    })
+  })
   it("keeps every chat that waits on the person reachable past the 200-row cap", () => {
     createRoot((dispose) => {
       try {
@@ -37,8 +55,8 @@ describe("useSessionModal catalog lifecycle", () => {
         hook.openSessionsModal()
         const result = hook.sessionModalResult()
         const shown = result.rows.flatMap((row) => row.kind === "session" ? [row] : [])
-        expect(shown.filter((row) => row.category === "Needs you").map((row) => row.session.id).sort()).toEqual([...waiting].sort())
-        expect(shown.filter((row) => row.category !== "Needs you")).toHaveLength(200)
+        expect(shown.filter((row) => row.group === "Needs you").map((row) => row.session.id).sort()).toEqual([...waiting].sort())
+        expect(shown.filter((row) => row.group !== "Needs you")).toHaveLength(200)
         expect(result.rows[0]).toMatchObject({ kind: "header", label: "Needs you" })
         expect(result.capped).toBe(true)
       } finally { dispose() }
@@ -48,7 +66,7 @@ describe("useSessionModal catalog lifecycle", () => {
     await createRoot(async (dispose) => {
       try {
         const done = { sessionId: "done", ending: { kind: "completed" }, firstLine: "Shipped.", stoppedAt: Date.parse("2026-05-22T00:05:00.000Z"), stopKey: "entry-9" } as const
-        const [unread, setUnread] = createSignal<UnreadChatsView>({ stopped: [done], unread: [] })
+        const [unread, setUnread] = createSignal<UnreadChatsView>({ stopped: [done], unread: [], turns: {} })
         const rows = ["asks", "done", "other"].map((id, index) => session({ id, lastUpdated: new Date(Date.parse("2026-05-22T00:04:00.000Z") - index * 60_000).toISOString() }))
         const { hook, modals, appService } = createModal({ sessions: rows, waitingSessions: ["asks"], unreadChats: unread })
         hook.openSessionsModal()
@@ -67,7 +85,7 @@ describe("useSessionModal catalog lifecycle", () => {
         // the chat the person chose.
         select("other")
         const revision = hook.modalNavigationRevision()
-        setUnread({ stopped: [], unread: [] })
+        setUnread({ stopped: [], unread: [], turns: {} })
         expect(rowLabels(hook).slice(0, 2)).toEqual(["Needs you", "asks"])
         expect(hook.sessionModalResult().rows[hook.modalCursor()]).toMatchObject({ session: { id: "other" } })
         expect(hook.modalNavigationRevision()).toBe(revision)
@@ -76,7 +94,7 @@ describe("useSessionModal catalog lifecycle", () => {
         expect(hook.sessionModalActions().map((action) => action.label)).toContain("mark unread")
         pressCtrl(modals, "t")
         expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.mark_unread", sessionId: "done" })
-        setUnread({ stopped: [done], unread: [] })
+        setUnread({ stopped: [done], unread: [], turns: {} })
         expect(rowLabels(hook).slice(0, 3)).toEqual(["Needs you", "asks", "done"])
         expect(hook.sessionModalResult().rows[hook.modalCursor()]).toMatchObject({ session: { id: "done" } })
         await Promise.resolve()
@@ -114,7 +132,7 @@ describe("useSessionModal catalog lifecycle", () => {
         setCatalog([session({ id: "latest" })])
         expect(readCatalog).not.toHaveBeenCalled()
         hook.openSessionsModal()
-        expect(rowLabels(hook)).toEqual(["Today", "latest"])
+        expect(rowLabels(hook)).toEqual(["Recent", "latest"])
         expect(readCatalog).toHaveBeenCalledTimes(1)
       } finally {
         dispose()
@@ -132,16 +150,17 @@ describe("useSessionModal catalog lifecycle", () => {
         createRenderEffect(() => hook.sessionModalResult())
         hook.openSessionsModal()
         hook.handleSessionFilter("task")
+        // The list orders by turns, not by the clock, so a minute tick reads nothing.
         const beforeTick = readCatalog.mock.calls.length
         setNow((value) => value + 60_000)
-        expect(readCatalog.mock.calls.length).toBe(beforeTick + 1)
+        expect(readCatalog.mock.calls.length).toBe(beforeTick)
         hook.closeSessionsModal()
         readCatalog.mockClear()
         setNow((value) => value + 60_000)
         setCatalog([session({ id: "beta", title: "Beta task" })])
         expect(readCatalog).not.toHaveBeenCalled()
         hook.openSessionsModal()
-        expect(rowLabels(hook)).toEqual(["Today", "beta"])
+        expect(rowLabels(hook)).toEqual(["Recent", "beta"])
         modals.replace("another-modal")
         readCatalog.mockClear()
         setNow((value) => value + 60_000)
@@ -153,7 +172,7 @@ describe("useSessionModal catalog lifecycle", () => {
     })
   })
 
-  it("uses one result for each edit and selects the foreground row on opening", () => {
+  it("filters the catalog it holds for each edit and selects the foreground row on opening", () => {
     createRoot((dispose) => {
       try {
         const readCatalog = mock(() => [session({ id: "recent", title: "Alpha", lastUpdated: "2026-05-22T00:01:00.000Z" }), session({ id: "foreground", title: "Beta" })])
@@ -162,12 +181,12 @@ describe("useSessionModal catalog lifecycle", () => {
         hook.openSessionsModal()
         expect(hook.modalCursor()).toBe(2)
         readCatalog.mockClear()
+        // An edit filters the catalog that the open picker holds.
         modals.paste("Al")
-        expect(readCatalog).toHaveBeenCalledTimes(1)
         expect(rowLabels(hook)).toEqual(["recent"])
         expect(hook.modalCursor()).toBe(0)
         modals.input({ name: "p", raw: "p" })
-        expect(readCatalog).toHaveBeenCalledTimes(2)
+        expect(readCatalog).not.toHaveBeenCalled()
         expect(hook.filterQuery()).toBe("Alp")
         expect(rowLabels(hook)).toEqual(["recent"])
         hook.openSessionsModal()
@@ -232,7 +251,7 @@ describe("useSessionModal catalog lifecycle", () => {
         expect(hook.renameState()?.shortTitle).toBe("ParenXt")
         expect(hook.inputPresentation()).toEqual(presentation)
         expect(rowLabels(hook)).toEqual(labels)
-        expect(labels).toEqual(["Today", "parent", "second-chat"])
+        expect(labels).toEqual(["Recent", "parent", "second-chat"])
         modals.input({ name: "escape" })
         modals.input({ name: "down" })
         expect(hook.modalCursor()).toBe(2)

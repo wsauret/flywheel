@@ -2,6 +2,7 @@ import { mock, spyOn } from "bun:test"
 import { createSignal } from "solid-js"
 import { selectNeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
 import type { UnreadChatsView } from "../../../../src/protocol/session/unread-protocol-types.js"
+import type { StatusView } from "../../../../src/protocol/session/status-protocol-types.js"
 import { chatMarks } from "../../../../src/tui/components/notices/chat-marks.js"
 import type { RuntimeClient, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { FrontendWorkflowView } from "../../../../src/protocol/session/workflow-view-protocol-types.js"
@@ -54,6 +55,9 @@ export function createSignals(
   })
   return {
     ...signals,
+    // The fake runtime opens no lane, so the unread set is never read: the
+    // list orders every chat by its own times, as after a failed read.
+    chatTurns: () => undefined,
     foregroundId,
     setForegroundId,
   }
@@ -89,6 +93,8 @@ export function createModal(options: {
   waitingSessions?: readonly string[]
   /** The project's stopped unread chats and chats with unread messages. */
   unreadChats?: () => UnreadChatsView | undefined
+  /** The status of each session that the row's dot reads; none when absent. */
+  statusView?: (sessionId: string) => StatusView | undefined
   activateSession?: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   deleteActiveSession?: (sessionId: string) => Promise<void>
   closeChat?: (sessionId: string) => Promise<void>
@@ -114,6 +120,8 @@ export function createModal(options: {
     return selectNeedsYou({ waiting, unread, listed })
   }
   signals.needsYou = needsYou
+  signals.chatTurns = () => options.unreadChats?.()?.turns
+  if (options.statusView) signals.statusView = options.statusView
   signals.chatMark = (sessionId) => chatMarks(needsYou()).get(sessionId)
   const hook = useSessionModal({
     modal: modals,

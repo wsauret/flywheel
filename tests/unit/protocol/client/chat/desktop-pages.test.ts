@@ -41,7 +41,7 @@ function pagesWith(options: {
       },
       unreadChatsSnapshot: async () => {
         setReads += 1
-        return { stopped: [], unread: [], snapshotPosition: 0 }
+        return { stopped: [], unread: [], turns: {}, snapshotPosition: 0 }
       },
     }),
     subscribe: (listener: (event: FrontendEvent) => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
@@ -65,7 +65,7 @@ function pagesWith(options: {
   /** Publishes the project's set of stopped unread chats, as the account service does. */
   function publishStopped(stopped: readonly StoppedChat[], view: { readonly unread?: readonly string[]; readonly newStops?: readonly StoppedChat[] } = {}): void {
     unreadPosition += 1
-    const payload = { kind: "unreadChats.changed" as const, stopped, unread: view.unread ?? [], newStops: view.newStops ?? [] }
+    const payload = { kind: "unreadChats.changed" as const, places: { stopped, unread: view.unread ?? [] }, turns: {}, newStops: view.newStops ?? [] }
     for (const listener of listeners) listener({ type: "patch", patch: { cursor: unreadChatsCursor(), position: unreadPosition, prevPosition: unreadPosition - 1, payload } })
   }
   return { change, publishStopped, dispose, shown, decisions, reads, setReads: () => setReads, listeners }

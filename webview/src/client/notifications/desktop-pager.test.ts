@@ -69,7 +69,7 @@ function fakeRuntime() {
       await titles.promise
       return { view: agentDetail(request.sessionId) }
     },
-    unreadChatsSnapshot: () => ({ stopped: [], unread: [], snapshotPosition: position }),
+    unreadChatsSnapshot: () => ({ stopped: [], unread: [], turns: {}, snapshotPosition: position }),
   } }, {
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
   })
@@ -84,7 +84,7 @@ function fakeRuntime() {
     /** Publishes the set as `stopped`, announcing the stops in `newStops`. */
     stop: (stopped: readonly StoppedChat[], newStops: readonly StoppedChat[] = []) => {
       position += 1
-      for (const listener of listeners) listener({ type: "patch", patch: { cursor: unreadChatsCursor(), position, prevPosition: position - 1, payload: { kind: "unreadChats.changed", stopped, unread: [], newStops } } })
+      for (const listener of listeners) listener({ type: "patch", patch: { cursor: unreadChatsCursor(), position, prevPosition: position - 1, payload: { kind: "unreadChats.changed", places: { stopped, unread: [] }, turns: {}, newStops } } })
     },
     holdTitles() { titles = Promise.withResolvers<void>(); return titles.resolve },
   }

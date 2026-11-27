@@ -21,20 +21,23 @@ describe("the stop that a dead owner of a chat left out (ARCH-SESSIONS-051)", ()
     if (started) await facts.record({ type: "chat.turn.started", version: 1, actor: "flywheel", payload: { conversationId } })
     const tree = await tryOpenConversationTree({ sessionId, conversationId, store: reader, writer })
     if (!tree) throw new Error("missing tree")
-    let answerId: string | undefined
+    let answer: { readonly id: string; readonly timestamp: string } | undefined
     try {
       const saved = await tree.appendMessages([{ kind: "user", content: "Hi.", origin: "human" }, { kind: "assistant", content: "**Done.**\nDetails." }])
       if (saved.kind !== "committed") throw saved.cause
-      answerId = (await tree.getBranch()).at(-1)?.id
+      answer = (await tree.getBranch()).at(-1)
     } finally { tree.dispose() }
+    const answerId = answer?.id
+    const answeredAt = answer === undefined ? undefined : Date.parse(answer.timestamp)
     const stops = () => store.read({ aggregateId: `session:${sessionId}`, types: ["chat.turn.stopped"] }).map((fact) => fact.payload)
-    return { store, reader, writer, manager, directories, facts, sessionId, conversationId, answerId, stops }
+    return { store, reader, writer, manager, directories, facts, sessionId, conversationId, answerId, answeredAt, stops }
   }
 
-  test("records the stop for an owner that died after the final message, once", async () => {
+  test("records the stop for an owner that died after the final message, once, at the time of that message", async () => {
     const chat = await answeredChat(true)
     expect(await recoverProject(chat, "closed-generation")).toMatchObject({ sessionIds: [chat.sessionId], degraded: [] })
-    expect(chat.stops()).toEqual([{ conversationId: chat.conversationId, ending: { kind: "completed" }, finalEntryId: chat.answerId, firstLine: "Done." }])
+    // The turn ended at its answer, not at the restart that recorded its stop.
+    expect(chat.stops()).toEqual([{ conversationId: chat.conversationId, ending: { kind: "completed" }, finalEntryId: chat.answerId, firstLine: "Done.", endedAt: chat.answeredAt }])
     // A later pass over the same chat finds the stop newest and records none.
     await chat.manager.updateLifecycleState(chat.sessionId, "active")
     expect(await recoverProject(chat, "closed-generation")).toMatchObject({ sessionIds: [chat.sessionId] })

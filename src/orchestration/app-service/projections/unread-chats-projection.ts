@@ -11,6 +11,7 @@ import { answerOf } from "../../session/control/chat-turn-stops.js"
 import type { ChatReadCause, ChatReadRecordedFact } from "../../session/persistence/chat-read-receipt-facts.js"
 import type { ChatTurnStopFact } from "../../session/persistence/chat-turn-stop-facts.js"
 import { parseSessionFact } from "../../session/persistence/session-fact-registry.js"
+import { decodeSessionMetadataFactForReplay } from "../../session/metadata/session-metadata-facts.js"
 import { prepareSessionFactAppend } from "../../session/persistence/session-fact-writer.js"
 import type { ChatTurnEnding } from "../../../protocol/session/chat-settlement-protocol-types.js"
 import { unreadChatsCursor, type RuntimeUnreadChatsSnapshotResult, type StoppedChat, type UnreadChatsMutation, type UnreadChatsView } from "../../../protocol/session/unread-protocol-types.js"
@@ -21,7 +22,10 @@ const log = Log.create({ service: "unread-chats-projection" })
 
 const SESSION_AGGREGATE_PREFIX = "session:"
 const DELETED_FACT_TYPE = "session.deleted"
-const BASELINE_FACT_TYPES = ["chat.turn.stopped", "chat.turn.started", "chat.read.recorded", DELETED_FACT_TYPE] as const
+const CREATED_FACT_TYPE = "session.created"
+/** Each session's creation names the conversation of a root chat, whose
+ *  entry batches give a chat that records no turn its latest turn time. */
+const BASELINE_FACT_TYPES = ["chat.turn.stopped", "chat.turn.started", "chat.read.recorded", CREATED_FACT_TYPE, DELETED_FACT_TYPE] as const
 const ENTRIES_FACT_TYPE = "chat.entries.appended"
 const FOLDED_TYPES = new Set<string>([...BASELINE_FACT_TYPES, ENTRIES_FACT_TYPE])
 /** The newest entry batches of each conversation that work at the baseline:
@@ -31,8 +35,7 @@ const TAIL_BATCHES = 16
  *  and no new assistant message: there is nothing that could be unread. */
 const NOTHING_TO_MARK_UNREAD = "This chat has no message or error to mark unread."
 
-/** SQLite caps one compound select, so one tail read names at most this many conversations. */
-const TAIL_CONVERSATIONS_PER_READ = 500
+const conversationAggregate = (conversationId: string) => `conversation:${conversationId}`
 
 /** `Connection` names one client connection, the owner of its presence. */
 export interface UnreadChatsProjection<Connection> {
@@ -54,7 +57,14 @@ export interface UnreadChatsProjection<Connection> {
 }
 
 export interface UnreadChatsProjectionDeps {
-  readonly reader: Pick<AsyncEventStateReadSurface, "capturePosition" | "readPage" | "readSlice">
+  readonly reader: Pick<AsyncEventStateReadSurface, "capturePosition" | "readPage">
+  /** Reads the newest `perAggregate` facts of `types` of each aggregate, in
+   *  as many reads as the state boundary needs, and names the aggregates
+   *  that it could not serve. */
+  readonly readNewest: (aggregateIds: readonly string[], types: readonly string[], perAggregate: number, afterPosition?: number) => Promise<{
+    readonly facts: readonly (StoredFact | CorruptEventRowError)[]
+    readonly unserved: readonly string[]
+  }>
   readonly writer: Pick<AsyncEventAppender, "append">
   readonly onStored: (listener: (events: readonly StoredFact[]) => void) => () => void
   readonly bus: {
@@ -77,7 +87,12 @@ type ReceiptPayload = ChatReadRecordedFact["payload"]
  *  start, and receipt, and from the entry batches of its conversation. */
 interface ChatRead {
   stop?: ChatStop
-  started?: { readonly position: number; readonly conversationId: string }
+  started?: { readonly position: number; readonly startedAt: number; readonly conversationId: string }
+  /** The conversation that the root chat was created with, and the time of
+   *  its newest entry batch: the chat's latest turn time while it records no
+   *  turn, as it is for a chat from before turns were recorded. */
+  createdWith?: string
+  historyAt?: number
   receipt?: ReceiptPayload & { readonly position: number }
   /** Receipts on their way to the store, oldest first. The newest one is
    *  what the person has read until the store answers. */
@@ -105,11 +120,18 @@ type ViewEntry = { readonly kind: "stopped"; readonly position: number; readonly
  *  report and the read receipts that the presence and the person's marks
  *  produce (ARCH-SESSIONS-052).
  *
+ *  It also holds the time of each chat's latest turn (ARCH-PROTOCOL-072,
+ *  PI-INTERACTION-189): the time of its newest start or stop, and for a chat
+ *  that records neither, the time of the newest entry batch of the
+ *  conversation that it was created with.
+ *
  *  Nothing is read at construction. The first request reads the newest stop,
- *  start, and receipt of every session in one paged read, and the newest
- *  entry batches of the chats that work, in one read. After it, each stored
- *  fact advances the set from its own payload with no read, and the whole
- *  view is published only when a chat's place in it changes. A chat whose
+ *  start, receipt, and creation of every session in one paged read, the
+ *  newest entry batches of the chats that work, and the newest entry batch
+ *  of each root chat with no start or stop, each in reads of many
+ *  conversations. After it, each stored fact advances the set from its own
+ *  payload with no read. A patch carries the view when a chat's place in it
+ *  changed, and the latest turn times that moved. A chat whose
  *  newest facts cannot be decoded is left out and recorded once. A chat with
  *  no receipt has read its messages through the baseline
  *  (PI-INTERACTION-188). */
@@ -122,6 +144,8 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
   let baselinePosition = 0
   let latestPosition = 0
   const entries = new Map<string, ViewEntry>()
+  // The latest turn time that clients hold for each chat.
+  const turns = new Map<string, number>()
   const unreadable = new Set<string>()
   const at = new Map<Connection, { readonly sessionId: string; counts: boolean }>()
   const writes = createBackgroundLane(log, "unread-chats")
@@ -143,6 +167,7 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
       if (fact.type === ENTRIES_FACT_TYPE) {
         const chat = held.get(sessionId)
         if (!chat || (chat.entriesAt ?? -1) >= fact.position) return undefined
+        if (chat.createdWith !== undefined && fact.aggregateId === conversationAggregate(chat.createdWith)) chat.historyAt = fact.timestamp
         // A batch that cannot be decoded holds nothing this fold can read,
         // and it never hides the chat's stop.
         const appended = decodeEntries(fact)
@@ -156,16 +181,26 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
         held.delete(sessionId)
         return sessionId
       }
+      if (fact.type === CREATED_FACT_TYPE) {
+        // A creation that cannot be decoded names no conversation, and it
+        // never hides the chat: its row's own times order it.
+        const conversationId = rootChatConversation(fact)
+        if (conversationId === undefined) return undefined
+        const chat = held.get(sessionId) ?? { pending: [] }
+        held.set(sessionId, chat)
+        chat.createdWith = conversationId
+        return sessionId
+      }
       const parsed = parseProjectionFact(fact, parseSessionFact<ChatTurnStopFact | ChatReadRecordedFact>)
       const chat = held.get(sessionId) ?? { pending: [] }
       held.set(sessionId, chat)
       if (parsed.type === "chat.turn.started") {
         if ((chat.started?.position ?? -1) >= fact.position) return undefined
-        chat.started = { position: fact.position, conversationId: parsed.payload.conversationId }
+        chat.started = { position: fact.position, startedAt: fact.timestamp, conversationId: parsed.payload.conversationId }
       } else if (parsed.type === "chat.turn.stopped") {
         if ((chat.stop?.position ?? -1) >= fact.position) return undefined
         const { ending, finalEntryId, firstLine } = parsed.payload
-        chat.stop = { position: fact.position, stoppedAt: fact.timestamp, ending, ...(finalEntryId ? { finalEntryId } : {}), ...(firstLine !== undefined ? { firstLine } : {}) }
+        chat.stop = { position: fact.position, stoppedAt: parsed.payload.endedAt ?? fact.timestamp, ending, ...(finalEntryId ? { finalEntryId } : {}), ...(firstLine !== undefined ? { firstLine } : {}) }
         if (finalEntryId) chat.answerId = finalEntryId
       } else {
         if ((chat.receipt?.position ?? -1) >= fact.position) return undefined
@@ -221,14 +256,33 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
     return changed
   }
 
-  /** Moves the chats of `sessionIds` to their places and publishes the view
-   *  when a place changed. `stoppedNow` names the chats whose live stop
+  /** The latest turn times of `sessionIds` that differ from what clients
+   *  hold, which clients now hold: null for a chat that no longer has one,
+   *  as a deleted chat does. */
+  function moveTurns(held: Map<string, ChatRead>, sessionIds: Iterable<string>): Map<string, number | null> {
+    const moved = new Map<string, number | null>()
+    for (const sessionId of sessionIds) {
+      const chat = held.get(sessionId)
+      const turnAt = chat === undefined ? undefined : latestTurnAt(chat)
+      if (turnAt === turns.get(sessionId)) continue
+      if (turnAt === undefined) turns.delete(sessionId)
+      else turns.set(sessionId, turnAt)
+      moved.set(sessionId, turnAt ?? null)
+    }
+    return moved
+  }
+
+  /** Moves the chats of `sessionIds` to their places and publishes what
+   *  moved: the view when a place changed, and the latest turn times that
+   *  changed. `stoppedNow` names the chats whose live stop
    *  fact this change folded: each one that the view now lists with a stop
    *  it did not judge before is announced in the patch, so a pager pages
    *  for a real stop and never for a read, a mark, or a baseline. */
   function refresh(sessionIds: Iterable<string>, stoppedNow: Iterable<string> = []): void {
     if (!chats) return
-    const changed = place(chats, sessionIds)
+    const ids = [...sessionIds]
+    const changed = place(chats, ids)
+    const moved = moveTurns(chats, ids)
     const newStops: StoppedChat[] = []
     for (const sessionId of stoppedNow) {
       const chat = chats.get(sessionId)
@@ -239,11 +293,11 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
       const entry = entries.get(sessionId)
       if (entry?.kind === "stopped") newStops.push(entry.chat)
     }
-    if (!changed || disposed) return
-    deps.bus.publish({ cursor: unreadChatsCursor(), payload: { kind: "unreadChats.changed", ...view(), newStops } })
+    if ((!changed && moved.size === 0) || disposed) return
+    deps.bus.publish({ cursor: unreadChatsCursor(), payload: { kind: "unreadChats.changed", ...(changed ? { places: places() } : {}), turns: Object.fromEntries(moved), newStops } })
   }
 
-  function view(): UnreadChatsView {
+  function places(): Omit<UnreadChatsView, "turns"> {
     const stopped = [...entries.values()].flatMap((entry) => entry.kind === "stopped" ? [entry] : []).toSorted((first, second) => second.position - first.position)
     const unread = [...entries].flatMap(([sessionId, entry]) => entry.kind === "unread" ? [sessionId] : []).toSorted()
     return { stopped: stopped.map((entry) => entry.chat), unread }
@@ -329,12 +383,27 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
       await yieldToNextTask()
     }
     const deciding = [...newest.values()].toSorted((first, second) => rowOf(first).position - rowOf(second).position)
-    reportUnreadable(deciding.flatMap((fact) => fact instanceof CorruptEventRowError ? [fact.row.sessionId] : []), "baseline read")
+    // A creation that cannot be read names no conversation, and it never
+    // hides the chat's read state.
+    reportUnreadable(deciding.flatMap((fact) => fact instanceof CorruptEventRowError && fact.row.type !== CREATED_FACT_TYPE ? [fact.row.sessionId] : []), "baseline read")
     for (const fact of deciding) if (!(fact instanceof CorruptEventRowError)) fold(held, fact)
     baselinePosition = upper
     latestPosition = Math.max(latestPosition, upper)
     await readWorkingTails(held)
+    await readQuietHistory(held)
     return held
+  }
+
+  /** One read of the newest entry batch of the conversation of each chat
+   *  that records no turn, so it has a latest turn time that opening it
+   *  never moves. */
+  async function readQuietHistory(held: Map<string, ChatRead>): Promise<void> {
+    const sessionOf = new Map([...held].flatMap(([sessionId, chat]) => chat.createdWith !== undefined && chat.started === undefined && chat.stop === undefined ? [[conversationAggregate(chat.createdWith), sessionId] as const] : []))
+    for (const fact of await readNewestBatches([...sessionOf.keys()], 1)) {
+      const row = fact instanceof CorruptEventRowError ? fact.row : fact
+      const chat = held.get(sessionOf.get(row.aggregateId) ?? "")
+      if (chat) chat.historyAt = row.timestamp
+    }
   }
 
   /** One read of the newest entry batches of every chat that works at the
@@ -342,17 +411,23 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
    *  ended its turn survive a restart. */
   async function readWorkingTails(held: Map<string, ChatRead>): Promise<void> {
     const working = [...held.values()].flatMap((chat) => isWorking(chat) && chat.started ? [chat.started] : [])
-    const aggregateIds = [...new Set(working.map((started) => `conversation:${started.conversationId}`))]
+    const aggregateIds = [...new Set(working.map((started) => conversationAggregate(started.conversationId)))]
     if (aggregateIds.length === 0) return
     const afterPosition = Math.min(...working.map((started) => started.position))
-    const tail: StoredFact[] = []
-    for (let index = 0; index < aggregateIds.length; index += TAIL_CONVERSATIONS_PER_READ) {
-      const ids = aggregateIds.slice(index, index + TAIL_CONVERSATIONS_PER_READ)
-      const slice = await deps.reader.readSlice({ aggregateIds: ids, types: [ENTRIES_FACT_TYPE], afterPosition, order: "desc", limitPerAggregate: TAIL_BATCHES, limit: ids.length * TAIL_BATCHES }, true)
-      // A batch that cannot be decoded holds nothing this fold can read.
-      for (const fact of slice.facts) if (!(fact instanceof CorruptEventRowError)) tail.push(fact)
-    }
+    // A batch that cannot be decoded holds nothing this fold can read.
+    const tail = (await readNewestBatches(aggregateIds, TAIL_BATCHES, afterPosition)).flatMap((fact) => fact instanceof CorruptEventRowError ? [] : [fact])
     for (const fact of tail.toSorted((first, second) => first.position - second.position)) fold(held, fact)
+  }
+
+  /** The newest `perConversation` entry batches of each conversation
+   *  aggregate of `aggregateIds`, after `afterPosition` when it is given. A
+   *  conversation whose batches alone pass the state boundary's budget is
+   *  left out and recorded once, so its chat orders by its row's own times
+   *  and the rest of the set still loads. */
+  async function readNewestBatches(aggregateIds: readonly string[], perConversation: number, afterPosition?: number): Promise<readonly (StoredFact | CorruptEventRowError)[]> {
+    const { facts, unserved } = await deps.readNewest(aggregateIds, [ENTRIES_FACT_TYPE], perConversation, afterPosition)
+    if (unserved.length > 0) log.warn("newest entry batches past the read budget; chats ordered by their row times", { count: unserved.length, aggregateIds: unserved, perConversation })
+    return facts
   }
 
   function load(): Promise<Map<string, ChatRead>> {
@@ -360,6 +435,7 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
       heldDuringBaseline = []
       const held = await readBaseline()
       place(held, held.keys())
+      moveTurns(held, held.keys())
       // The stops that the baseline holds are judged: none of them pages.
       for (const chat of held.values()) if (chat.stop) chat.judgedKey = stopKeyOf(chat.stop)
       chats = held
@@ -426,7 +502,7 @@ export function createUnreadChatsProjection<Connection>(deps: UnreadChatsProject
       await writes.settled()
       // Taken with the view, so every patch the answer covers is one the
       // client skips.
-      return { ...view(), snapshotPosition: deps.bus.snapshotPosition({ kind: "cursor", cursor: unreadChatsCursor() }) }
+      return { ...places(), turns: Object.fromEntries(turns), snapshotPosition: deps.bus.snapshotPosition({ kind: "cursor", cursor: unreadChatsCursor() }) }
     },
     async dispatch(command, connection) {
       if (command.type === "chat.presence") {
@@ -470,6 +546,24 @@ function foldEntries(chat: ChatRead, batch: readonly StoredConversationEntry[], 
     // A planned cut has a successor that continues the same turn.
     if (end && (end.reason === "crash" || (end.reason === "paused" && end.planned !== true))) chat.cutAt = position
   }
+}
+
+/** The conversation of a root chat that `fact`, a session's creation, names. */
+function rootChatConversation(fact: StoredFact): string | undefined {
+  try {
+    const created = parseProjectionFact(fact, (value) => decodeSessionMetadataFactForReplay(value, fact.timestamp))
+    return created?.type === CREATED_FACT_TYPE && created.payload.kind === "chat" ? created.payload.conversationId : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** When the chat's newest turn started or stopped, else the time of its
+ *  newest entry batch at the baseline. */
+function latestTurnAt(chat: ChatRead): number | undefined {
+  const { started, stop } = chat
+  if (started !== undefined && (stop === undefined || started.position > stop.position)) return started.startedAt
+  return stop?.stoppedAt ?? chat.historyAt
 }
 
 /** The identity of a stop: its final entry, or the stop itself for one with no answer. */

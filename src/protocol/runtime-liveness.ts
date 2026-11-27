@@ -302,8 +302,13 @@
  *  the person is at on the connection, and `chat.mark_read` and
  *  `chat.mark_unread` mark one chat. An older peer rejects the query, the
  *  patch, and the mutations.
+ *  Version 94: the unread chats snapshot and `unreadChats.changed` carry
+ *  `turns`, the time of each chat's latest turn, which a session list orders
+ *  by; a patch carries only the times that its change moved, and a client
+ *  that misses a patch reads the snapshot again. An older client rejects
+ *  the snapshot and the patch.
  */
-export const RUNTIME_PROTOCOL_VERSION = 93
+export const RUNTIME_PROTOCOL_VERSION = 94
 
 const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

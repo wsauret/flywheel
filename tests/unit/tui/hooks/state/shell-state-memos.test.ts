@@ -82,6 +82,26 @@ describe("Shell state derived memos", () => {
     })
   })
 
+  it("answers no latest turn times until the unread set's first read answers, then its times", async () => {
+    const turnsOf = async (unreadChatsSnapshot: () => Promise<{ readonly stopped: []; readonly unread: []; readonly turns: { readonly [sessionId: string]: number }; readonly snapshotPosition: number }>) => {
+      const answer = Promise.withResolvers<void>()
+      return createRoot(async (dispose) => {
+        try {
+          const { signals } = createShellState({
+            appService: { query: runtimeQuery({ unreadChatsSnapshot: async () => { await answer.promise; return unreadChatsSnapshot() } }, async () => { throw new Error("not served") }), dispatch: runtimeDispatch({}), subscribe: () => () => {}, ...fakeLanes().client },
+            runtimeConfig: { view: () => undefined, settlePublication: async () => false },
+            now: () => 0, projectRoot: "/scratch/flywheel-test", setTerminalTitle: () => {}, showToast: () => {},
+          })
+          const before = signals.chatTurns()
+          answer.resolve()
+          await waitForAssertion(() => expect(signals.chatTurns()).toBeDefined())
+          return [before, signals.chatTurns()]
+        } finally { dispose() }
+      })
+    }
+    expect(await turnsOf(async () => ({ stopped: [], unread: [], turns: { chat: 5 }, snapshotPosition: 0 }))).toEqual([undefined, { chat: 5 }])
+  })
+
   it("agentState defaults to idle when no foreground session", () => {
     const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const { signals } = buildShellState(sessionStore)

@@ -161,8 +161,9 @@ export function createRemoteNotifier(options: RemoteNotifierOptions): RemoteNoti
    *  also one already reading its address, so a stop that a later mark
    *  unread returns to the set sends none. */
   function onStoppedChats(payload: Extract<Extract<FrontendEvent, { type: "patch" }>["patch"]["payload"], { kind: "unreadChats.changed" }>): void {
-    for (const [sessionId, { stopKey }] of stopPushes) {
-      if (!payload.stopped.some((chat) => chat.sessionId === sessionId && chat.stopKey === stopKey)) cancelStop(sessionId)
+    const { places } = payload
+    if (places) for (const [sessionId, { stopKey }] of stopPushes) {
+      if (!places.stopped.some((chat) => chat.sessionId === sessionId && chat.stopKey === stopKey)) cancelStop(sessionId)
     }
     for (const chat of payload.newStops) pushStop(chat)
   }

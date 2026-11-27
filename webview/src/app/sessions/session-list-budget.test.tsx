@@ -142,7 +142,7 @@ test("a stopped unread chat lists under Needs you after a question and moves to 
         { sessionId: "done", ending: { kind: "completed" }, firstLine: "The fix is in place", stoppedAt: now - 3 * 3_600_000, stopKey: "entry-done" },
         { sessionId: "failed", ending: { kind: "failed", failure: "api_overloaded" }, stoppedAt: now - 4 * 3_600_000, stopKey: "stop-failed" },
       ],
-      unread: ["busy"],
+      unread: ["busy"], turns: {},
     })
     assert.deepEqual(mounted.rowOrder(), ["asked", "done", "failed", "busy"])
     assert.deepEqual(mounted.headings(), ["Needs you", "Working"])
@@ -170,7 +170,7 @@ test("a stopped unread chat lists under Needs you after a question and moves to 
     // An equal set published again keeps every row and its marks.
     const row = mounted.row("done")
     const badge = mounted.badges("done")[0]
-    mounted.setUnread({ stopped: [{ sessionId: "done", ending: { kind: "completed" }, firstLine: "The fix is in place", stoppedAt: now - 3 * 3_600_000, stopKey: "entry-done" }], unread: [] })
+    mounted.setUnread({ stopped: [{ sessionId: "done", ending: { kind: "completed" }, firstLine: "The fix is in place", stoppedAt: now - 3 * 3_600_000, stopKey: "entry-done" }], unread: [], turns: {} })
     assert.equal(mounted.row("done"), row)
     assert.equal(mounted.badges("done")[0], badge)
     // A working row keeps the slot of its mark once read, so its height stays.
@@ -178,7 +178,7 @@ test("a stopped unread chat lists under Needs you after a question and moves to 
     assert.deepEqual(unreadMark?.properties.classList, { hidden: true })
 
     // Read: the same row moves to Recent and shows its own line again.
-    mounted.setUnread({ stopped: [], unread: [] })
+    mounted.setUnread({ stopped: [], unread: [], turns: {} })
     assert.equal(mounted.row("done"), row, "reading a chat must not replace its row")
     assert.deepEqual(mounted.rowOrder(), ["asked", "busy", "done", "failed"])
     assert.match(mounted.rowText("done"), /done description/)

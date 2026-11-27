@@ -9,7 +9,7 @@ describe("selectNeedsYou", () => {
   test("lists questions newest first, then stopped chats newest first, and counts a chat with both once, as its question", () => {
     const needs = selectNeedsYou({
       waiting: { sessions: [{ sessionId: "asked-old", openedAt: 1 }, { sessionId: "both", openedAt: 5 }, { sessionId: "asked-new", openedAt: 9 }] },
-      unread: { stopped: [stopped("stopped-new", 8), stopped("both", 7), stopped("stopped-old", 2)], unread: ["working", "both"] },
+      unread: { stopped: [stopped("stopped-new", 8), stopped("both", 7), stopped("stopped-old", 2)], unread: ["working", "both"], turns: {} },
       listed: listed("asked-old", "both", "asked-new", "stopped-new", "stopped-old", "working", "quiet"),
     })
 
@@ -25,7 +25,7 @@ describe("selectNeedsYou", () => {
   test("shows no session that the client does not list", () => {
     const needs = selectNeedsYou({
       waiting: { sessions: [{ sessionId: "subagent", openedAt: 1 }] },
-      unread: { stopped: [stopped("deleted", 2)], unread: ["gone"] },
+      unread: { stopped: [stopped("deleted", 2)], unread: ["gone"], turns: {} },
       listed: listed("chat"),
     })
     expect(needs).toEqual({ rows: [], unread: new Set(), count: 0 })

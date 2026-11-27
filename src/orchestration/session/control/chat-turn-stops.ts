@@ -86,10 +86,10 @@ export function finalMessageFirstLine(text: string): string {
   return characters.length <= FIRST_LINE_LIMIT ? line : `${characters.slice(0, FIRST_LINE_LIMIT - 1).join("")}…`
 }
 
-function stoppedFact(conversationId: string, ending: ChatTurnEnding, answer?: Answer): ChatTurnStoppedFact {
+function stoppedFact(conversationId: string, ending: ChatTurnEnding, answer?: Answer, endedAt?: number): ChatTurnStoppedFact {
   return {
     type: "chat.turn.stopped", version: 1, actor: "flywheel",
-    payload: { conversationId, ending, ...(answer ? { finalEntryId: answer.entryId, firstLine: finalMessageFirstLine(answer.text) } : {}) },
+    payload: { conversationId, ending, ...(answer ? { finalEntryId: answer.entryId, firstLine: finalMessageFirstLine(answer.text) } : {}), ...(endedAt === undefined ? {} : { endedAt }) },
   }
 }
 
@@ -170,13 +170,15 @@ export function createChatTurnStops(input: {
   }
 }
 
-/** The final message that a branch ends with: its newest entry that a turn
- *  walk reads is an assistant message that calls no tool. */
-function finalAnswerOf(branch: readonly ConversationEntry[]): Answer | undefined {
+/** The final message that a branch ends with, and the time it was written:
+ *  its newest entry that a turn walk reads is an assistant message that
+ *  calls no tool. */
+function finalAnswerOf(branch: readonly ConversationEntry[]): { readonly answer: Answer; readonly at: number } | undefined {
   for (let index = branch.length - 1; index >= 0; index -= 1) {
     const entry = branch[index]
     if (!entry || isSkippedByWalk(entry)) continue
-    return answerOf(entry)
+    const answer = answerOf(entry)
+    return answer && { answer, at: Date.parse(entry.timestamp) }
   }
   return undefined
 }
@@ -202,9 +204,12 @@ export async function recoverChatTurnStop(input: {
   if (fact.type !== "chat.turn.started") return undefined
   const { conversationId } = fact.payload
   const branch = await input.branchOf(conversationId)
-  const answer = branch ? finalAnswerOf(branch) : undefined
-  if (!answer) return undefined
-  const stopped = stoppedFact(conversationId, { kind: "completed" }, answer)
+  const final = branch ? finalAnswerOf(branch) : undefined
+  if (!final) return undefined
+  const { answer } = final
+  // The turn ended at its final message, not at this recovery, so a list
+  // that orders chats by their latest turn keeps this one in its place.
+  const stopped = stoppedFact(conversationId, { kind: "completed" }, answer, final.at)
   if (!await writer.record(stopped)) return undefined
   log.info("owed chat stop recorded", { sessionId, conversationId, ending: "completed", finalEntryId: answer.entryId })
   return stopped

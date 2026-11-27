@@ -49,6 +49,7 @@ export function mountSessionCopyActions(currentSessionId: string | null = sessio
       sessions: [session],
       errors: [],
       needsYou: selectNeedsYou({ waiting: undefined, unread: undefined, listed: [] }),
+      turns: undefined,
       selected: session.id,
       actions,
     }))

@@ -2,6 +2,7 @@ import type { CommandUse } from "../../../../src/protocol/commands/command-usage
 import type { ChildSessionRow, FrontendActivity, RuntimeHealth, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/runtime/app-service-types.js"
 import type { PendingQuestionView, WaitingSessionsView } from "../../../../src/protocol/session/question-protocol-types.js"
 import type { UnreadChatsView } from "../../../../src/protocol/session/unread-protocol-types.js"
+import type { ListedTurns } from "../../../../src/protocol/client/session/session-list-groups.js"
 import type { RoleAssignmentView } from "../../../../src/protocol/auth/role-protocol-types.js"
 import type { RuntimeAuthStatusSnapshotResult } from "../../../../src/protocol/auth/auth-status-protocol-types.js"
 import type { UpdateStatusView } from "../../../../src/protocol/runtime/update-protocol-types.js"
@@ -134,6 +135,9 @@ export interface SessionState {
   /** The project's stopped unread chats and working chats with unread
    *  messages (ARCH-PROTOCOL-072), or undefined before the first read. */
   readonly unreadChats: UnreadChatsView | undefined
+  /** The latest turn times of `unreadChats`, or undefined while
+   *  `unreadChats` is undefined. */
+  readonly chatTurns: ListedTurns
   /** The background index of the shown session, which its resident views
    *  follow, or undefined while no session is shown. */
   readonly backgroundIndex: BackgroundIndexState | undefined

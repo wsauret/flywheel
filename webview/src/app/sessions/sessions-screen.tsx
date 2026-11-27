@@ -53,6 +53,7 @@ export function SessionsScreen() {
         <SessionList
           sessions={client.state().sessions}
           needsYou={client.state().needsYou}
+          turns={client.state().turns}
           errors={client.state().sessionErrors}
           selected={client.state().sessionId}
           shown={client.stack?.screen() === "sessions"}

@@ -31,7 +31,8 @@ function sessionRow(index: number): PickerSessionRow {
     kind: "session",
     id,
     session: catalogRow(id, `session-${String(index).padStart(2, "0")}`),
-    category: "Today",
+    group: "Recent",
+    lastActiveAt: 0,
   }
 }
 
@@ -83,16 +84,16 @@ async function renderPicker(initial?: readonly PickerRow[], initialCursor = 0, n
 }
 
 describe("session picker scroll ownership", () => {
-  // Reading the selected chat moves it from Needs you to its date group. The
+  // Reading the selected chat moves it from Needs you to Recent. The
   // patch moves no selection, so the selected row keeps its screen line.
-  it("keeps the selected row in view when a read patch moves it to its date group", async () => {
+  it("keeps the selected row in view when a read patch moves it to Recent", async () => {
     const dated = Array.from({ length: 40 }, (_, index) => sessionRow(index))
-    const stopped: PickerSessionRow = { ...sessionRow(77), category: "Needs you" }
-    const before: PickerRow[] = [{ kind: "header", id: "needs-you", label: "Needs you" }, stopped, { kind: "header", id: "today", label: "Today" }, ...dated]
+    const stopped: PickerSessionRow = { ...sessionRow(77), group: "Needs you" }
+    const before: PickerRow[] = [{ kind: "header", id: "needs-you", label: "Needs you" }, stopped, { kind: "header", id: "recent", label: "Recent" }, ...dated]
     const { rendered, setResult, setCursor } = await renderPicker(before, 1, () => 0)
     try {
       expect(rendered.captureCharFrame()).toContain("> ○ session-77")
-      const after: PickerRow[] = [{ kind: "header", id: "today", label: "Today" }, ...dated.slice(0, 30), { ...stopped, category: "Today" }, ...dated.slice(30)]
+      const after: PickerRow[] = [{ kind: "header", id: "recent", label: "Recent" }, ...dated.slice(0, 30), { ...stopped, group: "Recent" }, ...dated.slice(30)]
       // The selection follows its chat in the same update, as the keyed
       // selection of the hook does.
       batch(() => {

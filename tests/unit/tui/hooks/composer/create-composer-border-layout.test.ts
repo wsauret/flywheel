@@ -81,7 +81,7 @@ describe("composer border hints", () => {
       const listed = ["front", "closed-a", "closed-b", "done"].map((id) => session({ id }))
       signals.needsYou = () => selectNeedsYou({
         waiting: { sessions: waiting().map((sessionId, index) => ({ sessionId, openedAt: index })) },
-        unread: { stopped: stopped().map((sessionId, index) => ({ sessionId, ending: { kind: "completed" }, firstLine: "Done", stoppedAt: index, stopKey: `entry-${sessionId}` })), unread: ["working"] },
+        unread: { stopped: stopped().map((sessionId, index) => ({ sessionId, ending: { kind: "completed" }, firstLine: "Done", stoppedAt: index, stopKey: `entry-${sessionId}` })), unread: ["working"], turns: {} },
         listed,
       })
       const { layout } = createComposerBorderLayout({
