@@ -150,7 +150,30 @@ const FRONTIER_HARNESS_1_1: HarborBenchmark = {
   localVerifierWheelhouse: false,
 };
 
-export const HARBOR_BENCHMARKS: readonly HarborBenchmark[] = [TERMINAL_BENCH_2_1, DEEP_SWE_1_1, FRONTIER_HARNESS_1_1];
+/** The HARD-51 subset of SWE-bench Pro V2, published on 2026-11-27 to the
+ *  wsauret Hub namespace from the Harbor task directories of
+ *  github.com/scaleapi/SWE-bench_Pro-os at commit 66f92766 (v2/tasks/ and
+ *  v2/hard51_ids.txt), which the MIT license (Copyright (c) 2026 Scale AI,
+ *  Inc) lets anyone redistribute. The publication changes only each task's
+ *  name from `swebench-pro/<id>` to `wsauret/<id>`, lowercased, because Hub
+ *  refuses a job whose task name holds an uppercase letter (NodeBB). Scale's locked protocol
+ *  grades a captured diff on a pristine image; a Harbor run grades the
+ *  agent's sandbox, whose verifier reverts edits to fixtures and test paths. */
+const SWE_BENCH_PRO_V2_HARD_51: HarborBenchmark = {
+  id: "swe-bench-pro-v2-hard51",
+  display: "SWE-bench Pro V2 HARD-51",
+  dataset: { name: "wsauret/swe-bench-pro-v2-hard51", ref: "sha256:366e21facc0f08290387df1a4e3e4ef2b8f620d493bf5f205f4436484a40da76" },
+  taskNamespace: "wsauret",
+  splits: {},
+  excluded: [],
+  hubBroken: [],
+  answerKeyRule: false,
+  answerKeySources: ["swe-bench_pro", "swe-bench-pro", "swebenchpro", "swebench-pro", "scaleapi"],
+  verifierDownloadsFromGithub: false,
+  localVerifierWheelhouse: false,
+};
+
+export const HARBOR_BENCHMARKS: readonly HarborBenchmark[] = [TERMINAL_BENCH_2_1, DEEP_SWE_1_1, FRONTIER_HARNESS_1_1, SWE_BENCH_PRO_V2_HARD_51];
 
 /** Returns the registered benchmark with this id, or throws an error that lists every registered id. */
 export function harborBenchmark(id: string): HarborBenchmark {

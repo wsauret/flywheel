@@ -237,6 +237,15 @@ The dataset has 62 tasks, all in the `terminal-bench` namespace, and the board e
 - A local run seals no wheelhouse. No local run of the `tb4` graders has been made, and the hosted run is the supported route.
 - No task is hub-broken. Harbor's oracle agent passed each `tb4` task 2 of 2 times on Harbor Hub on 2026-11-11, and the `tb21` tasks are those of Terminal-Bench 2.1 without its one hub-broken task.
 
+### SWE-bench Pro V2 HARD-51
+
+Descriptor `swe-bench-pro-v2-hard51`, no board key. The dataset `wsauret/swe-bench-pro-v2-hard51` is the 51 Harbor task directories of `v2/hard51_ids.txt` in github.com/scaleapi/SWE-bench_Pro-os at commit 66f92766, published to the Hub under that repository's MIT license. The publication changes only each task's name, from `swebench-pro/<id>` to `wsauret/<id>` in lowercase, because Hub refuses a job whose task name holds an uppercase letter. The descriptor excludes no task and has no splits; a run with no task selection runs all 51.
+
+- The agent phase has no network. Each task image is `ghcr.io/scaleapi/swe-bench_pro-v2:<id>`, with the repository at `/app` (or `/testbed`) at the task's base commit.
+- The verifier runs in the agent's sandbox. It reverts the agent's edits to test code and fixtures, applies the hidden test patch, runs the task's `run_script.sh`, and passes the trial only when every `fail_to_pass` and `pass_to_pass` test of the task's `tests/config.json` passes. The reward is 0 or 1. Each test's status is in the trial's `verifier/output.json`, and `verifier/test-stdout.txt` states the counts of required and passed tests and the missing ones.
+- Scale's locked protocol instead replays the agent's diff on a pristine image, so a comparison with a published SWE-bench Pro V2 score must state that difference.
+- Each trial home carries no answer-key rule file, and the grader downloads nothing from GitHub.
+
 ## Removed capabilities
 
 The removed `--headless --task` installed-agent adapter carried two trial inputs that the agent package does not have:
