@@ -1,0 +1,92 @@
+src/orchestration/app-service/projections/unread-chats-projection.ts
+  h_4b47e9e4a8b456 30-33,48-50,388-390,392-393,397,409-413
+src/protocol/client/host/editor-host.ts
+  h_4b47e9e4a8b456 49-57,60-65
+src/protocol/client/host/host-contract.ts
+  h_4b47e9e4a8b456 68-70
+tests/unit/orchestration/app-service/projections/unread-chats-projection.test.ts
+  h_4b47e9e4a8b456 119-123
+tests/unit/webview/local-tab.test.ts
+  h_4b47e9e4a8b456 4,16,47-56
+vscode/src/webview/changes.test.ts
+  h_4b47e9e4a8b456 46-55,58-59,68-70,93-94,98,515-547
+vscode/src/webview/panel-mount.ts
+  h_4b47e9e4a8b456 5,22-24,73-76,80-85,216-220
+webview/editor/main.tsx
+  h_4b47e9e4a8b456 1,3,43-58,86,96-100,118-120
+webview/local/tab.ts
+  h_4b47e9e4a8b456 18-25,29-30,32-34,66,68
+webview/phone/main.tsx
+  h_4b47e9e4a8b456 11,190-192,235-238
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 13,195,480-488
+webview/src/app/controls/icons.tsx
+  h_4b47e9e4a8b456 49
+webview/src/app/screens/screen-stack.test.ts
+  h_4b47e9e4a8b456 3,338-357
+webview/src/app/screens/screen-stack.ts
+  h_4b47e9e4a8b456 186-187,189-194
+webview/src/app/sessions/session-actions.ts
+  h_4b47e9e4a8b456 72-73
+webview/src/app/sessions/session-copy-interaction-fixture.ts
+  h_4b47e9e4a8b456 9,51
+webview/src/app/sessions/session-list-budget.test.tsx
+  h_4b47e9e4a8b456 5,14,133-193
+webview/src/app/sessions/session-list.tsx
+  h_4b47e9e4a8b456 2,5-6,37-38,60,64-88,101-102,111,114-127,179-180,191-192,197,278-287,314-315,319-324,336-351
+webview/src/app/sessions/session-rail.tsx
+  h_4b47e9e4a8b456 37
+webview/src/app/sessions/session-rows.test.ts
+  h_4b47e9e4a8b456 5-7,16-26,44,63-97,100,103,108,113,119-120,128,130,133
+webview/src/app/sessions/session-rows.ts
+  h_4b47e9e4a8b456 1-2,10-17,22-24,29-31,33,35-44,48,50,52-53,59,61,65-71
+webview/src/app/sessions/sessions-screen.tsx
+  h_4b47e9e4a8b456 55
+webview/src/app/sessions/sessions-sheet.tsx
+  h_4b47e9e4a8b456 46
+webview/src/app/toolbar/toolbar-budget.test.tsx
+  h_4b47e9e4a8b456 132-151
+webview/src/app/toolbar/toolbar.tsx
+  h_4b47e9e4a8b456 57-64,121,151,211-214
+webview/src/client/action-key.ts
+  h_4b47e9e4a8b456 9
+webview/src/client/actions.ts
+  h_4b47e9e4a8b456 8,81-84,220-223,302-305
+webview/src/client/session/navigation/presence.test.ts
+  h_4b47e9e4a8b456 1-132
+webview/src/client/session/navigation/presence.ts
+  h_4b47e9e4a8b456 1-85
+webview/src/client/session/session-state.ts
+  h_4b47e9e4a8b456 3-4,129-135
+webview/src/client/session/session.ts
+  h_4b47e9e4a8b456 551
+webview/src/client/session/view-state.test.ts
+  h_4b47e9e4a8b456 188
+webview/src/client/session/view-state.ts
+  h_4b47e9e4a8b456 2-4,80-83,252-265,270-286,305,324-327,338,377-378,429-433
+webview/src/client/session/workspace/session-lanes.test.ts
+  h_4b47e9e4a8b456 77,271
+webview/src/client/session/workspace/session-live-patches.test.ts
+  h_4b47e9e4a8b456 73,75-76,84,88,96,99-100,105-110,112
+webview/src/client/session/workspace/workspace-status-views.ts
+  h_4b47e9e4a8b456 6,19-25,30,59,68,71-81,85-86,91
+webview/src/host.ts
+  h_4b47e9e4a8b456 96-103,144-147
+webview/src/styles/app.css
+  h_4b47e9e4a8b456 263,268
+webview/src/styles/session-list.css
+  h_4b47e9e4a8b456 159-169
+webview/src/test-support/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 19-21,35,64,169-171,311,350,380-413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "133e1aac1d444ce9d835e2d8f4034e4abf3dd56e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
