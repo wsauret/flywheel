@@ -1,0 +1,112 @@
+src/tui/components/chrome/cell-column.tsx
+  h_4b47e9e4a8b456 6,29-31,57,61,63-67
+src/tui/components/chrome/tabs-bar.tsx
+  h_4b47e9e4a8b456 3,7,10,19-21,82,129-130,135,142-145,151,153-154,158,160
+src/tui/components/composer/composer-types.ts
+  h_4b47e9e4a8b456 60,62
+src/tui/components/composer/composer.tsx
+  h_4b47e9e4a8b456 685
+src/tui/components/composer/frame/composer-border-labels.tsx
+  h_4b47e9e4a8b456 115,118
+src/tui/components/composer/frame/composer-border-layout.ts
+  h_4b47e9e4a8b456 16-20,28-29,49-50,87,89-90,126,134
+src/tui/components/modal/scroll/use-list-selection-reveal.ts
+  h_4b47e9e4a8b456 13-16,69-74,77
+src/tui/components/notices/chat-marks.ts
+  h_4b47e9e4a8b456 1-36
+src/tui/hooks/composer/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 43-46,88-90,92,99,116
+src/tui/hooks/create-tab-closer.ts
+  h_4b47e9e4a8b456 61
+src/tui/hooks/create-tabs.ts
+  h_4b47e9e4a8b456 14,33,36,42,92
+src/tui/hooks/foreground/create-terminal-presence.ts
+  h_4b47e9e4a8b456 1-137
+src/tui/hooks/overlays/create-modals.tsx
+  h_4b47e9e4a8b456 404
+src/tui/hooks/overlays/modals/session/use-session-modal-types.ts
+  h_4b47e9e4a8b456 32-35
+src/tui/hooks/overlays/modals/session/use-session-modal.ts
+  h_4b47e9e4a8b456 15,57,304-307,312-332,477,480,493,543-544
+src/tui/hooks/state/shell-state.ts
+  h_4b47e9e4a8b456 30-31,121-127,304-305,307,316,320,478-480,482-487,489-490,658-659
+src/tui/modals/session-picker/picker-helpers.ts
+  h_4b47e9e4a8b456 3-5,15,18-21,25,27-33,36-37,121-122,126-127,129-130,133-135,137,140-162
+src/tui/modals/session-picker/picker-types.ts
+  h_4b47e9e4a8b456 3,22-24
+src/tui/modals/session-picker/session-modal.tsx
+  h_4b47e9e4a8b456 13,36,82
+src/tui/modals/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 7,14,25,39,96-99,164,182,195,212,214,225,249-264
+src/tui/modals/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 5,8-9,13-14,23-25,37-39,45-54,62-69,94,97,103,105,140,142,144,147-151,155
+src/tui/shell/question-dock.tsx
+  h_4b47e9e4a8b456 20,34,37-38,344
+src/tui/shell/shell-composer.tsx
+  h_4b47e9e4a8b456 141,174
+src/tui/shell/shell.tsx
+  h_4b47e9e4a8b456 30,112
+tests/unit/tui/chat-default-landing.test.ts
+  h_4b47e9e4a8b456 104
+tests/unit/tui/components/chrome/tabs-bar.test.ts
+  h_4b47e9e4a8b456 19-21,83-87,90-91,94,97-99,104-136,253-254,273-275,309-310,332,344,380
+tests/unit/tui/components/composer/frame/prompt-border-fixtures.ts
+  h_4b47e9e4a8b456 107,136
+tests/unit/tui/components/composer/frame/prompt-border-layout.test.ts
+  h_4b47e9e4a8b456 180
+tests/unit/tui/components/composer/prompt-area-draft.test.ts
+  h_4b47e9e4a8b456 174,229
+tests/unit/tui/components/composer/prompt-area-fixture.ts
+  h_4b47e9e4a8b456 96
+tests/unit/tui/hooks/_session-modal-fixtures.ts
+  h_4b47e9e4a8b456 3-5,76,88-91,108-117
+tests/unit/tui/hooks/composer/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 11,75,77-78,81-86,95-104,106,108-110,112
+tests/unit/tui/hooks/create-launch-state.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/tui/hooks/create-tabs.test.ts
+  h_4b47e9e4a8b456 2-4,14,36,42,79,81,88,91-95,97-98,109,114,127,138
+tests/unit/tui/hooks/foreground/background-foreground.test.ts
+  h_4b47e9e4a8b456 38
+tests/unit/tui/hooks/foreground/create-terminal-presence.test.ts
+  h_4b47e9e4a8b456 1-182
+tests/unit/tui/hooks/overlays/modals/session/use-session-modal-catalog.test.ts
+  h_4b47e9e4a8b456 4,35,47-104
+tests/unit/tui/hooks/overlays/modals/session/use-session-modal-content-search.test.ts
+  h_4b47e9e4a8b456 159
+tests/unit/tui/hooks/overlays/modals/session/use-session-modal.test.ts
+  h_4b47e9e4a8b456 192,350
+tests/unit/tui/hooks/sessions/create-session-creator.test.ts
+  h_4b47e9e4a8b456 42
+tests/unit/tui/hooks/state/shell-state-memos.test.ts
+  h_4b47e9e4a8b456 2,66-78
+tests/unit/tui/hooks/use-open-session-runners.test.ts
+  h_4b47e9e4a8b456 11,14
+tests/unit/tui/modals/session-picker/picker-helpers.test.ts
+  h_4b47e9e4a8b456 9-11,14,119,121,124,126-136,142-143,151-158
+tests/unit/tui/modals/session-picker/session-modal-delete.test.ts
+  h_4b47e9e4a8b456 172,227
+tests/unit/tui/modals/session-picker/session-picker-row.test.ts
+  h_4b47e9e4a8b456 48,52,133,141-218,300
+tests/unit/tui/modals/session-picker/session-picker-scroll.test.tsx
+  h_4b47e9e4a8b456 10,44,51-52,60,66,86-108
+tests/unit/tui/modals/session-picker/session-picker-text-entry.test.tsx
+  h_4b47e9e4a8b456 9,21,37,39,92-120
+tests/unit/tui/modals/session-picker/session-preview-pane.test.tsx
+  h_4b47e9e4a8b456 83
+tests/unit/tui/shell/keyboard-handler.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/tui/shell/question-dock.test.tsx
+  h_4b47e9e4a8b456 69,84,106,109,111,115,117,120,122,126-127,132,134,545
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "feb36d2e476cdd9a41a96c3b1d2cf4e54ee0bcd4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
