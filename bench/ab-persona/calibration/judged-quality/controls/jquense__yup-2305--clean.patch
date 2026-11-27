@@ -1,0 +1,99 @@
+diff --git a/src/array.ts b/src/array.ts
+index cd94b9d..29f030b 100644
+--- a/src/array.ts
++++ b/src/array.ts
+@@ -82,7 +82,13 @@ export default class ArraySchema<
+       const castElement = this.innerType!.cast(v, {
+         ..._opts,
+         path: `${_opts.path || ''}[${idx}]`,
++        parent: value,
++        originalValue: v,
++        value: v,
++        index: idx,
++
+       });
++      
+       if (castElement !== v) {
+         isChanged = true;
+       }
+diff --git a/src/object.ts b/src/object.ts
+index 5825f68..94dc817 100644
+--- a/src/object.ts
++++ b/src/object.ts
+@@ -181,10 +181,10 @@ export default class ObjectSchema<
+     for (const prop of props) {
+       let field = fields[prop];
+       let exists = prop in (value as {})!;
++      let inputValue = value[prop];
+ 
+       if (field) {
+         let fieldValue;
+-        let inputValue = value[prop];
+ 
+         // safe to mutate since this is fired in sequence
+         innerOptions.path = (options.path ? `${options.path}.` : '') + prop;
+@@ -205,20 +205,19 @@ export default class ObjectSchema<
+ 
+         fieldValue =
+           !options.__validating || !strict
+-            ? // TODO: use _cast, this is double resolving
+-              (field as ISchema<any>).cast(value[prop], innerOptions)
+-            : value[prop];
++            ? (field as ISchema<any>).cast(inputValue, innerOptions)
++            : inputValue;
+ 
+         if (fieldValue !== undefined) {
+           intermediateValue[prop] = fieldValue;
+         }
+       } else if (exists && !strip) {
+-        intermediateValue[prop] = value[prop];
++        intermediateValue[prop] = inputValue;
+       }
+ 
+       if (
+         exists !== prop in intermediateValue ||
+-        intermediateValue[prop] !== value[prop]
++        intermediateValue[prop] !== inputValue
+       ) {
+         isChanged = true;
+       }
+diff --git a/src/schema.ts b/src/schema.ts
+index dd65e72..4b2bd6e 100644
+--- a/src/schema.ts
++++ b/src/schema.ts
+@@ -83,6 +83,10 @@ export interface CastOptions<C = {}> {
+   stripUnknown?: boolean;
+   // XXX: should be private?
+   path?: string;
++  index?: number;
++  key?: string;
++  originalValue?: any;
++  value?: any;
+   resolved?: boolean;
+ }
+ 
+@@ -374,8 +378,8 @@ export default abstract class Schema<
+     options: CastOptions<TContext> | CastOptionalityOptions<TContext> = {},
+   ): this['__outputType'] {
+     let resolvedSchema = this.resolve({
+-      value,
+       ...options,
++      value,
+       // parent: options.parent,
+       // context: options.context,
+     });
+diff --git a/src/tuple.ts b/src/tuple.ts
+index c68a120..54bb8a9 100644
+--- a/src/tuple.ts
++++ b/src/tuple.ts
+@@ -114,6 +114,10 @@ export default class TupleSchema<
+       const castElement = type.cast(value[idx], {
+         ...options,
+         path: `${options.path || ''}[${idx}]`,
++        parent: value,
++        originalValue: value[idx],
++        value: value[idx],
++        index: idx,
+       });
+       if (castElement !== value[idx]) isChanged = true;
+       return castElement;

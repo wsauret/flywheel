@@ -6,7 +6,7 @@ import { structuredIdentity } from "../campaign/content-identity.js";
 import { BenchmarkAccountingSchema } from "../accounting/evidence.js";
 import { harnessLintFile, loadHarnessLint } from "./harness-names.js";
 import { createJsonLinesLedger } from "../campaign/json-lines.js";
-import { ImplementScoreSchema, ResearchScoreSchema, ReviewScoreSchema, type AgentRunRecord, type AttemptRecord, type AttemptTerminal, type ScoreRecord } from "../scoring/run-store.js";
+import { ImplementScoreSchema, QualityScoreSchema, ResearchScoreSchema, ReviewScoreSchema, type AgentRunRecord, type AttemptRecord, type AttemptTerminal, type ScoreRecord } from "../scoring/run-store.js";
 import { CheckGradeSchema, LegacyAcceptanceFields, type CheckGrade } from "../implement-task/check-grade.js";
 
 // Benchmark records are the public ledger of scored cells (ARCH-DIRECTORIES-020).
@@ -79,6 +79,9 @@ const ScoreLineSchema = Schema.Union([
   Schema.Struct({ ...scoreFields, scorer: Schema.Literal("review"), score: ReviewScoreSchema }),
   Schema.Struct({ ...scoreFields, scorer: Schema.Literal("research"), score: ResearchScoreSchema }),
   Schema.Struct({ ...scoreFields, scorer: Schema.Literal("trap"), score: ImplementScoreSchema }),
+  /** A judged-quality score of an implementer cell (ARCH-DIRECTORIES-026). Its scoring version is the quality
+   *  judge's identity, apart from the campaign's trap scoring version. */
+  Schema.Struct({ ...scoreFields, scorer: Schema.Literal("quality"), score: QualityScoreSchema }),
 ]);
 
 /** One implementer cell regraded from its stored diff by a task grader. `graderIdentity` is the grader identity of
@@ -114,6 +117,7 @@ export type RecordJudge = typeof JudgeSchema.Type;
 export type CampaignHeader = typeof CampaignHeaderSchema.Type;
 export type CellLine = typeof CellLineSchema.Type;
 export type ScoreLine = typeof ScoreLineSchema.Type;
+export type QualityScoreLine = Extract<ScoreLine, { scorer: "quality" }>;
 export type GradeLine = typeof GradeLineSchema.Type;
 type FailureLine = typeof FailureLineSchema.Type;
 
@@ -212,7 +216,7 @@ async function loadCampaignRecords(file: string): Promise<CampaignRecords | unde
       failures.push(line);
       continue;
     }
-    if (line.scorer !== recordScorer(header.mode)) throw new Error(`${at} is a ${line.scorer} score in a ${header.mode} campaign`);
+    if (line.scorer !== recordScorer(header.mode) && !(line.scorer === "quality" && header.mode === "implement")) throw new Error(`${at} is a ${line.scorer} score in a ${header.mode} campaign`);
     if (!cellKeys.has(cellKey(line.score))) throw new Error(`${at} scores ${line.score.variant} ${line.score.task} #${line.score.repeat}, which has no cell line before it`);
     if (scoreKeys.has(scoreKey(line))) throw new Error(`${at} repeats the ${judgeLabel(line.judge)} score of ${line.score.variant} ${line.score.task} #${line.score.repeat}`);
     scoreKeys.add(scoreKey(line));

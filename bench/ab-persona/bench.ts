@@ -36,6 +36,8 @@ interface CliArgs extends BenchmarkOptions {
   rejudge?: string;
   /** Regrade recorded implementer cells with each task's current grader; no candidate or judge runs. */
   regrade?: boolean;
+  /** Judge the judged-quality calibration controls with `--judge` and report its calibration (ARCH-DIRECTORIES-026). */
+  calibrate?: boolean;
 }
 
 type CreateRuntime = (projectRoot: string, stored?: UsageAuthorityGeneration, profile?: string) => Promise<OwnedBenchmarkRuntime>;
@@ -61,10 +63,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   let judge: VariantSpec | undefined;
   let rejudge: string | undefined;
   let regrade = false;
+  let calibrate = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--regrade") {
       regrade = true;
+    } else if (arg === "--calibrate") {
+      calibrate = true;
     } else if (arg === "--dry-run") {
       dryRun = true;
     } else if (arg === "--repeats") {
@@ -111,11 +116,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   if (resumeDir && rescoreDir) throw new Error("--resume and --rescore cannot be used together");
   if (reportDir && (resumeDir || rescoreDir || dryRun)) throw new Error("--report cannot be used with --resume, --rescore, or --dry-run");
   if (repeats !== undefined && (!Number.isInteger(repeats) || repeats < 1)) throw new Error("--repeats must be a positive integer");
-  if (rejudge !== undefined) {
-    if (!judge) throw new Error("--rejudge requires --judge model:effort");
-    const refused = [["--resume", resumeDir], ["--rescore", rescoreDir], ["--report", reportDir], ["--variant", variants[0]], ["--repeats", repeats], ["--tasks", taskIds[0]], ["--persona", persona], ["--concurrency", concurrency]]
-      .filter(([, value]) => value !== undefined).map(([flag]) => flag);
-    if (refused.length > 0) throw new Error(`--rejudge scores the recorded cells of one persona and cannot be used with ${refused.join(", ")}`);
+  if (rejudge !== undefined || calibrate) {
+    const flag = rejudge !== undefined ? "--rejudge" : "--calibrate";
+    if (!judge) throw new Error(`${flag} requires --judge model:effort`);
+    // A calibration has no preview: the only thing it does before a judge call is admit the judge.
+    const refused = [["--rejudge", calibrate ? rejudge : undefined], ["--dry-run", calibrate && dryRun ? true : undefined], ["--resume", resumeDir], ["--rescore", rescoreDir], ["--report", reportDir], ["--variant", variants[0]], ["--repeats", repeats], ["--tasks", taskIds[0]], ["--persona", persona], ["--concurrency", concurrency]]
+      .filter(([, value]) => value !== undefined).map(([name]) => name);
+    if (refused.length > 0) throw new Error(`${flag} ${calibrate ? "judges the calibration controls" : "scores the recorded cells of one persona"} and cannot be used with ${refused.join(", ")}`);
   }
   if (regrade && argv.length > 1) throw new Error("--regrade takes no other option");
   const resultsDir = resumeDir ?? rescoreDir;
@@ -135,6 +142,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ...(judge ? { judge: { model: judge.model, effort: judge.effort } } : {}),
     ...(rejudge === undefined ? {} : { rejudge }),
     ...(regrade ? { regrade } : {}),
+    ...(calibrate ? { calibrate } : {}),
   };
 }
 
@@ -219,6 +227,10 @@ export async function main(
     await rejudge(args.rejudge, args, catalog, createRuntime, projectRoot);
     return;
   }
+  if (args.calibrate) {
+    await calibrate(args, catalog, createRuntime, projectRoot);
+    return;
+  }
   const plan = await planPersonaBenchmark(args, catalog);
   await using runtime = await createRuntime(projectRoot, undefined, args.profile);
   const { persona } = await loadBenchmarkPersona(plan, catalog, runtime.deps);
@@ -273,15 +285,12 @@ async function publishPages(catalog: ReturnType<typeof createBenchmarkCatalog>):
   console.error(written.length === 0 ? "Results pages already match the records." : `Results pages regenerated; commit them with the records:\n${written.join("\n")}`);
 }
 
-/** Score the current, unscored record cells of `persona` with the `--judge` judge (ARCH-DIRECTORIES-020). */
-async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeof createBenchmarkCatalog>, createRuntime: CreateRuntime, projectRoot: string): Promise<void> {
+/** Admits exactly the `--judge` judge on the profile, owning each runtime it opens in `owned`. */
+function judgeAdmission(args: CliArgs, owned: AsyncDisposableStack, createRuntime: CreateRuntime, projectRoot: string) {
+  // SAFETY: parseArgs requires --judge with --rejudge and --calibrate, the only callers.
   const requested = args.judge!;
-  const [{ admitBenchmark, personaCampaignJudge }, { rejudgeRecords }] = await Promise.all([
-    import("../../src/orchestration/modules/development/benchmark/persona/admission.js"),
-    import("../../src/orchestration/modules/development/benchmark/rejudge.js"),
-  ]);
-  await using owned = new AsyncDisposableStack();
-  const admit = async () => {
+  return async () => {
+    const { admitBenchmark, personaCampaignJudge } = await import("../../src/orchestration/modules/development/benchmark/persona/admission.js");
     const runtime = owned.use(await createRuntime(projectRoot, undefined, args.profile));
     const admission = await admitBenchmark({
       ...runtime.deps,
@@ -294,10 +303,20 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
     }, [{ role: "judge", ...requested }]);
     const { judge, createJudge } = personaCampaignJudge(admission);
     if (judge?.model !== requested.model || judge.effort !== requested.effort) {
-      throw new Error(`The judge ${requested.model}:${requested.effort} resolved to ${judge ? `${judge.model}:${judge.effort}` : "no model"} on this profile; a rejudge scores only with the named judge`);
+      throw new Error(`The judge ${requested.model}:${requested.effort} resolved to ${judge ? `${judge.model}:${judge.effort}` : "no model"} on this profile; a rejudge or a calibration scores only with the named judge`);
     }
     return { admission, judge, createJudge };
   };
+}
+
+/** Score the current, unscored record cells of `persona` with the `--judge` judge (ARCH-DIRECTORIES-020), its
+ *  judged quality included (ARCH-DIRECTORIES-026). */
+async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeof createBenchmarkCatalog>, createRuntime: CreateRuntime, projectRoot: string): Promise<void> {
+  // SAFETY: parseArgs requires --judge with --rejudge.
+  const requested = args.judge!;
+  const { rejudgeRecords } = await import("../../src/orchestration/modules/development/benchmark/rejudge.js");
+  await using owned = new AsyncDisposableStack();
+  const admit = judgeAdmission(args, owned, createRuntime, projectRoot);
   const openJudge = async (evidenceDirectory: string) => {
     const { admission, createJudge } = await admit();
     return { model: await createJudge(evidenceDirectory), runOwnedCommand: admission.runtime.runOwnedCommand };
@@ -317,6 +336,38 @@ async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeo
     console.log(`Rejudged ${persona} with ${requested.model}:${requested.effort}: ${outcome.scored} scored, ${outcome.failed} failed of ${outcome.pending} pending. Judge evidence: ${outcome.evidenceDirectory}`);
     if (outcome.scored > 0) await publishPages(catalog);
     if (outcome.failed > 0 || controller.signal.aborted) process.exitCode = 1;
+  } finally {
+    process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
+  }
+}
+
+/** Judge the calibration controls that the `--judge` judge has no result of, write its results file, and print
+ *  whether its calibration passes (ARCH-DIRECTORIES-026). Commit the results file. */
+async function calibrate(args: CliArgs, catalog: ReturnType<typeof createBenchmarkCatalog>, createRuntime: CreateRuntime, projectRoot: string): Promise<void> {
+  // SAFETY: parseArgs requires --judge with --calibrate.
+  const requested = args.judge!;
+  const [{ calibrateQualityJudge, calibrationStanding, evaluateQualityCalibration, loadQualityCalibration }, { loadAllCampaignRecords }] = await Promise.all([
+    import("../../src/orchestration/modules/development/benchmark/records/judge-calibration.js"),
+    import("../../src/orchestration/modules/development/benchmark/records/benchmark-records.js"),
+  ]);
+  await using owned = new AsyncDisposableStack();
+  const admit = judgeAdmission(args, owned, createRuntime, projectRoot);
+  const controller = new AbortController();
+  const onInterrupt = (): void => controller.abort();
+  process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onInterrupt);
+  try {
+    const outcome = await calibrateQualityJudge({
+      catalog, judge: requested, signal: controller.signal,
+      openJudge: async (evidenceDirectory) => (await admit()).createJudge(evidenceDirectory),
+    });
+    const report = evaluateQualityCalibration(await loadQualityCalibration(catalog), requested, await loadAllCampaignRecords(catalog.recordsRoot));
+    const standing = calibrationStanding(report);
+    console.log(`Calibrated ${requested.model}:${requested.effort}: ${outcome.judged} controls judged, ${outcome.failed} failed of ${outcome.pending} pending. Results: ${outcome.file}. Judge evidence: ${outcome.evidenceDirectory}`);
+    console.log(`${standing.passed ? "PASS" : "FAIL"}: ${standing.summary}`);
+    if (outcome.judged > 0) await publishPages(catalog);
+    if (!standing.passed || outcome.failed > 0 || controller.signal.aborted) process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
     process.off("SIGTERM", onInterrupt);

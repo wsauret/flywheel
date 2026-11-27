@@ -1,0 +1,144 @@
+{
+  "cells": [
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-24T07-24-16-693Z",
+      "variant": "claude-opus-5-5@high",
+      "task": "astropy__astropy-14598",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T20-31-14-559Z",
+      "variant": "claude-opus-5-5@medium",
+      "task": "ds1000-298",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-24T07-24-16-693Z",
+      "variant": "gemini-4-hydrogen@high",
+      "task": "getmoto__moto-7365",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-13T21-16-42-634Z",
+      "variant": "claude-fable-5.2@low",
+      "task": "hosted-thinking-row-wait",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-13T21-16-42-634Z",
+      "variant": "claude-opus-5.5@high",
+      "task": "httpx-streaming-json-iteration",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-24T07-24-16-693Z",
+      "variant": "gemini-4-neon@high",
+      "task": "jquense__yup-2305",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-24T07-13-03-614Z",
+      "variant": "gemini-3.8-flash@low",
+      "task": "metrics-resteer",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T06-08-53-448Z",
+      "variant": "gemini-4-neon@medium",
+      "task": "psf__requests-6028",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-13T21-16-42-634Z",
+      "variant": "claude-opus-5.5@medium",
+      "task": "recall-punctuated-words",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T06-06-30-601Z",
+      "variant": "gpt-6.1-sol@medium",
+      "task": "redis__redis-10068",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T06-06-30-601Z",
+      "variant": "gpt-6.2-sol@high",
+      "task": "regex-chess",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T06-06-30-601Z",
+      "variant": "gpt-6.2-sol@medium",
+      "task": "rust-react",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-13T21-16-44-771Z",
+      "variant": "gpt-6-astra@low",
+      "task": "scheme-metacircular",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-24T07-24-16-693Z",
+      "variant": "claude-opus-5-5@high",
+      "task": "template-multiphase",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T14-27-47-990Z",
+      "variant": "claude-opus-5-5@medium",
+      "task": "astropy__astropy-14598",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T20-31-14-559Z",
+      "variant": "gemini-4-hydrogen@high",
+      "task": "ds1000-298",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-24T07-24-16-693Z",
+      "variant": "gemini-4-neon@high",
+      "task": "getmoto__moto-7365",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-13T21-16-44-771Z",
+      "variant": "gpt-6.1-sol@high",
+      "task": "hosted-thinking-row-wait",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-13T21-16-44-771Z",
+      "variant": "gpt-6.1-sol@xhigh",
+      "task": "httpx-streaming-json-iteration",
+      "repeat": 0
+    },
+    {
+      "persona": "implementer",
+      "stamp": "2026-11-26T06-08-53-448Z",
+      "variant": "gemini-4-neon@medium",
+      "task": "jquense__yup-2305",
+      "repeat": 0
+    }
+  ]
+}

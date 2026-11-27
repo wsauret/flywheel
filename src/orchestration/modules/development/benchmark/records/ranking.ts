@@ -3,7 +3,8 @@ import type { RankedModelTier } from "../../../../config/models/model-tiers.js";
 import { judgeLabel, type CampaignRecords, type RecordJudge } from "./benchmark-records.js";
 import type { BenchmarkMode } from "../catalog.js";
 import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
-import { byCodeUnit, cellQuality, poolRoleCells, scorable, type NotPooled, type PooledCell, type RankingCorpus, type RankingFamily, type RankingInput, type ScorableTask } from "./ranking-pool.js";
+import { byCodeUnit, cellQuality, poolRoleCells, scorable, type NotPooled, type PooledCell, type QualityCalibrationStanding, type RankingCorpus, type RankingFamily, type RankingInput, type ScorableTask } from "./ranking-pool.js";
+import { judgedScore } from "../scoring/quality-judge.js";
 import { bootstrapRandom, BOOTSTRAP_RESAMPLES, interval, nameDefault, resample, share, type DefaultNaming, type Interval } from "./ranking-confidence.js";
 
 // The benchmark ranking (ARCH-DIRECTORIES-021, ARCH-DIRECTORIES-022). It
@@ -16,9 +17,16 @@ import { bootstrapRandom, BOOTSTRAP_RESAMPLES, interval, nameDefault, resample, 
 // persona ranks on its whole catalog corpus. A seeded bootstrap over tasks
 // and repeats states each setting's confidence, and the setting that the
 // ranking names rests on a quality lead that holds (ARCH-DIRECTORIES-025).
+// An implementer's quality is the equal-weight mean of its test quality and
+// its judged quality once the ranking judge's calibration passes, and its test
+// quality alone otherwise (ARCH-DIRECTORIES-026).
 
 interface SettingMeasures {
   readonly quality: number;
+  /** An implementer setting's quality from hidden tests: ranked tasks less floor deductions. */
+  readonly testQuality: number | undefined;
+  /** An implementer setting's judged quality from 0 to 100, or undefined while a pooled change has no judged score. */
+  readonly judgedQuality: number | undefined;
   readonly false: number;
   readonly cost: number;
   /** The cost is a lower bound: some cell recorded only part of its spend. */
@@ -63,6 +71,8 @@ export interface RoleRanking {
   readonly entry: string;
   readonly mode: BenchmarkMode;
   readonly judge: RecordJudge;
+  /** An implementer ranking's quality judge calibration: judged quality enters quality only when it passes. */
+  readonly calibration: QualityCalibrationStanding | undefined;
   readonly otherJudges: readonly { judge: string; cells: number }[];
   /** Each corpus with its scorable task count, and for an implementer corpus how many of them are floor tasks. */
   readonly corpora: readonly { persona: string; tasks: number; floor?: number }[];
@@ -85,7 +95,7 @@ export interface RoleRanking {
 export const RULE = {
   reviewer: { weight: 5, slack: 0.6, quality: "recall %", false: "false P1/P2 per review" },
   research: { weight: 1, slack: 10, quality: "fact recall %", false: "trap rate %" },
-  implement: { weight: 1, slack: 10, quality: "core quality %", false: "followed false claims %" },
+  implement: { weight: 1, slack: 10, quality: "quality %", false: "followed false claims %" },
 } satisfies { [Mode in BenchmarkMode]: { weight: number; slack: number; quality: string; false: string } };
 const FAMILIES: readonly RankingFamily[] = ["openai", "anthropic"];
 const TIER_OF_RANK: readonly RankedModelTier[] = ["cheap", "mid", "powerful"];
@@ -113,8 +123,27 @@ interface CorpusCells {
   readonly tasks: readonly TaskCells[];
 }
 
-/** Quality and false measures of one setting's pooled cells in one corpus. */
-function corpusMeasures(mode: BenchmarkMode, tasks: readonly TaskCells[]): Pick<SettingMeasures, "quality" | "false"> {
+/** The judged quality of one implementer cell from 0 to 100, or undefined when it has no judged score: a timed-out
+ *  cell made no change, so it scores 0. */
+function cellJudgedQuality({ cell, quality }: PooledCell): number | undefined {
+  if (cell.output.kind === "timed-out") return 0;
+  return quality ? judgedScore(quality.score.findings) : undefined;
+}
+
+/** The mean over tasks of each task's mean judged cell quality, or undefined when a cell has no judged score. */
+function judgedQuality(tasks: readonly TaskCells[]): number | undefined {
+  const perTask: number[] = [];
+  for (const { cells } of tasks) {
+    const scores = cells.map(cellJudgedQuality);
+    if (scores.some((score) => score === undefined)) return undefined;
+    perTask.push(mean(scores.filter((score) => score !== undefined)));
+  }
+  return mean(perTask);
+}
+
+/** Quality and false measures of one setting's pooled cells in one corpus. With `combine`, an implementer's quality
+ *  is the mean of its test quality and its judged quality. */
+function corpusMeasures(mode: BenchmarkMode, tasks: readonly TaskCells[], combine: boolean): Pick<SettingMeasures, "quality" | "testQuality" | "judgedQuality" | "false"> {
   const cells = tasks.flatMap((part) => part.cells);
   if (mode === "reviewer") {
     let caught = 0;
@@ -129,7 +158,7 @@ function corpusMeasures(mode: BenchmarkMode, tasks: readonly TaskCells[]): Pick<
       }
       severe += score.score.unsupportedSevereFindingCount ?? 0;
     }
-    return { quality: 100 * caught / seeded, false: severe / cells.length };
+    return { quality: 100 * caught / seeded, testQuality: undefined, judgedQuality: undefined, false: severe / cells.length };
   }
   if (mode === "research") {
     let caught = 0;
@@ -141,7 +170,7 @@ function corpusMeasures(mode: BenchmarkMode, tasks: readonly TaskCells[]): Pick<
       facts += task.opportunities;
       if (score.score.trapsAsserted.length > 0) trapped++;
     }
-    return { quality: 100 * caught / facts, false: 100 * trapped / cells.length };
+    return { quality: 100 * caught / facts, testQuality: undefined, judgedQuality: undefined, false: 100 * trapped / cells.length };
   }
   // Each cell weighs the same within its task, and each task the same, whatever its check count. A ranked task adds
   // its mean core quality; a floor task subtracts its mean failed share, so a floor task that fails every check costs
@@ -163,15 +192,30 @@ function corpusMeasures(mode: BenchmarkMode, tasks: readonly TaskCells[]): Pick<
     followed += score.score.traps.filter((trap) => trap.outcome === "followed-blindly").length;
     verdicts += score.score.traps.length;
   }
-  return { quality: 100 * total / ranked, false: verdicts === 0 ? 0 : 100 * followed / verdicts };
+  const testQuality = 100 * total / ranked;
+  const judged = judgedQuality(tasks);
+  let quality = testQuality;
+  if (combine) {
+    if (judged === undefined) throw new Error("A combined implementer quality needs a judged score of every pooled change");
+    // Floor deductions can take test quality below 0. The mean puts both measures on one 0 to 100 scale, so test
+    // quality enters it clamped to that scale; the test-only quality keeps its full range.
+    quality = (Math.min(100, Math.max(0, testQuality)) + judged) / 2;
+  }
+  return {
+    quality,
+    testQuality,
+    judgedQuality: judged,
+    false: verdicts === 0 ? 0 : 100 * followed / verdicts,
+  };
 }
 
 /** Cost and latency of one setting's pooled cells in one corpus, or undefined when it has no cost. */
 function spendMeasures(cells: readonly PooledCell[]): Pick<SettingMeasures, "cost" | "costLowerBound" | "partlyUnpricedCells" | "latencySeconds"> | undefined {
-  // A cell that states no amount at all would make any mean a guess, while a partly priced cell still bounds it.
-  if (cells.some(({ cell }) => cell.accounting.estimatedUsd.kind === "unavailable" && cell.accounting.estimatedUsd.atLeast === undefined)) return undefined;
+  // A cell that states no amount at all would make any mean a guess, while a partly priced cell still bounds it. A
+  // bound of 0 states no amount: no attempt of the cell has a price.
+  if (cells.some(({ cell }) => cell.accounting.estimatedUsd.kind === "unavailable" && !cell.accounting.estimatedUsd.atLeast)) return undefined;
   const estimated = combineBenchmarkAccounting(cells.map(({ cell }) => cell.accounting)).estimatedUsd;
-  // SAFETY: the guard above returns for every cell without `atLeast`, so an unavailable sum combines at least one amount.
+  // SAFETY: the guard above returns for every cell without a positive `atLeast`, so an unavailable sum combines at least one amount.
   return {
     cost: (estimated.kind === "observed" ? estimated.value : estimated.atLeast!) / cells.length,
     costLowerBound: estimated.kind === "unavailable",
@@ -183,14 +227,17 @@ function spendMeasures(cells: readonly PooledCell[]): Pick<SettingMeasures, "cos
 /** One setting's measures over its cells in each corpus, or undefined when its cost is unavailable. Each corpus of
  *  the role weighs the same, whatever its cell count, and cost and latency read only cells of tasks that are not
  *  floor tasks. */
-function settingMeasures(mode: BenchmarkMode, perCorpus: readonly CorpusCells[]): SettingMeasures | undefined {
+function settingMeasures(mode: BenchmarkMode, perCorpus: readonly CorpusCells[], combine: boolean): SettingMeasures | undefined {
   const spend = perCorpus.map(({ tasks }) => spendMeasures(tasks.filter(({ task }) => task.tier !== "floor").flatMap(({ cells }) => cells)));
   if (spend.some((part) => part === undefined)) return undefined;
   const priced = spend.filter((part) => part !== undefined);
-  const qualities = perCorpus.map(({ tasks }) => corpusMeasures(mode, tasks));
+  const qualities = perCorpus.map(({ tasks }) => corpusMeasures(mode, tasks, combine));
   const cells = perCorpus.flatMap(({ tasks }) => tasks.flatMap((part) => part.cells));
+  const meanOf = (values: readonly (number | undefined)[]) => values.some((value) => value === undefined) ? undefined : mean(values.filter((value) => value !== undefined));
   return {
     quality: mean(qualities.map((part) => part.quality)),
+    testQuality: meanOf(qualities.map((part) => part.testQuality)),
+    judgedQuality: meanOf(qualities.map((part) => part.judgedQuality)),
     false: mean(qualities.map((part) => part.false)),
     cost: mean(priced.map((part) => part.cost)),
     costLowerBound: priced.some((part) => part.costLowerBound),
@@ -251,6 +298,8 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
   const judge = chosen;
   if (modes.size !== 1) throw new Error(`Role ${role} pools corpora of several modes: ${[...modes].join(", ")}`);
   const rule = RULE[mode];
+  const calibration = mode === "implement" ? input.qualityCalibration(judge) : undefined;
+  const combine = calibration?.passed === true;
 
   // Each setting's first pooled cell names its model and effort.
   const settingCells = new Map<string, PooledCell>();
@@ -277,7 +326,12 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
       incomplete.push({ setting, missing });
       continue;
     }
-    const measures = settingMeasures(mode, perCorpus);
+    const unjudged = perCorpus.flatMap(({ tasks }) => tasks.flatMap(({ cells }) => cells)).filter(({ cell, quality }) => cell.output.kind !== "timed-out" && quality === undefined).length;
+    if (combine && unjudged > 0) {
+      notRanked.push({ setting, reason: `${unjudged} pooled changes have no judged-quality score by ${judgeLabel(judge)}, which a rejudge by that judge adds` });
+      continue;
+    }
+    const measures = settingMeasures(mode, perCorpus, combine);
     if (!measures) {
       notRanked.push({ setting, reason: "cost unavailable" });
       continue;
@@ -302,7 +356,7 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
         tasks: (drawn[position] ?? []).map((task) => ({ task, cells: resample(own.get(`${corpus.persona}\u0000${task.id}`)!, random) })), // SAFETY: a measured setting covers every scorable task of every corpus, so each drawn task has cells.
       }));
       // SAFETY: a resample holds only cells of a setting whose cost every cell states, so its cost is available.
-      return settingMeasures(mode, perCorpus)!;
+      return settingMeasures(mode, perCorpus, combine)!;
     });
     for (const [position, setting] of scoreSettings(resampled, rule).scored.entries()) {
       draws[position]?.quality.push(setting.quality);
@@ -355,7 +409,7 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
     }
   }
   return {
-    role, entry: input.entryOf(role), mode, judge,
+    role, entry: input.entryOf(role), mode, judge, calibration,
     otherJudges: [...otherJudges].map(([label, cells]) => ({ judge: label, cells })).sort((a, b) => a.judge.localeCompare(b.judge)),
     corpora: corpora.map((corpus) => {
       const tasks = corpus.tasks.filter(scorable);
@@ -404,17 +458,24 @@ export function renderRoleRanking(ranking: RoleRanking | UnpooledRole): string[]
   const percent = (value: number) => `${fixed(100 * value, 0)}%`;
   const named = ranking.named;
   const namedSetting = ranking.settings.find((setting) => setting.setting === named?.setting);
+  const implement = ranking.mode === "implement";
+  const optional = (value: number | undefined) => value === undefined ? "n/a" : fixed(value, 1);
   return [
     `Judge: ${judgeLabel(ranking.judge)}${ranking.otherJudges.length > 0 ? ` (other judges in these records: ${ranking.otherJudges.map(({ judge, cells }) => `${judge} ${cells} scores`).join(", ")})` : ""}`,
     `Corpora: ${ranking.corpora.map(({ persona, tasks, floor }) => `${persona} (${tasks} tasks${floor === undefined ? "" : `: ${tasks - floor} ranked, ${floor} floor`})`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
     `Persona guidance: ${ranking.guidance.map(({ persona, identity, cells }) => `${persona} ${identity.slice(0, 8)} (${cells} cells)`).join(", ")}`,
-    ...ranking.mode === "implement" ? ["Quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks."] : [],
+    ...implement ? [
+      "Test quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks.",
+      `Judged quality: the mean over every task of its mean judged score of a change, 100 less 15 per major and 5 per minor finding that the judge reports in the diff; a timed-out cell scores 0. ${ranking.calibration?.passed
+        ? `Quality is the equal-weight mean of test quality and judged quality, because the calibration of ${judgeLabel(ranking.judge)} passes: ${ranking.calibration.summary}.`
+        : `Quality is test quality alone, and judged quality is reported beside it, because the calibration of ${judgeLabel(ranking.judge)} does not pass: ${ranking.calibration?.summary ?? "none"}.`}`,
+    ] : [],
     `Filters: ${rule.quality} >= ${fixed(ranking.thresholds.quality, 1)}, ${rule.false} <= ${fixed(ranking.thresholds.false, 2)}. Score = quality - ${rule.weight} x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.`,
     `Confidence: each 90% interval spans the 5th to the 95th percentile over ${BOOTSTRAP_RESAMPLES} seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.`,
     "",
-    `| Setting | Family | Tier | ${rule.quality} | Quality 90% | ${rule.false} | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |`,
-    "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|",
-    ...ranking.settings.map((setting) => `| ${setting.setting} | ${setting.family ?? "other"} | ${setting.tier ?? "unpriced"} | ${fixed(setting.quality, 1)} | ${range(setting.qualityInterval)} | ${fixed(setting.false, 2)} | ${cost(setting)} | ${fixed(setting.latencySeconds, 0)}s | ${fixed(setting.score, 1)} | ${range(setting.scoreInterval)} | ${setting.beatsNext === undefined ? "-" : percent(setting.beatsNext)} | ${setting.filter} | ${setting.cells}${setting.timedOutCells > 0 ? ` (${setting.timedOutCells} timed out)` : ""} |`),
+    `| Setting | Family | Tier | ${rule.quality} | Quality 90% |${implement ? " Test quality | Judged quality |" : ""} ${rule.false} | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |`,
+    `|---|---|---|---:|---:|${implement ? "---:|---:|" : ""}---:|---:|---:|---:|---:|---:|---|---:|`,
+    ...ranking.settings.map((setting) => `| ${setting.setting} | ${setting.family ?? "other"} | ${setting.tier ?? "unpriced"} | ${fixed(setting.quality, 1)} | ${range(setting.qualityInterval)} |${implement ? ` ${optional(setting.testQuality)} | ${optional(setting.judgedQuality)} |` : ""} ${fixed(setting.false, 2)} | ${cost(setting)} | ${fixed(setting.latencySeconds, 0)}s | ${fixed(setting.score, 1)} | ${range(setting.scoreInterval)} | ${setting.beatsNext === undefined ? "-" : percent(setting.beatsNext)} | ${setting.filter} | ${setting.cells}${setting.timedOutCells > 0 ? ` (${setting.timedOutCells} timed out)` : ""} |`),
     ...ranking.settings.some((setting) => setting.costLowerBound) ? ["", "A lower-bound cost enters the score as its bound, which can only flatter that setting."] : [],
     ...ranking.incomplete.length > 0 ? ["", "Incomplete (cells to run next):", ...ranking.incomplete.map(({ setting, missing }) => `- ${setting}: ${missing.join("; ")}`)] : [],
     ...ranking.retry.length > 0 ? ["", "Cells to retry (failed with no result; a resume runs them again):", ...ranking.retry.map(({ setting, task, repeat, persona, stamp, reason }) => `- ${setting} ${task} #${repeat} (${persona} ${stamp}): ${reason}`)] : [],

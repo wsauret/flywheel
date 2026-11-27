@@ -96,7 +96,26 @@ export type ImplementTask = ImplementTaskSpec & BenchmarkTask & { timeoutMs: num
 const TASK_TIERS = ["ranked", "floor"] as const;
 export type TaskTier = typeof TASK_TIERS[number];
 
-const decodeTaskTiers = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Literals(TASK_TIERS)));
+/** Audit text that states something: a blank or whitespace-only placeholder fails to decode. */
+const AuditText = Schema.NonEmptyString.check(Schema.isPattern(/\S/));
+
+/** The audit that a ranked task needs (ARCH-DIRECTORIES-022): who audited it, when, and a verdict on each failure that
+ *  separates settings. Only a behavioral failure may rank; an unstated interface or a harness fault is a task defect,
+ *  and an unresolved verdict records a failure that the evidence cannot yet attribute. A task whose audit does not
+ *  hold stays floor, and may keep its audit there. */
+const TierAuditSchema = Schema.Struct({
+  auditor: AuditText,
+  date: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/)),
+  failures: Schema.Array(Schema.Struct({
+    failure: AuditText,
+    verdict: Schema.Literals(["behavioral", "unstated-interface", "harness-fault", "unresolved"]),
+    evidence: AuditText,
+  })),
+});
+const CommittedTierSchema = Schema.Struct({ tier: Schema.Literals(TASK_TIERS), audit: Schema.optionalKey(TierAuditSchema) });
+export type CommittedTier = typeof CommittedTierSchema.Type;
+
+const decodeTaskTiers = Schema.decodeUnknownSync(Schema.Record(Schema.String, CommittedTierSchema), { onExcessProperty: "error" });
 
 type BenchmarkTaskSource = Pick<BenchmarkTask, "id" | "prompt">;
 
@@ -356,9 +375,10 @@ export interface BenchmarkCatalog {
    *  in `reviewers`, or every fixture without `reviewers` when none names it. */
   reviewTasks(persona: string): Promise<readonly ReviewTask[]>;
   implementTasks(): Promise<readonly ImplementTask[]>;
-  /** The committed tier of each implementer task: `implementTiersFile` maps each task id to ranked or floor. It
-   *  lies outside every task identity, so a tier change never makes a recorded cell stale. */
-  implementTiers(): Promise<ReadonlyMap<string, TaskTier>>;
+  /** The committed tier of each implementer task: `implementTiersFile` maps each task id to its tier, ranked or floor,
+   *  and the audit of a ranked task. It lies outside every task identity, so a tier change never makes a recorded cell
+   *  stale. */
+  implementTiers(): Promise<ReadonlyMap<string, CommittedTier>>;
   readonly implementTiersFile: string;
   /** The one directory every results directory of this project lives in. The
    *  run store requires each of its results directories to stay beneath it. */
@@ -374,6 +394,9 @@ export interface BenchmarkCatalog {
   recordsFile(persona: string, stamp: string): string;
   /** The tracked folder of results pages, one generated page per persona with records (ARCH-DIRECTORIES-023). */
   readonly tablesRoot: string;
+  /** The tracked calibration data of the judged-quality judge: seeded controls, reviewer labels, and each judge's
+   *  control results (ARCH-DIRECTORIES-026). */
+  readonly qualityCalibrationDir: string;
 }
 
 export function createBenchmarkCatalog(projectRoot: string, options: {
@@ -424,7 +447,7 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
       try {
         return new Map(Object.entries(decodeTaskTiers(await Bun.file(implementTiersFile).json())));
       } catch (cause) {
-        throw new Error(`${implementTiersFile} must map each implementer task id to ranked or floor: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
+        throw new Error(`${implementTiersFile} must map each implementer task id to its tier, ranked or floor, and an optional audit: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
       }
     },
     resultsRoot,
@@ -433,5 +456,6 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
     recordsRoot,
     recordsFile: (persona, stamp) => containedPath(recordsRoot, persona, `${stamp}.jsonl`),
     tablesRoot: containedPath(projectRoot, "bench", "ab-persona", "tables"),
+    qualityCalibrationDir: containedPath(projectRoot, "bench", "ab-persona", "calibration", "judged-quality"),
   };
 }

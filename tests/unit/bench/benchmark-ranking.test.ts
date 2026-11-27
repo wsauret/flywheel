@@ -1,12 +1,14 @@
 import { describe, expect, it } from "bun:test";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
-import type { BenchmarkMode, TaskTier } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
+import { appendCampaignRecords, type CampaignRecords, type CellLine, type GradeLine, type RecordJudge, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
+import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
+import { MINIMAL_IMPLEMENTATION_PLAN } from "../../helpers/implementation-plan.js";
+import { createBenchmarkCatalog, type BenchmarkMode, type TaskTier } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { rankBenchmarkRecords, renderRanking, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/records/ranking.js";
 import type { RankingCorpus, RankingInput } from "../../../src/orchestration/modules/development/benchmark/records/ranking-pool.js";
-import { taskTierRule } from "../../../src/orchestration/modules/development/benchmark/records/task-tiers.js";
-import { renderResultsPages, staleResultsPages, writeResultsPages } from "../../../src/orchestration/modules/development/benchmark/persona/results-pages.js";
+import { committableTier, taskTierRule, tierAuditProblems } from "../../../src/orchestration/modules/development/benchmark/records/task-tiers.js";
+import { loadRankingInput, renderResultsPages, staleResultsPages, writeResultsPages } from "../../../src/orchestration/modules/development/benchmark/persona/results-pages.js";
 import type { CheckGrade } from "../../../src/orchestration/modules/development/benchmark/implement-task/check-grade.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
@@ -14,6 +16,9 @@ const directory = temporaryDirectories();
 
 type FailureLine = CampaignRecords["failures"][number];
 
+const QUALITY_VERSION = "quality-1";
+const NOT_CALIBRATED = { passed: false, summary: "no control results" };
+const CALIBRATED = { passed: true, summary: "seeded controls 13 of 13 found" };
 const SOL: RecordJudge = { model: "judge-a", effort: "xhigh" };
 const OPUS: RecordJudge = { model: "judge-b", effort: "xhigh" };
 const TIERS = new Map<string, { family: "openai" | "anthropic"; tier: "cheap" | "mid" | "powerful" }>([
@@ -45,6 +50,9 @@ interface CellSpec {
   version?: string;
   /** The time limit an implementation cell hit: it records no change and no score. */
   timedOutMs?: number;
+  /** The severities of the findings that each of `judges` reports in an implementation cell's diff; no judged-quality
+   *  score when absent. */
+  findings?: readonly ("major" | "minor")[];
 }
 
 function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec[], options: { stamp?: string; judge?: RecordJudge; guidance?: string; grades?: readonly GradeLine[]; failures?: readonly FailureLine[] } = {}): CampaignRecords {
@@ -72,6 +80,10 @@ function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec
       if (mode === "reviewer") scores.push({ ...base, scorer: "review", score: { ...id, caught, uncertain: [], unsupportedFindingCount: spec.severe ?? 0, unsupportedSevereFindingCount: spec.severe ?? 0 } });
       else if (mode === "research") scores.push({ ...base, scorer: "research", score: { ...id, caught, uncertain: [], trapsAsserted: spec.traps ? ["t"] : [], citations: { total: 0, invalid: [] } } });
       else scores.push({ ...base, scorer: "trap", score: { ...id, traps: Array.from({ length: spec.traps ?? 0 }, (_, index) => ({ id: `t${index}`, outcome: index < (spec.followed ?? 0) ? "followed-blindly" as const : "self-corrected" as const, rationale: "" })) } });
+      if (spec.findings) {
+        const findings = spec.findings.map((severity, line) => ({ kind: "needless-code" as const, severity, file: "f.ts", line: line + 1, claim: "", evidence: "" }));
+        scores.push({ kind: "score", judge, scoringVersion: QUALITY_VERSION, scorer: "quality", score: { ...id, findings, scopeOk: true, discarded: 0 } });
+      }
     }
   }
   const stamp = options.stamp ?? "s1";
@@ -99,6 +111,8 @@ function input(campaigns: readonly CampaignRecords[], corpora: readonly RankingC
     roleOf: (persona) => persona.startsWith("reviewer-code-") || persona.startsWith("reviewer-plan-") ? `reviewer-${persona.split("-").at(-1)}` : persona,
     corpora: new Map(corpora.map((entry) => [entry.persona, entry])),
     scoringVersion: (mode) => mode === "reviewer" ? "v3" : "v2",
+    qualityScoringVersion: QUALITY_VERSION,
+    qualityCalibration: () => NOT_CALIBRATED,
     classify: (model) => TIERS.get(model) ?? { family: undefined, tier: undefined },
     entryOf: (role) => role,
     ...overrides,
@@ -252,6 +266,48 @@ describe("benchmark ranking", () => {
     expect(renderRanking([role!])).toContain("Corpora: implementer (3 tasks: 2 ranked, 1 floor)");
   });
 
+  it("adds judged quality to implementer quality with equal weight only under a passing calibration, and resamples the mean", () => {
+    const tasks = corpus("implementer", "implement", [["r", 0], ["f", 0, "floor"]]);
+    const records = campaign("implementer", "implement", [
+      // Test quality 50; judged (100 - 15 - 5 + 100) / 2 = 90 on r, and 70 on f, so judged quality is 80.
+      { setting: "gpt-mid@high", task: "r", grade: checks(1, 2), findings: ["major", "minor"] },
+      { setting: "gpt-mid@high", task: "r", repeat: 1, grade: checks(1, 2), findings: [] },
+      { setting: "gpt-mid@high", task: "f", grade: checks(1, 1), findings: ["major", "major"] },
+      // Test quality 100, judged quality 50: a timed-out cell scores 0 on both.
+      { setting: "claude-mid@high", task: "r", grade: checks(2, 2), findings: [] },
+      { setting: "claude-mid@high", task: "r", repeat: 1, timedOutMs: 1000 },
+      { setting: "claude-mid@high", task: "f", grade: checks(1, 1), findings: [] },
+    ]);
+    const uncalibrated = ranked(rankBenchmarkRecords(input([records], [tasks]))[0]);
+    expect(uncalibrated.settings.map(({ setting, quality, testQuality, judgedQuality }) => [setting, quality, testQuality, judgedQuality])).toEqual([
+      ["claude-mid@high", 50, 50, 75],
+      ["gpt-mid@high", 50, 50, 80],
+    ]);
+    expect(renderRanking([uncalibrated])).toContain("Quality is test quality alone, and judged quality is reported beside it, because the calibration of judge-a:xhigh does not pass: no control results.");
+    const calibrated = ranked(rankBenchmarkRecords(input([records], [tasks], { qualityCalibration: () => CALIBRATED }))[0]);
+    const gpt = calibrated.settings.find(({ setting }) => setting === "gpt-mid@high");
+    expect(calibrated.settings.map(({ setting, quality }) => [setting, quality]).sort()).toEqual([["claude-mid@high", 62.5], ["gpt-mid@high", 65]]);
+    // Each resample scores the mean again: drawing gpt-mid@high's repeat 0 twice gives (50 + 75) / 2, and repeat 1
+    // twice gives (50 + 85) / 2, so its interval leaves the point estimate.
+    expect(gpt?.qualityInterval).toEqual({ low: 62.5, high: 67.5 });
+    expect(renderRanking([calibrated])).toContain("Quality is the equal-weight mean of test quality and judged quality, because the calibration of judge-a:xhigh passes: seeded controls 13 of 13 found.");
+    // Under a passing calibration, a setting with a change that the judge has not scored waits for a rejudge.
+    const unjudged = campaign("implementer", "implement", [{ setting: "gpt-cheap@high", task: "r" }, { setting: "gpt-cheap@high", task: "f", findings: [] }], { stamp: "s2" });
+    const partial = ranked(rankBenchmarkRecords(input([records, unjudged], [tasks], { qualityCalibration: () => CALIBRATED }))[0]);
+    expect(partial.notRanked).toEqual([{ setting: "gpt-cheap@high", reason: "1 pooled changes have no judged-quality score by judge-a:xhigh, which a rejudge by that judge adds" }]);
+    // Floor deductions take test quality to -100 here, but the mean reads it clamped to 0, so quality and its interval
+    // stay on the 0 to 100 scale; the test-only quality keeps its full range.
+    const sevenMajors = Array.from({ length: 7 }, () => "major" as const);
+    const failing = campaign("implementer", "implement", [
+      { setting: "gpt-cheap@high", task: "r", grade: checks(0, 2), findings: sevenMajors },
+      { setting: "gpt-cheap@high", task: "r", repeat: 1, grade: checks(0, 2), findings: sevenMajors },
+      { setting: "gpt-cheap@high", task: "f", grade: checks(0, 1), findings: sevenMajors },
+    ], { stamp: "s3" });
+    const floored = ranked(rankBenchmarkRecords(input([records, failing], [tasks], { qualityCalibration: () => CALIBRATED }))[0]).settings.find(({ setting }) => setting === "gpt-cheap@high");
+    expect(floored).toMatchObject({ quality: 0, testQuality: -100, judgedQuality: 0, qualityInterval: { low: 0, high: 0 } });
+    expect(ranked(rankBenchmarkRecords(input([records, failing], [tasks]))[0]).settings.find(({ setting }) => setting === "gpt-cheap@high")?.quality).toBe(-100);
+  });
+
   it("decides a task's tier from its mean core quality and the spread of setting means over the noise of repeats", () => {
     // Above the band: floor, whatever its spread.
     expect(taskTierRule([[1, 1], [1, 0.9]]).rule).toBe("floor");
@@ -269,6 +325,68 @@ describe("benchmark ranking", () => {
     expect(taskTierRule([[0.2, 0.8]]).rule).toBe("drop");
     expect(taskTierRule([[0.2], [0.8]]).rule).toBe("drop");
     expect(taskTierRule([]).rule).toBe("drop");
+  });
+
+  it("lets a task rank only with an audit that records each separating failure as behavioral", () => {
+    const failure = (verdict: "behavioral" | "unstated-interface" | "harness-fault" | "unresolved") => ({ failure: "check x", verdict, evidence: "e" });
+    const audit = (failures: ReturnType<typeof failure>[]) => ({ auditor: "a", date: "2026-11-27", failures });
+    expect(tierAuditProblems(new Map([
+      ["floor-task", { tier: "floor" as const }],
+      ["good", { tier: "ranked" as const, audit: audit([failure("behavioral")]) }],
+      ["none", { tier: "ranked" as const }],
+      ["empty", { tier: "ranked" as const, audit: audit([]) }],
+      ["fault", { tier: "ranked" as const, audit: audit([failure("behavioral"), failure("harness-fault"), failure("unstated-interface")]) }],
+      ["open", { tier: "ranked" as const, audit: audit([failure("unresolved")]) }],
+      // A floor task may keep an audit that does not hold.
+      ["parked", { tier: "floor" as const, audit: audit([failure("unresolved")]) }],
+    ]))).toEqual([
+      "- empty: its audit records no failure that separates settings",
+      '- fault: its audit records "check x" as harness-fault, not behavioral',
+      '- fault: its audit records "check x" as unstated-interface, not behavioral',
+      "- none: ranked with no audit of the failures that separate settings",
+      '- open: its audit records "check x" as unresolved, not behavioral',
+    ]);
+    // The tier to commit: a task that the rule ranks stays floor until its audit holds.
+    expect(committableTier("t", "ranked", audit([failure("behavioral")]))).toBe("ranked");
+    expect(committableTier("t", "ranked", audit([failure("unresolved")]))).toBe("floor");
+    expect(committableTier("t", "ranked", undefined)).toBe("floor");
+    expect(committableTier("t", "drop", audit([failure("behavioral")]))).toBe("floor");
+  });
+
+  it("refuses to rank from committed tiers that rank a task without an audit that holds, or with a blank audit", async () => {
+    const root = directory("benchmark-ranking-tiers-");
+    const plan = join(root, "bench", "tasks", "implement", "plan-task");
+    await mkdir(join(plan, "project"), { recursive: true });
+    await mkdir(join(plan, "acceptance"), { recursive: true });
+    await writeFile(join(plan, "task.json"), JSON.stringify({ id: "plan-task", stratum: "small" }));
+    await writeFile(join(plan, "manifest.json"), JSON.stringify({ traps: [], judgment: [] }));
+    await writeFile(join(plan, "plan.json"), JSON.stringify(MINIMAL_IMPLEMENTATION_PLAN));
+    await writeFile(join(plan, "project", "value.py"), "value = 1\n");
+    await writeFile(join(plan, "acceptance", "value.test.ts"), "// hidden acceptance test\n");
+    await writeFile(join(plan, "checks.json"), JSON.stringify({ "acceptance/value.test.ts > fixes": "core" }));
+    const catalog = createBenchmarkCatalog(root);
+    await mkdir(catalog.qualityCalibrationDir, { recursive: true });
+    await writeFile(join(catalog.qualityCalibrationDir, "controls.json"), JSON.stringify({ controls: [] }));
+    await writeFile(join(catalog.qualityCalibrationDir, "reviewer-labels.json"), JSON.stringify({ cells: [] }));
+    const [task] = await catalog.implementTasks();
+    await appendCampaignRecords(catalog.recordsFile("implementer", "s1"), { kind: "campaign", version: 1, persona: "implementer", mode: "implement", stamp: "s1", judge: SOL, scoringVersion: "v", personaGuidanceIdentity: "g" }, {
+      cells: [{ kind: "cell", variant: "m@high", model: "m", effort: "high", task: "plan-task", taskIdentity: task!.contentIdentity, repeat: 0, durationMs: 1, accounting: unavailableJudgeAccounting("synthetic"), output: { kind: "timed-out", candidateIdentity: task!.candidateIdentity, timeoutMs: 1 } }],
+    });
+    // The committed shape as a person writes it, before decoding, so a blank field can reach the decoder.
+    interface TiersEntry { readonly tier: string; readonly audit?: { readonly auditor: string; readonly date: string; readonly failures: readonly { readonly failure: string; readonly verdict: string; readonly evidence: string }[] } }
+    const tiers = (entry: TiersEntry) => writeFile(catalog.implementTiersFile, JSON.stringify({ "plan-task": entry }));
+    const failure = { failure: "check x", verdict: "behavioral", evidence: "e" };
+    const audit = { auditor: "a", date: "2026-11-27", failures: [failure] };
+    await tiers({ tier: "ranked" });
+    await expect(loadRankingInput(catalog)).rejects.toThrow("- plan-task: ranked with no audit of the failures that separate settings");
+    await tiers({ tier: "ranked", audit: { ...audit, failures: [{ ...failure, verdict: "unresolved" }] } });
+    await expect(loadRankingInput(catalog)).rejects.toThrow('- plan-task: its audit records "check x" as unresolved, not behavioral');
+    for (const blank of [{ ...audit, auditor: " " }, { ...audit, date: "" }, { ...audit, failures: [{ ...failure, evidence: "" }] }]) {
+      await tiers({ tier: "ranked", audit: blank });
+      await expect(loadRankingInput(catalog)).rejects.toThrow("must map each implementer task id to its tier");
+    }
+    await tiers({ tier: "ranked", audit });
+    expect((await loadRankingInput(catalog)).corpora.get("implementer")?.tasks.map(({ tier }) => tier)).toEqual(["ranked"]);
   });
 
   it("states seeded 90% intervals and beats-next shares, and names the top scorer only on a quality lead that holds", () => {
@@ -301,7 +419,7 @@ describe("benchmark ranking", () => {
     expect(leading.named).toEqual({ kind: "lead", setting: "gpt-mid@high", share: 1 });
     const text = renderRanking([leading]);
     expect(text).toContain("  named: openai gpt-mid high (its quality exceeds every other passing setting's in 100% of resamples)");
-    expect(text).toContain("| gpt-mid@high | openai | mid | 100.0 | 100.0 to 100.0 | 0.00 | $1.000 | 1s | 100.0 | 100.0 to 100.0 | 100% | pass | 6 |");
+    expect(text).toContain("| gpt-mid@high | openai | mid | 100.0 | 100.0 to 100.0 | 100.0 | n/a | 0.00 | $1.000 | 1s | 100.0 | 100.0 to 100.0 | 100% | pass | 6 |");
   });
 
   it("pools an implementer cell under a changed grader only once the current grader regraded it and its prompt still matches", () => {
@@ -358,14 +476,16 @@ describe("benchmark ranking", () => {
     expect(renderRanking([open!])).toContain("No judge has scored a current cell of this role");
   });
 
-  it("scores a lower-bound cost as its bound and leaves a setting with no stated cost unranked", () => {
+  it("scores a lower-bound cost as its bound and leaves a setting with no stated cost or a zero bound unranked", () => {
     const [role] = rankBenchmarkRecords(input([campaign("reviewer-code-quality", "reviewer", [
       ...qualityCells("gpt-mid@high", 2, 0, 1, 1000).map((spec, index) => index === 0 ? { ...spec, cost: { atLeast: 1 } } : spec),
       ...qualityCells("claude-mid@high", 2, 0, 1, 1000).map((spec, index) => index === 0 ? { ...spec, cost: {} } : spec),
+      // A bound of 0 states no amount, as when no attempt of the cell has a price.
+      ...qualityCells("gemini-mid@high", 2, 0, 1, 1000).map((spec, index) => index === 0 ? { ...spec, cost: { atLeast: 0 } } : spec),
     ])], [QUALITY]));
     const ranking = ranked(role);
     expect(ranking.settings).toEqual([expect.objectContaining({ setting: "gpt-mid@high", cost: 1, costLowerBound: true, partlyUnpricedCells: 1 })]);
-    expect(ranking.notRanked).toEqual([{ setting: "claude-mid@high", reason: "cost unavailable" }]);
+    expect(ranking.notRanked).toEqual([{ setting: "claude-mid@high", reason: "cost unavailable" }, { setting: "gemini-mid@high", reason: "cost unavailable" }]);
     expect(renderRanking([role!])).toContain(">= $1.000 (1 of 3 cells partly unpriced)");
   });
 
@@ -419,6 +539,24 @@ describe("benchmark results pages", () => {
     expect(page).toContain("- gpt-mid@high easy #1 (s1), 1 failed attempt: RESOURCE_EXHAUSTED (code 429): quota");
     expect(page).toContain("### Judged by judge-a:xhigh");
     expect(page).toContain("| s1 | claude-mid@high, gpt-cheap@high, gpt-mid@high | judge-a:xhigh | 7 | 6 | 2 | 1 | not recorded |");
+  });
+
+  it("shows each judge's judged quality per setting and the rank agreement of the two judges with the most scores", () => {
+    const tasks = corpus("implementer", "implement", [["r", 0]]);
+    const both = [SOL, OPUS];
+    const judged = campaign("implementer", "implement", [
+      { setting: "gpt-mid@high", task: "r", judges: both, findings: [] },
+      { setting: "gpt-mid@high", task: "r", repeat: 1, judges: both, findings: ["minor"] },
+      { setting: "claude-mid@high", task: "r", judges: both, findings: ["major"] },
+      { setting: "claude-mid@high", task: "r", repeat: 1, timedOutMs: 1000 },
+    ]);
+    const page = renderResultsPages(input([judged], [tasks])).get("implementer")!;
+    expect(page).toContain("| Setting | Cells | Core quality % | Edge % | Judged quality (judge-a:xhigh) | Judged quality (judge-b:xhigh) | Timed out |");
+    expect(page).toContain("| gpt-mid@high | 2 | 100.0 | n/a | 97.5 | 97.5 | 0 |");
+    expect(page).toContain("| claude-mid@high | 2 | 50.0 | n/a | 42.5 | 42.5 | 1 |");
+    expect(page).toContain("Agreement of judge-a:xhigh and judge-b:xhigh: Spearman 1.00 over the 3 current changes that both scored.");
+    const unjudged = renderResultsPages(input([campaign("implementer", "implement", [{ setting: "gpt-mid@high", task: "r" }])], [tasks])).get("implementer")!;
+    expect(unjudged).toContain("Judged quality: no judge has scored a current change under judge identity quality-1; `bun bench/ab-persona/bench.ts --rejudge implementer --judge <model>:<effort>` scores them from the stored diffs.");
   });
 
   it("shows a reviewer cell's measure under each judge that scored the persona, and ? where a judge has no score", () => {

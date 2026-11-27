@@ -1,0 +1,245 @@
+{
+  "controls": [
+    {
+      "id": "getmoto__moto-7365--clean",
+      "task": "getmoto__moto-7365",
+      "patch": "controls/getmoto__moto-7365--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The task's reference patch, unchanged."
+    },
+    {
+      "id": "psf__requests-6028--clean",
+      "task": "psf__requests-6028",
+      "patch": "controls/psf__requests-6028--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The task's reference patch, unchanged."
+    },
+    {
+      "id": "redis__redis-10068--clean",
+      "task": "redis__redis-10068",
+      "patch": "controls/redis__redis-10068--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The task's reference patch, unchanged."
+    },
+    {
+      "id": "astropy__astropy-14598--clean",
+      "task": "astropy__astropy-14598",
+      "patch": "controls/astropy__astropy-14598--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The task's reference patch, unchanged."
+    },
+    {
+      "id": "jquense__yup-2305--clean",
+      "task": "jquense__yup-2305",
+      "patch": "controls/jquense__yup-2305--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The task's reference patch, unchanged."
+    },
+    {
+      "id": "getmoto__moto-7365--needless-code",
+      "task": "getmoto__moto-7365",
+      "patch": "controls/getmoto__moto-7365--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Adds a check that the sum of two numbers is None, which cannot happen.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "moto/dynamodb/models/dynamo_type.py",
+        "line": 110
+      }
+    },
+    {
+      "id": "getmoto__moto-7365--wrong-abstraction",
+      "task": "getmoto__moto-7365",
+      "patch": "controls/getmoto__moto-7365--wrong-abstraction.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Stores a second copy of the sum on the left operand, beside the value that the returned DynamoType holds.",
+      "seeded": {
+        "kind": "wrong-abstraction",
+        "file": "moto/dynamodb/models/dynamo_type.py",
+        "line": 110
+      }
+    },
+    {
+      "id": "getmoto__moto-7365--convention-break",
+      "task": "getmoto__moto-7365",
+      "patch": "controls/getmoto__moto-7365--convention-break.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Names a local variable in CamelCase in a file whose locals are snake_case.",
+      "seeded": {
+        "kind": "convention-break",
+        "file": "moto/dynamodb/models/dynamo_type.py",
+        "line": 109
+      }
+    },
+    {
+      "id": "getmoto__moto-7365--missed-defect",
+      "task": "getmoto__moto-7365",
+      "patch": "controls/getmoto__moto-7365--missed-defect.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Starts an ADD to an absent number attribute at 1 instead of 0, so ADD 5 to a missing attribute stores 6.",
+      "seeded": {
+        "kind": "missed-defect",
+        "file": "moto/dynamodb/models/dynamo_type.py",
+        "line": 391
+      }
+    },
+    {
+      "id": "psf__requests-6028--needless-code",
+      "task": "psf__requests-6028",
+      "patch": "controls/psf__requests-6028--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Adds an empty branch for a missing auth part, whose deletion changes nothing.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "requests/utils.py",
+        "line": 981
+      }
+    },
+    {
+      "id": "psf__requests-6028--convention-break",
+      "task": "psf__requests-6028",
+      "patch": "controls/psf__requests-6028--convention-break.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Names a local variable in camelCase in a module whose locals are snake_case.",
+      "seeded": {
+        "kind": "convention-break",
+        "file": "requests/utils.py",
+        "line": 980
+      }
+    },
+    {
+      "id": "psf__requests-6028--missed-defect",
+      "task": "psf__requests-6028",
+      "patch": "controls/psf__requests-6028--missed-defect.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Keeps the auth part only when the URL has a scheme, so a proxy URL user@proxy.example:8080 with no scheme loses its user name. Every hidden test URL has a scheme, so the tests pass.",
+      "seeded": {
+        "kind": "missed-defect",
+        "file": "requests/utils.py",
+        "line": 977
+      }
+    },
+    {
+      "id": "redis__redis-10068--needless-code",
+      "task": "redis__redis-10068",
+      "patch": "controls/redis__redis-10068--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Clamps an int64_t below INT64_MIN, which no value can be.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "src/t_stream.c",
+        "line": 1278
+      }
+    },
+    {
+      "id": "redis__redis-10068--convention-break",
+      "task": "redis__redis-10068",
+      "patch": "controls/redis__redis-10068--convention-break.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Uses long long for one delta where every sibling read of lpGetInteger uses int64_t.",
+      "seeded": {
+        "kind": "convention-break",
+        "file": "src/t_stream.c",
+        "line": 800
+      }
+    },
+    {
+      "id": "redis__redis-10068--missed-defect",
+      "task": "redis__redis-10068",
+      "patch": "controls/redis__redis-10068--missed-defect.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Casts the entry count to int before it widens, so a listpack count above INT_MAX still truncates during a reverse iteration.",
+      "seeded": {
+        "kind": "missed-defect",
+        "file": "src/t_stream.c",
+        "line": 1138
+      }
+    },
+    {
+      "id": "astropy__astropy-14598--wrong-abstraction",
+      "task": "astropy__astropy-14598",
+      "patch": "controls/astropy__astropy-14598--wrong-abstraction.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Adds a second compiled copy of the same anchored regex under another class attribute name.",
+      "seeded": {
+        "kind": "wrong-abstraction",
+        "file": "astropy/io/fits/card.py",
+        "line": 70
+      }
+    },
+    {
+      "id": "astropy__astropy-14598--needless-code",
+      "task": "astropy__astropy-14598",
+      "patch": "controls/astropy__astropy-14598--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Checks for None after `or \"\"` already made the value a string.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "astropy/io/fits/card.py",
+        "line": 862
+      }
+    },
+    {
+      "id": "astropy__astropy-14598--missed-defect",
+      "task": "astropy__astropy-14598",
+      "patch": "controls/astropy__astropy-14598--missed-defect.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Strips leading spaces of each CONTINUE segment, so a long string value whose continuation starts with spaces loses them on a round trip.",
+      "seeded": {
+        "kind": "missed-defect",
+        "file": "astropy/io/fits/card.py",
+        "line": 862
+      }
+    },
+    {
+      "id": "httpx-streaming-json-iteration--clean",
+      "task": "httpx-streaming-json-iteration",
+      "patch": "controls/httpx-streaming-json-iteration--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The task's reference patch, unchanged."
+    },
+    {
+      "id": "recall-punctuated-words--clean",
+      "task": "recall-punctuated-words",
+      "patch": "controls/recall-punctuated-words--clean.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "The change of claude-opus-5-5@high in campaign 2026-11-24T15-17-18-831Z, which passed every essential and edge check with no broken test, unchanged."
+    },
+    {
+      "id": "httpx-streaming-json-iteration--needless-code",
+      "task": "httpx-streaming-json-iteration",
+      "patch": "controls/httpx-streaming-json-iteration--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Checks for None after str.lower(), which always returns a string.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "httpx/_json_stream.py",
+        "line": 21
+      }
+    },
+    {
+      "id": "jquense__yup-2305--needless-code",
+      "task": "jquense__yup-2305",
+      "patch": "controls/jquense__yup-2305--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Returns early for a negative index inside an array map callback, whose index is never negative.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "src/array.ts",
+        "line": 92
+      }
+    },
+    {
+      "id": "recall-punctuated-words--needless-code",
+      "task": "recall-punctuated-words",
+      "patch": "controls/recall-punctuated-words--needless-code.patch",
+      "summary": "Implemented the requested change and ran the task's tests.",
+      "description": "Filters the words of a string split for strings, which every element of the split already is.",
+      "seeded": {
+        "kind": "needless-code",
+        "file": "src/orchestration/session/conversation-recall.ts",
+        "line": 247
+      }
+    }
+  ]
+}

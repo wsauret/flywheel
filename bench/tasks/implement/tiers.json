@@ -1,16 +1,86 @@
 {
-  "astropy__astropy-14598": "ranked",
-  "ds1000-298": "floor",
-  "getmoto__moto-7365": "floor",
-  "hosted-thinking-row-wait": "floor",
-  "httpx-streaming-json-iteration": "floor",
-  "jquense__yup-2305": "floor",
-  "metrics-resteer": "floor",
-  "psf__requests-6028": "floor",
-  "recall-punctuated-words": "floor",
-  "redis__redis-10068": "floor",
-  "regex-chess": "floor",
-  "rust-react": "floor",
-  "scheme-metacircular": "ranked",
-  "template-multiphase": "floor"
+  "astropy__astropy-14598": {
+    "tier": "ranked",
+    "audit": {
+      "auditor": "implementer benchmark audit agent",
+      "date": "2026-11-27",
+      "failures": [
+        {
+          "failure": "test_long_string_value_with_quotes[quote-pair-space-text] (serious)",
+          "verdict": "behavioral",
+          "evidence": "Every cell that fails it (claude-opus-5-5 at high and medium, gpt-6.1-sol@medium) removes the quote unescaping in the CONTINUE join of _split and leaves _strg_comment_RE unanchored, so a value of 100 x, a quote pair, a space, and text still loses a quote on the round trip Card.fromstring(str(card)). The check calls the same public API as the request, whose expected behavior is that all card values round trip, and cells of other settings pass it with complete fixes, some by anchoring the regex as the reference patch does. It needs no interface that the request leaves unstated, and the grader ran every check of these cells."
+        }
+      ]
+    }
+  },
+  "ds1000-298": {
+    "tier": "floor"
+  },
+  "getmoto__moto-7365": {
+    "tier": "floor"
+  },
+  "hosted-thinking-row-wait": {
+    "tier": "floor"
+  },
+  "httpx-streaming-json-iteration": {
+    "tier": "floor"
+  },
+  "jquense__yup-2305": {
+    "tier": "floor"
+  },
+  "metrics-resteer": {
+    "tier": "floor"
+  },
+  "psf__requests-6028": {
+    "tier": "floor"
+  },
+  "recall-punctuated-words": {
+    "tier": "floor"
+  },
+  "redis__redis-10068": {
+    "tier": "floor"
+  },
+  "regex-chess": {
+    "tier": "floor"
+  },
+  "rust-react": {
+    "tier": "floor"
+  },
+  "scheme-metacircular": {
+    "tier": "floor",
+    "audit": {
+      "auditor": "implementer benchmark audit agent",
+      "date": "2026-11-27",
+      "failures": [
+        {
+          "failure": "timed-out cell of claude-opus-5-5@medium (campaign 2026-11-26T14-27-47-990Z, repeat 0) at the 25-minute limit",
+          "verdict": "behavioral",
+          "evidence": "The cell ran the full 1,500,000 ms and reported 2,527,966 tokens with no incomplete attempt. The same setting's three other pooled repeats pass all 63 checks in 434 to 1,364 s, the slowest 136 s inside the limit, so this setting's own run times reach the limit. The records hold only the cell's total duration, so they cannot separate model time from provider or harness time."
+        },
+        {
+          "failure": "timed-out cell of gemini-4-hydrogen@high (campaign 2026-11-24T15-17-18-831Z, repeat 0) at the 25-minute limit",
+          "verdict": "unresolved",
+          "evidence": "The cell ran the full 1,500,000 ms. Its token count of at least 3,127,278 is a lower bound, because 51 of its served attempts reported no complete usage, which can be provider retries that spent the time. The setting's two other pooled repeats pass all 63 checks in 324 and 1,352 s. The records hold only the cell's total duration, so they cannot separate model time from provider or harness time."
+        },
+        {
+          "failure": "timed-out cell of claude-opus-5.5@high (campaign 2026-11-13T21-16-42-634Z, repeat 2) at the 25-minute limit",
+          "verdict": "unresolved",
+          "evidence": "The cell ran the full 1,500,000 ms and reported 3,279,633 tokens. It is the setting's only pooled cell of the task, so no finishing repeat shows how long the setting takes. The records hold only the cell's total duration, so they cannot separate model time from provider or harness time."
+        },
+        {
+          "failure": "timed-out cell of gpt-6.1-sol@high (campaign 2026-11-13T21-16-44-771Z, repeat 0) at the 25-minute limit",
+          "verdict": "unresolved",
+          "evidence": "The cell ran the full 1,500,000 ms. Its token count of at least 1,702,067 is a lower bound, because 2 of its served attempts reported no complete usage. It is the setting's only pooled cell of the task, so no finishing repeat shows how long the setting takes. The records hold only the cell's total duration, so they cannot separate model time from provider or harness time."
+        },
+        {
+          "failure": "timed-out cell of gpt-6.1-sol@xhigh (campaign 2026-11-13T21-16-44-771Z, repeat 2) at the 25-minute limit",
+          "verdict": "unresolved",
+          "evidence": "The cell ran the full 1,500,000 ms and reported 1,896,591 tokens. It is the setting's only pooled cell of the task, so no finishing repeat shows how long the setting takes. The records hold only the cell's total duration, so they cannot separate model time from provider or harness time."
+        }
+      ]
+    }
+  },
+  "template-multiphase": {
+    "tier": "floor"
+  }
 }

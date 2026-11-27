@@ -9,7 +9,10 @@ import { benchmarkMode, type BenchmarkCatalog, type BenchmarkMode, type TaskTier
 import type { BenchmarkAccounting } from "../accounting/evidence.js";
 import { planTasks, scoringVersion } from "./persona-benchmark.js";
 import { median, rankBenchmarkRecords, renderRoleRanking, RULE } from "../records/ranking.js";
-import { byCodeUnit, cellStanding, currentCellGrade, rankingCorpus, staleTask, type RankingCorpus, type RankingFamily, type RankingInput, type RankingTask } from "../records/ranking-pool.js";
+import { byCodeUnit, cellStanding, currentCellGrade, qualityScoreOf, rankingCorpus, staleTask, type RankingCorpus, type RankingFamily, type RankingInput, type RankingTask } from "../records/ranking-pool.js";
+import { calibrationStanding, evaluateQualityCalibration, loadQualityCalibration, spearman } from "../records/judge-calibration.js";
+import { judgedScore } from "../scoring/quality-judge.js";
+import { tierAuditProblems } from "../records/task-tiers.js";
 import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
 import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js";
 
@@ -36,11 +39,14 @@ export async function loadRankingInput(catalog: BenchmarkCatalog): Promise<Ranki
   const { userDataRoot } = selectStartupDirectories({ projectRootOption: catalog.projectRoot, env: process.env, cwd: catalog.projectRoot });
   // SAFETY: roleModelDefault returns one of the ROLE_MODEL_DEFAULTS entries, so the search always finds it.
   const entryOf = (role: string) => Object.entries(ROLE_MODEL_DEFAULTS).find(([, entry]) => entry === roleModelDefault(role))![0];
+  const calibration = await loadQualityCalibration(catalog);
   return {
     campaigns,
     roleOf: (persona) => personas[persona]?.role,
     corpora,
     scoringVersion,
+    qualityScoringVersion: calibration.identity,
+    qualityCalibration: (judge) => calibrationStanding(evaluateQualityCalibration(calibration, judge, campaigns)),
     classify: (model) => {
       for (const family of FAMILIES) {
         const tier = modelPriceTier(model, family, { userDataRoot }, ["bundled"]);
@@ -52,7 +58,8 @@ export async function loadRankingInput(catalog: BenchmarkCatalog): Promise<Ranki
   };
 }
 
-/** The committed tier of every implementer task in `tasks`, read strictly against the task list. */
+/** The committed tier of every implementer task in `tasks`, read strictly against the task list. A ranked task
+ *  ranks only with an audit that holds (ARCH-DIRECTORIES-022). */
 async function committedTiers(catalog: BenchmarkCatalog, tasks: readonly { readonly id: string }[]): Promise<ReadonlyMap<string, TaskTier>> {
   const tiers = await catalog.implementTiers();
   const ids = new Set(tasks.map(({ id }) => id));
@@ -60,7 +67,9 @@ async function committedTiers(catalog: BenchmarkCatalog, tasks: readonly { reado
   const unknown = [...tiers.keys()].filter((id) => !ids.has(id));
   if (missing.length > 0) throw new Error(`${catalog.implementTiersFile} has no tier for the implementer tasks ${missing.join(", ")}; give each ranked or floor`);
   if (unknown.length > 0) throw new Error(`${catalog.implementTiersFile} names tasks that are not implementer tasks: ${unknown.join(", ")}`);
-  return tiers;
+  const unaudited = tierAuditProblems(tiers);
+  if (unaudited.length > 0) throw new Error(`${catalog.implementTiersFile} ranks tasks whose separating failures are not audited as behavioral; give each floor or an audit that holds:\n${unaudited.join("\n")}`);
+  return new Map([...tiers].map(([id, { tier }]) => [id, tier]));
 }
 
 /** The results page of every persona with records, keyed by persona, in persona order. */
@@ -135,6 +144,45 @@ function personaJudges(campaigns: readonly CampaignRecords[], corpus: RankingCor
   return [...counts.values()].sort((a, b) => b.cells - a.cells || byCodeUnit(judgeLabel(a.judge), judgeLabel(b.judge))).map(({ judge }) => judge);
 }
 
+/** The judges that gave a judged-quality score to a current cell of the persona under the current judge identity, the
+ *  most cells first (ARCH-DIRECTORIES-026). */
+function qualityJudges(entries: readonly Entry[], corpus: RankingCorpus, version: string): RecordJudge[] {
+  const counts = new Map<string, { judge: RecordJudge; cells: number }>();
+  for (const { campaign, cell } of entries) {
+    if (staleTask(cell, campaign, corpus) !== undefined) continue;
+    for (const line of campaign.scores) {
+      if (line.scorer !== "quality" || line.scoringVersion !== version || !sameSeat(line.score, cell)) continue;
+      const key = judgeLabel(line.judge);
+      counts.set(key, { judge: line.judge, cells: (counts.get(key)?.cells ?? 0) + 1 });
+    }
+  }
+  return [...counts.values()].sort((a, b) => b.cells - a.cells || byCodeUnit(judgeLabel(a.judge), judgeLabel(b.judge))).map(({ judge }) => judge);
+}
+
+/** A cell's judged quality by `judge`: 0 for a timed-out cell, undefined when the judge has not scored it. */
+function entryJudgedQuality({ campaign, cell }: Entry, judge: RecordJudge, version: string): number | undefined {
+  if (cell.output.kind === "timed-out") return 0;
+  const line = qualityScoreOf(campaign, cell, judge, version);
+  return line ? judgedScore(line.score.findings) : undefined;
+}
+
+/** What the judged-quality columns show, and how far the two judges with the most scores agree on the current cells
+ *  both scored. */
+function judgedQualityNote(persona: string, entries: readonly Entry[], corpus: RankingCorpus, judges: readonly RecordJudge[], version: string): string {
+  const [first, second] = judges;
+  if (!first) return `Judged quality: no judge has scored a current change under judge identity ${version}; \`bun bench/ab-persona/bench.ts --rejudge ${persona} --judge <model>:<effort>\` scores them from the stored diffs.`;
+  const columns = "Judged quality is the mean over the setting's cells that the judge scored of 100 less 15 per major and 5 per minor finding, a timed-out cell at 0.";
+  if (!second) return `${columns} Judge agreement needs a second judge.`;
+  const pairs = entries.flatMap((entry) => {
+    if (entry.cell.output.kind !== "implementation" || staleTask(entry.cell, entry.campaign, corpus) !== undefined) return [];
+    const a = entryJudgedQuality(entry, first, version);
+    const b = entryJudgedQuality(entry, second, version);
+    return a === undefined || b === undefined ? [] : [[a, b] as const];
+  });
+  const rho = spearman(pairs.map(([a]) => a), pairs.map(([, b]) => b));
+  return `${columns} Agreement of ${judgeLabel(first)} and ${judgeLabel(second)}: Spearman ${rho === undefined ? "n/a" : rho.toFixed(2)} over the ${pairs.length} current changes that both scored.`;
+}
+
 /** A grade a page shows: a check grade, or the pass count over every hidden test of a grader before the check tags. */
 type ShownGrade = { readonly grade: CheckGrade } | { readonly passed: number; readonly total: number };
 
@@ -169,7 +217,7 @@ function implementationToken(entry: Entry, task: RankingTask | undefined, corpus
 function cellToken(entry: Entry, task: RankingTask | undefined, corpus: RankingCorpus, judge: RecordJudge, version: string): string {
   const stale = staleTask(entry.cell, entry.campaign, corpus) === undefined ? "" : "*";
   const score = scoreOf(entry, judge, version);
-  if (!score || score.scorer === "trap") return `?${stale}`;
+  if (!score || score.scorer === "trap" || score.scorer === "quality") return `?${stale}`;
   const opportunities = task?.opportunities ?? "?";
   if (score.scorer === "review") {
     const severe = score.score.unsupportedSevereFindingCount ?? 0;
@@ -219,7 +267,7 @@ function judgeMeasures(entries: readonly Entry[], tasks: ReadonlyMap<string, Ran
   for (const entry of entries) {
     const score = scoreOf(entry, judge, version);
     const known = tasks.get(entry.cell.task)?.opportunities;
-    if (!score || score.scorer === "trap") continue;
+    if (!score || score.scorer === "trap" || score.scorer === "quality") continue;
     scored++;
     if (known !== undefined) {
       caught += score.score.caught.length;
@@ -257,6 +305,7 @@ function renderResultsPage(persona: string, input: RankingInput): string {
   const settings = [...new Set([...entries.map(({ cell }) => cell.variant), ...failures.map(({ failure }) => failure.variant)])].sort(byCodeUnit);
   const taskIds = [...new Set([...catalogTasks.keys(), ...entries.map(({ cell }) => cell.task)])].sort(byCodeUnit);
   const judges = personaJudges(campaigns, corpus, version);
+  const judgedBy = mode === "implement" ? qualityJudges(entries, corpus, input.qualityScoringVersion) : [];
   const rule = RULE[mode];
 
   const out: string[] = [
@@ -300,13 +349,16 @@ function renderResultsPage(persona: string, input: RankingInput): string {
     out.push(`### Scored by ${judgeLabel(judge)}`, "", ...table(["Task", ...settings], ["---", ...settings.map(() => "---")], rows), "");
   }
 
-  const measureHeaders = mode === "implement" ? ["Core quality %", "Edge %", "Timed out"] : judges.flatMap((judge) => [`${rule.quality} (${judgeLabel(judge)})`, `${rule.false} (${judgeLabel(judge)})`]);
+  const measureHeaders = mode === "implement" ? ["Core quality %", "Edge %", ...judgedBy.map((judge) => `Judged quality (${judgeLabel(judge)})`), "Timed out"] : judges.flatMap((judge) => [`${rule.quality} (${judgeLabel(judge)})`, `${rule.false} (${judgeLabel(judge)})`]);
   const totals = settings.map((setting) => {
     const own = entries.filter(({ cell }) => cell.variant === setting);
     const combined = combineBenchmarkAccounting(own.map(({ cell }) => cell.accounting));
     const partlyUnpriced = own.filter(({ cell }) => cell.accounting.estimatedUsd.kind === "unavailable").length;
     const measures = mode === "implement"
-      ? [...implementationTotals(own, catalogTasks), String(own.filter(({ cell }) => cell.output.kind === "timed-out").length)]
+      ? [...implementationTotals(own, catalogTasks), ...judgedBy.map((judge) => {
+        const scores = own.flatMap((entry) => entryJudgedQuality(entry, judge, input.qualityScoringVersion) ?? []);
+        return scores.length === 0 ? "n/a" : (scores.reduce((total, value) => total + value, 0) / scores.length).toFixed(1);
+      }), String(own.filter(({ cell }) => cell.output.kind === "timed-out").length)]
       : judges.flatMap((judge) => { const measured = judgeMeasures(own, catalogTasks, mode, judge, version); return [measured.quality, measured.false]; });
     return [
       setting,
@@ -326,6 +378,7 @@ function renderResultsPage(persona: string, input: RankingInput): string {
     "",
     ...table(["Setting", "Cells", ...measureHeaders, "Failed attempts", "Estimated USD", "Tokens", "Median latency", "Providers"], ["---", "---:", ...measureHeaders.map(() => "---:"), "---:", "---:", "---:", "---:", "---"], totals),
     "",
+    ...mode === "implement" ? [judgedQualityNote(persona, entries, corpus, judgedBy, input.qualityScoringVersion), ""] : [],
   );
 
   const scorableTasks = corpus.tasks.filter(({ opportunities }) => opportunities !== undefined);

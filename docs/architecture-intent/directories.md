@@ -119,7 +119,7 @@ A benchmark ranking pools every recorded cell whose task content matches the cur
 
 ## ARCH-DIRECTORIES-022: A ranking reads one suite per role and counts a timeout as a failure
 
-Each benchmarked persona ranks on one committed suite: its whole catalog corpus, unless the ranking names a narrower list. Coverage, pooling, and averaging read only the suite; a cell of another task is reported as not pooled. One committed rule over pilot results commits each implementer task as ranked or floor; ranked tasks set quality, cost, and latency, and floor tasks only check. A timed-out implementer cell ranks as a failed attempt: no hidden test passes, its latency is the limit, and its cost is its spend. Other failed attempts stay out of the measures and are listed to retry.
+Each benchmarked persona ranks on one committed suite: its whole catalog corpus, unless the ranking names a narrower list. A cell of another task is reported as not pooled. A committed rule over pilot results commits each implementer task as ranked or floor. A task ranks only after an audit records each failure that separates settings as behavioral, not an unstated interface or a harness fault. Ranked tasks set quality, cost, and latency; floor tasks only check. A timed-out implementer cell ranks as a failed attempt at the time limit. Other failed attempts are listed to retry.
 
 Because: A failure that a ranking leaves out flatters the setting that failed.
 Not: Coverage against every catalog task, or a timed-out cell that is retried until it passes.
@@ -144,3 +144,10 @@ A ranking states a 90% interval for each setting's quality and score, from resam
 
 Because: A default chosen on a gap that resampling reverses is a coin flip presented as evidence.
 Not: Ordering every setting by its point score alone.
+
+## ARCH-DIRECTORIES-026: An implementer cell carries a calibrated judged quality
+
+An implementer cell also carries a judged quality score, from typed findings that a judge reports in its diff. A judge's score enters the ranking only after it passes committed calibration: seeded control defects and agreement with reviewer labels. Implementer quality is then the equal-weight mean of test quality and judged quality.
+
+Because: Hidden tests cannot see needless code, wrong abstractions, or broken conventions, and an uncalibrated judge ranks on its own bias.
+Not: A holistic score without stated findings.

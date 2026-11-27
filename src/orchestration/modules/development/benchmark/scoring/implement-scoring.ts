@@ -163,7 +163,7 @@ function buildQualityPrompt(plan: string, diffA: string, diffB: string): string 
 /** The quality judge must not treat a trapped plan as gospel: without the
  *  disclosure it rewards blind compliance with seeded plan errors that the
  *  trap judge separately penalizes. */
-function planForQualityJudging(task: ImplementTask): string {
+export function planForQualityJudging(task: ImplementTask): string {
   if (task.kind === "native") return task.prompt;
   const plan = JSON.stringify(task.plan, null, 2);
   if (task.manifest.traps.length === 0) return plan;

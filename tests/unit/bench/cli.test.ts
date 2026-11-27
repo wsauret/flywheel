@@ -18,12 +18,14 @@ describe("persona benchmark CLI", () => {
     expect(parsePersonaArgs(["--resume", RESULTS_DIR, "--concurrency", "1"])).toMatchObject({ operation: "resume", concurrency: 1 });
     for (const value of ["0", "1.5", "two"]) expect(() => parsePersonaArgs(["--concurrency", value])).toThrow(`--concurrency must be a positive integer, got ${value}`);
   });
-  it("parses --rejudge with its judge and refuses it without --judge or beside a campaign option", () => {
+  it("parses --rejudge and --calibrate with a judge, and refuses them without --judge or beside a campaign option, --calibrate also beside --dry-run", () => {
     expect(parsePersonaArgs(["--rejudge", "reviewer-mechanism", "--judge", "claude-opus-5.5:xhigh", "--dry-run"]))
       .toMatchObject({ rejudge: "reviewer-mechanism", judge: { model: "claude-opus-5.5", effort: "xhigh" }, dryRun: true });
     expect(() => parsePersonaArgs(["--rejudge", "reviewer-mechanism"])).toThrow("--rejudge requires --judge model:effort");
     expect(() => parsePersonaArgs(["--rejudge", "explorer", "--judge", "j:high", "--rescore", RESULTS_DIR, "--variant", "m:low", "--tasks", "a"]))
       .toThrow("cannot be used with --rescore, --variant, --tasks");
+    expect(parsePersonaArgs(["--calibrate", "--judge", "j:high"])).toMatchObject({ calibrate: true, judge: { model: "j", effort: "high" } });
+    expect(() => parsePersonaArgs(["--calibrate", "--judge", "j:high", "--dry-run"])).toThrow("--calibrate judges the calibration controls and cannot be used with --dry-run");
     expect(parsePersonaArgs(["--regrade"])).toMatchObject({ regrade: true });
     expect(() => parsePersonaArgs(["--regrade", "--persona", "implementer"])).toThrow("--regrade takes no other option");
   });

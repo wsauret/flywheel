@@ -2,13 +2,14 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import type { JudgeSelection } from "./persona/benchmark-plan.js";
-import { appendCampaignRecords, loadAllCampaignRecords, scoreLine, type CampaignRecords, type CellLine } from "./records/benchmark-records.js";
+import { appendCampaignRecords, loadAllCampaignRecords, scoreLine, type CampaignRecords, type CellLine, type ScoreLine } from "./records/benchmark-records.js";
 import { benchmarkMode, type BenchmarkCatalog, type ImplementTask, type ResearchTask, type ReviewTask } from "./catalog.js";
 import { scoreImplementTraps } from "./scoring/implement-scoring.js";
+import { qualityJudgeInput, qualityScoringVersion, scoreImplementQuality } from "./scoring/quality-judge.js";
 import { createJsonLinesLedger } from "./campaign/json-lines.js";
 import type { JudgeAttemptReport, JudgeModel } from "./scoring/judge.js";
 import { planTasks, scoringVersion } from "./persona/persona-benchmark.js";
-import { cellStanding, rankingCorpus } from "./records/ranking-pool.js";
+import { cellStanding, qualityScoreOf, rankingCorpus } from "./records/ranking-pool.js";
 import { scoreResearch, snapshotLines } from "./scoring/research-scoring.js";
 import { PersonaRecordSchemas, type JudgeAttemptRecord, type ScoreRecord } from "./scoring/run-store.js";
 import { scoreReviews } from "./scoring/scoring.js";
@@ -19,30 +20,38 @@ import { withSnapshotWorkspace } from "./execution/snapshot-workspace.js";
 // content is current and that the named judge has not scored under the current
 // scoring contract go through the persona's own scorer, and each successful
 // score is appended to its cell's record file as a new line beside every other
-// judge's. Judge request evidence and judge accounting stay local, in a
-// gitignored results folder, as for a campaign.
+// judge's. An implementer cell also owes a judged-quality score under the
+// current quality judge identity (ARCH-DIRECTORIES-026), which the same
+// rejudge produces from the stored diff. Judge request evidence and judge
+// accounting stay local, in a gitignored results folder, as for a campaign.
 
-/** A recorded cell that the judge still owes a score. */
+/** A recorded cell that the judge still owes a score: the persona's own score, or an implementer cell's judged quality. */
 interface PendingRejudge {
   readonly campaign: CampaignRecords;
   readonly cell: CellLine;
+  readonly scorer: "persona" | "quality";
 }
 
-/** The current cells of `persona`'s records that `judge` has not scored under the current scoring contract. */
-async function pendingRejudge(catalog: BenchmarkCatalog, persona: string, judge: JudgeSelection): Promise<{ pending: readonly PendingRejudge[]; tasks: readonly (ResearchTask | ReviewTask | ImplementTask)[] }> {
+/** The current cells of `persona`'s records that `judge` has not scored under the current scoring contract, and the
+ *  current implementation cells that it has not given a judged-quality score under the current judge identity. */
+async function pendingRejudge(catalog: BenchmarkCatalog, persona: string, judge: JudgeSelection): Promise<{ pending: readonly PendingRejudge[]; tasks: readonly (ResearchTask | ReviewTask | ImplementTask)[]; qualityVersion: string | undefined }> {
   const mode = benchmarkMode(persona);
   const tasks = await planTasks(persona, mode, catalog);
   const corpus = rankingCorpus(persona, mode, tasks);
   const version = scoringVersion(mode);
   const campaigns = (await loadAllCampaignRecords(catalog.recordsRoot)).filter(({ header }) => header.persona === persona);
   if (campaigns.length === 0) throw new Error(`No benchmark records for persona ${persona} in ${catalog.recordsRoot}`);
-  const pending = campaigns.flatMap((campaign) => campaign.cells
-    .filter((cell) => {
-      const standing = cellStanding(cell, campaign, corpus, judge, version);
-      return "reason" in standing && standing.unscored === true;
-    })
-    .map((cell) => ({ campaign, cell })));
-  return { pending, tasks };
+  const qualityVersion = mode === "implement" ? await qualityScoringVersion(await catalog.implementTasks()) : undefined;
+  const pending = campaigns.flatMap((campaign) => campaign.cells.flatMap((cell): PendingRejudge[] => {
+    const standing = cellStanding(cell, campaign, corpus, judge, version);
+    const unscored = "reason" in standing && standing.unscored === true;
+    const current = unscored || !("reason" in standing);
+    return [
+      ...unscored ? [{ campaign, cell, scorer: "persona" as const }] : [],
+      ...qualityVersion !== undefined && current && cell.output.kind === "implementation" && qualityScoreOf(campaign, cell, judge, qualityVersion) === undefined ? [{ campaign, cell, scorer: "quality" as const }] : [],
+    ];
+  }));
+  return { pending, tasks, qualityVersion };
 }
 
 export interface RejudgeDeps {
@@ -62,7 +71,7 @@ export interface RejudgeDeps {
  *  writes no score line, so the next rejudge retries it. */
 export async function rejudgeRecords(deps: RejudgeDeps): Promise<{ evidenceDirectory: string; pending: number; scored: number; failed: number }> {
   const { catalog, persona, judge, signal } = deps;
-  const { pending, tasks } = await pendingRejudge(catalog, persona, judge);
+  const { pending, tasks, qualityVersion } = await pendingRejudge(catalog, persona, judge);
   const mode = benchmarkMode(persona);
   const version = scoringVersion(mode);
   const evidenceDirectory = catalog.resultsDir(`rejudge-${persona}`, new Date().toISOString().replace(/[:.]/g, "-"));
@@ -70,22 +79,27 @@ export async function rejudgeRecords(deps: RejudgeDeps): Promise<{ evidenceDirec
   if (deps.dryRun || pending.length === 0) return { evidenceDirectory, ...counts };
   await mkdir(evidenceDirectory, { recursive: true });
   const attempts = createJsonLinesLedger(async () => join(evidenceDirectory, "judge-attempts.jsonl"), PersonaRecordSchemas.judgeAttempt, "reject");
+  const qualityTasks = new Set(pending.flatMap(({ scorer, cell }) => scorer === "quality" ? [cell.task] : []));
+  const qualityInputs = new Map(await Promise.all(tasks.flatMap((task) => qualityTasks.has(task.id) && "candidateIdentity" in task ? [qualityJudgeInput(task).then((input) => [task.id, input] as const)] : [])));
   const { model, runOwnedCommand } = await deps.openJudge(join(evidenceDirectory, "judge-requests"));
+  const recordJudge = { model: judge.model, effort: judge.effort };
   for (const campaign of new Set(pending.map((entry) => entry.campaign))) {
-    const cells = pending.filter((entry) => entry.campaign === campaign).map((entry) => entry.cell);
+    const own = pending.filter((entry) => entry.campaign === campaign);
+    const cells = own.flatMap(({ scorer, cell }) => scorer === "persona" ? [cell] : []);
     const onAttempt = (report: JudgeAttemptReport): Promise<void> => attempts.append({
       kind: "judge-attempt", attemptId: crypto.randomUUID(), at: new Date().toISOString(), persona, mode,
       score: report.score, terminal: report.terminal, accounting: report.accounting,
     } satisfies JudgeAttemptRecord);
-    const publish = async (error: string | null, record: ScoreRecord): Promise<void> => {
+    const publishLine = async (error: string | null, line: () => ScoreLine): Promise<void> => {
       if (error !== null) {
         counts.failed++;
         return;
       }
       counts.scored++;
-      // SAFETY: `publish` receives only review, research, and trap score records, which scoreLine always converts.
-      await appendCampaignRecords(campaign.file, campaign.header, { scores: [scoreLine(record, judge, version)!] });
+      await appendCampaignRecords(campaign.file, campaign.header, { scores: [line()] });
     };
+    // SAFETY: `publish` receives only review, research, and trap score records, which scoreLine always converts.
+    const publish = (error: string | null, record: ScoreRecord) => publishLine(error, () => scoreLine(record, judge, version)!);
     const options = { onAttempt, ...(signal ? { signal } : {}) };
     if (mode === "reviewer") {
       const manifests = new Map(tasks.flatMap((task) => "fixtureDir" in task ? [[task.id, task.manifest] as const] : []));
@@ -103,6 +117,13 @@ export async function rejudgeRecords(deps: RejudgeDeps): Promise<{ evidenceDirec
       await scoreImplementTraps(cells.map(implementCandidate), manifests, model, {
         ...options, onSettled: ({ value, error }) => publish(error, { kind: "trap-score", mode: "implement", persona, error: null, score: value }),
       });
+      const judged = own.flatMap(({ scorer, cell }) => scorer === "quality" ? [implementCandidate(cell)] : []);
+      // An implement persona always has a quality version; the guard narrows it.
+      if (judged.length > 0 && qualityVersion !== undefined) {
+        await scoreImplementQuality(judged, qualityInputs, model, {
+          ...options, onSettled: ({ value, error }) => publishLine(error, () => ({ kind: "score", judge: recordJudge, scoringVersion: qualityVersion, scorer: "quality", score: value })),
+        });
+      }
     }
     if (signal?.aborted) break;
   }

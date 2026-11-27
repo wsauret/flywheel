@@ -1,11 +1,13 @@
-import type { TaskTier } from "../catalog.js";
+import type { CommittedTier, TaskTier } from "../catalog.js";
 import type { RecordJudge } from "./benchmark-records.js";
 import { byCodeUnit, cellQuality, poolRoleCells, type RankingInput } from "./ranking-pool.js";
 
 // The committed rule that decides each implementer task's tier from its pilot results (ARCH-DIRECTORIES-022). A
 // ranked task separates settings: its mean core quality lies inside the band, and its settings differ by more than
 // the noise of their repeats. A floor task almost every setting passes, so it only checks. Every other task is
-// "drop": it neither separates settings nor checks a floor, and `bench:tiers` reports it.
+// "drop": it neither separates settings nor checks a floor, and `bench:tiers` reports it. A ranked task also needs an
+// audit that records each failure that separates settings as behavioral: without one it is committed as floor, and the
+// ranking refuses a committed ranked task without one.
 
 /** The band of mean core quality, across settings, that a ranked task lies in. */
 const RANKED_BAND = { low: 0.15, high: 0.9 } as const;
@@ -53,6 +55,26 @@ export function taskTierRule(repeatsBySetting: readonly (readonly number[])[]): 
     : center >= RANKED_BAND.low - epsilon && between !== undefined && noise !== undefined && between >= SIGNAL_TO_NOISE * noise - epsilon ? "ranked"
     : "drop";
   return { settings: means.length, mean: center, between, noise, rule };
+}
+
+/** Why a task with `audit` may not rank (ARCH-DIRECTORIES-022): it has no audit, its audit records no failure that
+ *  separates settings, or it records a separating failure as other than behavioral. Empty when the audit holds. */
+function auditProblems(task: string, audit: CommittedTier["audit"]): string[] {
+  if (!audit) return [`- ${task}: ranked with no audit of the failures that separate settings`];
+  if (audit.failures.length === 0) return [`- ${task}: its audit records no failure that separates settings`];
+  return audit.failures.filter(({ verdict }) => verdict !== "behavioral").map(({ failure, verdict }) => `- ${task}: its audit records "${failure}" as ${verdict}, not behavioral`);
+}
+
+/** Why each committed ranked task may not rank. Empty when every ranked task's audit holds. The ranking refuses
+ *  tiers with a problem, and `bench:tiers --check` fails on one. */
+export function tierAuditProblems(tiers: ReadonlyMap<string, CommittedTier>): string[] {
+  return [...tiers].sort(([a], [b]) => byCodeUnit(a, b)).flatMap(([task, { tier, audit }]) => tier === "ranked" ? auditProblems(task, audit) : []);
+}
+
+/** The tier to commit for a task whose rule result is `rule`: a ranked result ranks only while `audit` holds, and
+ *  stays floor until it does, as a dropped task does. */
+export function committableTier(task: string, rule: TierRuleResult, audit: CommittedTier["audit"]): TaskTier {
+  return rule === "ranked" && auditProblems(task, audit).length === 0 ? "ranked" : "floor";
 }
 
 export interface TaskTierRow extends TaskTierMeasures {

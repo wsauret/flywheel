@@ -1,5 +1,5 @@
 import type { RankedModelTier } from "../../../../config/models/model-tiers.js";
-import { currentGrade, judgeLabel, recordScorer, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "./benchmark-records.js";
+import { currentGrade, judgeLabel, recordScorer, type CampaignRecords, type CellLine, type QualityScoreLine, type RecordJudge, type ScoreLine } from "./benchmark-records.js";
 import type { BenchmarkMode, ImplementTask, ResearchTask, ReviewTask, TaskTier } from "../catalog.js";
 import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js";
 
@@ -46,6 +46,13 @@ export function rankingCorpus(persona: string, mode: BenchmarkMode, tasks: reado
 
 export type RankingFamily = "openai" | "anthropic";
 
+/** Whether a quality judge's committed calibration passes under the current judge identity, with a one-line summary
+ *  of its evidence or of why it does not pass (ARCH-DIRECTORIES-026). */
+export interface QualityCalibrationStanding {
+  readonly passed: boolean;
+  readonly summary: string;
+}
+
 export interface RankingInput {
   readonly campaigns: readonly CampaignRecords[];
   /** Every persona's role, from persona frontmatter. */
@@ -54,6 +61,10 @@ export interface RankingInput {
   readonly corpora: ReadonlyMap<string, RankingCorpus>;
   /** The current scoring contract of a mode. */
   readonly scoringVersion: (mode: BenchmarkMode) => string;
+  /** The current judged-quality judge identity, which a judged-quality score line records as its scoring version. */
+  readonly qualityScoringVersion: string;
+  /** The committed calibration of a quality judge: its judged quality enters an implementer ranking only when it passes. */
+  readonly qualityCalibration: (judge: RecordJudge) => QualityCalibrationStanding;
   /** The coded family whose models document prices `model`, with its price tier there; both undefined for neither. */
   readonly classify: (model: string) => { family: RankingFamily | undefined; tier: RankedModelTier | undefined };
   /** The ROLE_MODEL_DEFAULTS entry that a role reads. */
@@ -98,6 +109,14 @@ interface CellPlace {
 export interface PooledCell extends CellPlace {
   readonly campaign: CampaignRecords;
   readonly cell: CellLine;
+  /** The cell's judged-quality score by the pooling judge under the current judge identity, if it has one. */
+  readonly quality: QualityScoreLine | undefined;
+}
+
+/** The judged-quality score line of `cell` by `judge` under judge identity `version`. */
+export function qualityScoreOf(campaign: CampaignRecords, cell: Pick<CellLine, "variant" | "task" | "repeat">, judge: RecordJudge, version: string): QualityScoreLine | undefined {
+  return campaign.scores.find((line): line is QualityScoreLine => line.scorer === "quality" && line.scoringVersion === version && sameJudge(line.judge, judge)
+    && line.score.variant === cell.variant && line.score.task === cell.task && line.score.repeat === cell.repeat);
 }
 
 /** Strings in code-unit order, as `Array.prototype.sort` orders them by default. */
@@ -213,7 +232,7 @@ export function poolRoleCells(role: string, campaigns: readonly CampaignRecords[
         continue;
       }
       const pool = pooled.get(persona) ?? { corpus: standing.corpus, cells: [] };
-      pool.cells.push({ ...standing, campaign, cell });
+      pool.cells.push({ ...standing, campaign, cell, quality: qualityScoreOf(campaign, cell, cellJudge, input.qualityScoringVersion) });
       pooled.set(persona, pool);
     }
     for (const line of campaign.scores) {

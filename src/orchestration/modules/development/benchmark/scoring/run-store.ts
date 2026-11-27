@@ -128,6 +128,8 @@ const JudgeScoreIdentitySchema = Schema.Union([
   }),
   Schema.Struct({ kind: Schema.Literal("review-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
   Schema.Struct({ kind: Schema.Literal("trap-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
+  /** A judged-quality call of one implementer cell, or of one calibration control under its control id. */
+  Schema.Struct({ kind: Schema.Literal("quality-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
   Schema.Struct({ kind: Schema.Literal("research-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
 ]);
 
@@ -176,6 +178,29 @@ export const ImplementScoreSchema = Schema.Struct({
   repeat: RepeatSchema,
   traps: Schema.Array(TrapVerdictSchema),
 });
+export const QualityFindingSchema = Schema.Struct({
+  kind: Schema.Literals(["needless-code", "wrong-abstraction", "convention-break", "missed-defect"]),
+  severity: Schema.Literals(["major", "minor"]),
+  file: Schema.String,
+  line: Schema.Int,
+  claim: Schema.String,
+  evidence: Schema.String,
+  /** The reachable scenario that triggers a missed defect; only a missed-defect finding carries one. */
+  scenario: Schema.optionalKey(Schema.String),
+});
+/** The judged quality of one implementer diff (ARCH-DIRECTORIES-026): the typed findings the judge reported, whether
+ *  the diff stays inside the request, and how many findings the parser discarded because the diff does not support
+ *  them (`parseQualityJudgment`). The 0 to 100 score derives from the findings (`judgedScore`). */
+export const QualityScoreSchema = Schema.Struct({
+  variant: Schema.String,
+  task: Schema.String,
+  repeat: RepeatSchema,
+  findings: Schema.Array(QualityFindingSchema),
+  scopeOk: Schema.Boolean,
+  discarded: Schema.Int,
+});
+export type QualityScore = typeof QualityScoreSchema.Type;
+export type QualityFinding = QualityScore["findings"][number];
 /** One research answer scored against its task's answer key. `citations` is the
  *  mechanical check: how many distinct `path:line` citations the answer makes, and
  *  those that name no line of exactly one file at the pin. */

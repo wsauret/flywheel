@@ -5,6 +5,9 @@ import { appendCampaignRecords, type CampaignHeader, type CellLine, type ScoreLi
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { rejudgeRecords } from "../../../src/orchestration/modules/development/benchmark/rejudge.js";
+import { scoringVersion as currentScoringVersion } from "../../../src/orchestration/modules/development/benchmark/persona/persona-benchmark.js";
+import { qualityScoringVersion } from "../../../src/orchestration/modules/development/benchmark/scoring/quality-judge.js";
+import { MINIMAL_IMPLEMENTATION_PLAN } from "../../helpers/implementation-plan.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { succeedingCommands } from "./_persona-benchmark-fixtures.js";
 
@@ -91,5 +94,66 @@ describe("benchmark rejudge", () => {
     const attempts = (await Bun.file(join(outcome.evidenceDirectory, "judge-attempts.jsonl")).text()).trim().split("\n").map((line) => JSON.parse(line));
     expect(attempts.map((attempt) => attempt.score.repeat).toSorted()).toEqual([0, 3]);
     expect(attempts[0]).toEqual(expect.objectContaining({ kind: "judge-attempt", persona: "reviewer-code-quality", terminal: "completed", score: expect.objectContaining({ kind: "review-score", variant: "model-a@medium", task: "billing-ledger" }) }));
+  });
+  it("gives each current implementation cell one judged-quality score from its stored diff, beside its trap score", async () => {
+    const root = directory("benchmark-rejudge-implement-");
+    const plan = join(root, "bench", "tasks", "implement", "plan-task");
+    mkdirSync(join(plan, "project"), { recursive: true });
+    mkdirSync(join(plan, "acceptance"), { recursive: true });
+    writeFileSync(join(plan, "task.json"), JSON.stringify({ id: "plan-task", stratum: "small" }));
+    writeFileSync(join(plan, "manifest.json"), JSON.stringify({ traps: [], judgment: [] }));
+    writeFileSync(join(plan, "plan.json"), JSON.stringify(MINIMAL_IMPLEMENTATION_PLAN));
+    writeFileSync(join(plan, "project", "value.py"), "value = 1\n");
+    writeFileSync(join(plan, "acceptance", "value.test.ts"), "// hidden acceptance test\n");
+    writeFileSync(join(plan, "checks.json"), JSON.stringify({ "acceptance/value.test.ts > fixes": "core" }));
+    const catalog = createBenchmarkCatalog(root);
+    const [task] = await catalog.implementTasks();
+    const version = currentScoringVersion("implement");
+    const QUALITY_SCORING_VERSION = await qualityScoringVersion(await catalog.implementTasks());
+    const header: CampaignHeader = { kind: "campaign", version: 1, persona: "implementer", mode: "implement", stamp: "s1", judge: OWN, scoringVersion: version, personaGuidanceIdentity: "g" };
+    const implementation = (repeat: number): CellLine => ({
+      kind: "cell", variant: "model-a@medium", model: "model-a", effort: "medium", task: "plan-task", taskIdentity: task!.contentIdentity, repeat, durationMs: 1,
+      accounting: unavailableJudgeAccounting("synthetic"),
+      output: { kind: "implementation", candidateIdentity: task!.candidateIdentity, summary: `handoff ${repeat}`, diff: `--- a/value.py\n+++ b/value.py\n@@ -1 +1 @@\n-value = 1\n+value = ${repeat}\n`, linesAdded: 1, linesRemoved: 0, filesTouched: 1, grade: { essential: { passed: 1, total: 1 }, broken: 0, edge: { passed: 0, total: 0 } } },
+    });
+    const seat = (repeat: number) => ({ variant: "model-a@medium", task: "plan-task", repeat });
+    const file = catalog.recordsFile("implementer", "s1");
+    // Repeat 0 has the other judge's trap score only, repeat 1 has no score, and repeat 2 has both of its scores.
+    await appendCampaignRecords(file, header, {
+      cells: [implementation(0), implementation(1), implementation(2)],
+      scores: [
+        { kind: "score", judge: OTHER, scoringVersion: version, scorer: "trap", score: { ...seat(0), traps: [] } },
+        { kind: "score", judge: OTHER, scoringVersion: version, scorer: "trap", score: { ...seat(2), traps: [] } },
+        { kind: "score", judge: OTHER, scoringVersion: QUALITY_SCORING_VERSION, scorer: "quality", score: { ...seat(2), findings: [], scopeOk: true, discarded: 0 } },
+      ],
+    });
+    const before = await Bun.file(file).text();
+    const prompts: string[] = [];
+    const finding = { kind: "needless-code", severity: "minor", file: "value.py", line: 1, claim: "c", evidence: "e" };
+    const outcome = await rejudgeRecords({
+      catalog, persona: "implementer", judge: OTHER,
+      openJudge: async () => ({
+        runOwnedCommand: succeedingCommands,
+        model: {
+          complete: async (prompt: string) => {
+            prompts.push(prompt);
+            return { text: JSON.stringify({ findings: [finding, { ...finding, kind: "missed-defect", severity: "major" }], scope_ok: true }), accounting: unavailableJudgeAccounting("synthetic") };
+          },
+        },
+      }),
+    });
+
+    // The plan task has no traps, so only the two quality calls reach the judge; each reads the stored diff blinded.
+    expect(outcome).toMatchObject({ pending: 3, scored: 3, failed: 0 });
+    expect(prompts).toHaveLength(2);
+    expect(prompts.every((prompt) => !prompt.includes("model-a"))).toBe(true);
+    expect(prompts.some((prompt) => prompt.includes("+value = 0") && prompt.includes("handoff 0"))).toBe(true);
+    const appended = (await Bun.file(file).text()).slice(before.length).trim().split("\n").map((line) => JSON.parse(line));
+    expect(appended.toSorted((a, b) => a.score.repeat - b.score.repeat || a.scorer.localeCompare(b.scorer))).toEqual([
+      // The missed-defect finding names no scenario, so the parser discards it.
+      { kind: "score", judge: OTHER, scoringVersion: QUALITY_SCORING_VERSION, scorer: "quality", score: { ...seat(0), findings: [finding], scopeOk: true, discarded: 1 } },
+      { kind: "score", judge: OTHER, scoringVersion: QUALITY_SCORING_VERSION, scorer: "quality", score: { ...seat(1), findings: [finding], scopeOk: true, discarded: 1 } },
+      { kind: "score", judge: OTHER, scoringVersion: version, scorer: "trap", score: { ...seat(1), traps: [] } },
+    ]);
   });
 });

@@ -109,6 +109,7 @@
     "readiness": "bun run scripts/readiness.ts",
     "readiness:login": "bun run scripts/readiness-login.ts",
     "notes:draft": "bun run scripts/release-notes.ts --surface terminal",
+    "bench:calibration": "bun run bench/ab-persona/calibration.ts",
     "bench:coding": "bun --conditions=browser run bench/chat-ab/coding-ab.ts",
     "bench:rank": "bun run bench/ab-persona/rank.ts",
     "bench:tables": "bun run bench/ab-persona/tables.ts",
