@@ -5,10 +5,11 @@ import { getPersonaMetadataIndex } from "../../../../../workflows/agents/agent-r
 import { modelPriceTier } from "../../../../config/models/model-tiers.js";
 import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../../../config/models/role-model-defaults.js";
 import { judgeLabel, loadAllCampaignRecords, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "../records/benchmark-records.js";
-import { benchmarkMode, type BenchmarkCatalog, type BenchmarkMode } from "../catalog.js";
+import { benchmarkMode, type BenchmarkCatalog, type BenchmarkMode, type TaskTier } from "../catalog.js";
 import type { BenchmarkAccounting } from "../accounting/evidence.js";
 import { planTasks, scoringVersion } from "./persona-benchmark.js";
-import { byCodeUnit, cellStanding, currentCellGrade, median, rankBenchmarkRecords, rankingCorpus, renderRoleRanking, RULE, staleTask, type RankingCorpus, type RankingFamily, type RankingInput, type RankingTask } from "../records/ranking.js";
+import { median, rankBenchmarkRecords, renderRoleRanking, RULE } from "../records/ranking.js";
+import { byCodeUnit, cellStanding, currentCellGrade, rankingCorpus, staleTask, type RankingCorpus, type RankingFamily, type RankingInput, type RankingTask } from "../records/ranking-pool.js";
 import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
 import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js";
 
@@ -20,15 +21,17 @@ import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js"
 const FAMILIES: readonly RankingFamily[] = ["openai", "anthropic"];
 const REGENERATE = "bun run bench:tables";
 
-/** The ranking input of every persona with records, as `bench:rank` and the results pages read it. Prices come from
- *  the bundled models document only, so every clone classifies a model the same way. */
+/** The ranking input of every persona with records, as `bench:rank`, `bench:tiers`, and the results pages read it.
+ *  Prices come from the bundled models document only, so every clone classifies a model the same way. An implementer
+ *  corpus reads the committed tiers, and fails when a task has no tier or a tier names no task. */
 export async function loadRankingInput(catalog: BenchmarkCatalog): Promise<RankingInput> {
   const campaigns = await loadAllCampaignRecords(catalog.recordsRoot);
   const personas = getPersonaMetadataIndex();
   const corpora = new Map<string, RankingCorpus>();
   for (const persona of new Set(campaigns.map(({ header }) => header.persona))) {
     const mode = benchmarkMode(persona);
-    corpora.set(persona, rankingCorpus(persona, mode, await planTasks(persona, mode, catalog)));
+    const tasks = await planTasks(persona, mode, catalog);
+    corpora.set(persona, rankingCorpus(persona, mode, tasks, mode === "implement" ? await committedTiers(catalog, tasks) : undefined));
   }
   const { userDataRoot } = selectStartupDirectories({ projectRootOption: catalog.projectRoot, env: process.env, cwd: catalog.projectRoot });
   // SAFETY: roleModelDefault returns one of the ROLE_MODEL_DEFAULTS entries, so the search always finds it.
@@ -47,6 +50,17 @@ export async function loadRankingInput(catalog: BenchmarkCatalog): Promise<Ranki
     },
     entryOf,
   };
+}
+
+/** The committed tier of every implementer task in `tasks`, read strictly against the task list. */
+async function committedTiers(catalog: BenchmarkCatalog, tasks: readonly { readonly id: string }[]): Promise<ReadonlyMap<string, TaskTier>> {
+  const tiers = await catalog.implementTiers();
+  const ids = new Set(tasks.map(({ id }) => id));
+  const missing = [...ids].filter((id) => !tiers.has(id));
+  const unknown = [...tiers.keys()].filter((id) => !ids.has(id));
+  if (missing.length > 0) throw new Error(`${catalog.implementTiersFile} has no tier for the implementer tasks ${missing.join(", ")}; give each ranked or floor`);
+  if (unknown.length > 0) throw new Error(`${catalog.implementTiersFile} names tasks that are not implementer tasks: ${unknown.join(", ")}`);
+  return tiers;
 }
 
 /** The results page of every persona with records, keyed by persona, in persona order. */
@@ -263,7 +277,7 @@ function renderResultsPage(persona: string, input: RankingInput): string {
   for (const ranking of rankings) out.push(`### ${ranking.judge ? `Judged by ${judgeLabel(ranking.judge)}` : "No judge"}`, "", ...renderRoleRanking(ranking));
 
   const legend = mode === "implement"
-    ? "Each setting has a core quality column and an edge column (ARCH-DIRECTORIES-024). Core quality p/t: p of the task's new core and serious checks passed, where t adds one failed check for each existing test that the change broke. Edge p/t: p of the task's t new edge checks passed; n/a: the task has no edge checks. (p/t): a grade before the check tags, p of all t hidden tests passed, with ? for its edge checks. T: the cell hit its time limit, a failed attempt."
+    ? "Tier: the task's committed tier; a ranked task sets quality, cost, and latency, and a floor task only deducts its failed checks (ARCH-DIRECTORIES-022). Each setting has a core quality column and an edge column (ARCH-DIRECTORIES-024). Core quality p/t: p of the task's new core and serious checks passed, where t adds one failed check for each existing test that the change broke. Edge p/t: p of the task's t new edge checks passed; n/a: the task has no edge checks. (p/t): a grade before the check tags, p of all t hidden tests passed, with ? for its edge checks. T: the cell hit its time limit, a failed attempt."
     : mode === "reviewer"
     ? "c/d: the review caught c of d seeded defects. +n: n unsupported P1/P2 findings. ?: no score by this judge under the current scoring version."
     : "c/f: the answer stated c of f key facts. t: the answer asserted a trap. ?: no score by this judge under the current scoring version.";
@@ -277,8 +291,8 @@ function renderResultsPage(persona: string, input: RankingInput): string {
     entries.filter(({ cell }) => cell.task === id && cell.variant === setting).map(token).join(" ") || "-";
   const taskLabel = (id: string) => `${id}${catalogTasks.has(id) ? "" : " (not in the catalog)"}`;
   if (mode === "implement") {
-    const columns = settings.flatMap((setting) => [setting, `${setting} edge`]);
-    const rows = taskIds.map((id) => [taskLabel(id), ...settings.flatMap((setting) => (["quality", "edge"] as const).map((part) => seatTokens(id, setting, (entry) => implementationToken(entry, catalogTasks.get(id), corpus, part))))]);
+    const columns = ["Tier", ...settings.flatMap((setting) => [setting, `${setting} edge`])];
+    const rows = taskIds.map((id) => [taskLabel(id), catalogTasks.get(id)?.tier ?? "-", ...settings.flatMap((setting) => (["quality", "edge"] as const).map((part) => seatTokens(id, setting, (entry) => implementationToken(entry, catalogTasks.get(id), corpus, part))))]);
     out.push(...table(["Task", ...columns], ["---", ...columns.map(() => "---")], rows), "");
   } else if (judges.length === 0) out.push("No judge has scored a current cell of this persona.", "");
   else for (const judge of judges) {

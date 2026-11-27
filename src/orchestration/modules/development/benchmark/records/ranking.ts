@@ -1,70 +1,21 @@
 import { EFFORT_VALUES } from "../../../../../infra/definitions/workflow/workflow-types.js";
 import type { RankedModelTier } from "../../../../config/models/model-tiers.js";
-import { currentGrade, judgeLabel, recordScorer, type CampaignRecords, type CellLine, type RecordJudge, type ScoreLine } from "./benchmark-records.js";
-import type { BenchmarkMode, ImplementTask, ResearchTask, ReviewTask } from "../catalog.js";
+import { judgeLabel, type CampaignRecords, type RecordJudge } from "./benchmark-records.js";
+import type { BenchmarkMode } from "../catalog.js";
 import { combineBenchmarkAccounting } from "../accounting/report-accounting.js";
-import { checkQuality, type CheckGrade } from "../implement-task/check-grade.js";
+import { byCodeUnit, cellQuality, poolRoleCells, scorable, type NotPooled, type PooledCell, type RankingCorpus, type RankingFamily, type RankingInput, type ScorableTask } from "./ranking-pool.js";
+import { bootstrapRandom, BOOTSTRAP_RESAMPLES, interval, nameDefault, resample, share, type DefaultNaming, type Interval } from "./ranking-confidence.js";
 
-// The benchmark ranking (ARCH-DIRECTORIES-021, ARCH-DIRECTORIES-022). It pools every recorded cell
-// whose task content matches the current corpus and that one judge scored
-// under the current scoring contract, measures each setting on absolute
-// per-cell measures, and applies the approved rule: filters on quality and
-// false alarms relative to the role's best, then
+// The benchmark ranking (ARCH-DIRECTORIES-021, ARCH-DIRECTORIES-022). It
+// measures each setting on absolute per-cell measures over the cells that
+// `ranking-pool.ts` pools, and applies the approved rule: filters on quality
+// and false alarms relative to the role's best, then
 //   score = quality - weight * false - 3 log2(cost / cheapest) - 3 log2(latency / fastest)
 // over the passing settings. Pairwise preference never enters it. It reads
 // only record files and the catalog, so every clone reproduces it. Each
-// persona ranks on its whole catalog corpus.
-
-/** One current task of a persona's corpus. */
-export interface RankingTask {
-  readonly id: string;
-  readonly contentIdentity: string;
-  /** Seeded defects of a review fixture (0 on a control) or key facts of a research task. Undefined marks a task
-   *  that the ranking cannot score: a research task without an answer key, which only pairwise judging scores. */
-  readonly opportunities: number | undefined;
-  /** An implementation task's split identity: a cell whose candidate identity still matches stays current under a
-   *  changed grader once the current grader has graded it. */
-  readonly implementation?: { readonly candidateIdentity: string; readonly graderIdentity: string };
-}
-
-export interface RankingCorpus {
-  readonly persona: string;
-  readonly mode: BenchmarkMode;
-  /** The persona's whole catalog corpus: coverage, pooling, and averaging read these tasks. */
-  readonly tasks: readonly RankingTask[];
-}
-
-/** A persona's current corpus, from its catalog tasks, as a ranking and a rejudge read it. */
-export function rankingCorpus(persona: string, mode: BenchmarkMode, tasks: readonly (ResearchTask | ReviewTask | ImplementTask)[]): RankingCorpus {
-  return {
-    persona,
-    mode,
-    tasks: tasks.map((task) => ({
-      id: task.id,
-      contentIdentity: task.contentIdentity,
-      opportunities: "snapshot" in task ? task.answerKey?.facts.length : "fixtureDir" in task ? task.manifest.defects.length : 0,
-      ...("candidateIdentity" in task ? { implementation: { candidateIdentity: task.candidateIdentity, graderIdentity: task.graderIdentity } } : {}),
-    })),
-  };
-}
-
-export type RankingFamily = "openai" | "anthropic";
-
-export interface RankingInput {
-  readonly campaigns: readonly CampaignRecords[];
-  /** Every persona's role, from persona frontmatter. */
-  readonly roleOf: (persona: string) => string | undefined;
-  /** The current corpus of a persona that has records. */
-  readonly corpora: ReadonlyMap<string, RankingCorpus>;
-  /** The current scoring contract of a mode. */
-  readonly scoringVersion: (mode: BenchmarkMode) => string;
-  /** The coded family whose models document prices `model`, with its price tier there; both undefined for neither. */
-  readonly classify: (model: string) => { family: RankingFamily | undefined; tier: RankedModelTier | undefined };
-  /** The ROLE_MODEL_DEFAULTS entry that a role reads. */
-  readonly entryOf: (role: string) => string;
-  readonly roles?: readonly string[];
-  readonly judge?: RecordJudge;
-}
+// persona ranks on its whole catalog corpus. A seeded bootstrap over tasks
+// and repeats states each setting's confidence, and the setting that the
+// ranking names rests on a quality lead that holds (ARCH-DIRECTORIES-025).
 
 interface SettingMeasures {
   readonly quality: number;
@@ -79,22 +30,25 @@ interface SettingMeasures {
   readonly timedOutCells: number;
 }
 
-interface RankedSetting extends SettingMeasures {
+type Filter = "pass" | "quality" | "false";
+
+interface MeasuredSetting extends SettingMeasures {
   readonly setting: string;
   readonly model: string;
   readonly effort: string;
   readonly family: RankingFamily | undefined;
   readonly tier: RankedModelTier | undefined;
-  readonly score: number;
-  readonly filter: "pass" | "quality" | "false";
 }
 
-interface NotPooled {
-  readonly persona: string;
-  readonly stamp: string;
-  readonly reason: string;
-  readonly cells: number;
-  readonly command?: string;
+interface RankedSetting extends MeasuredSetting {
+  readonly score: number;
+  readonly filter: Filter;
+  /** The 5% and 95% bounds of quality and score over the resamples. */
+  readonly qualityInterval: Interval;
+  readonly scoreInterval: Interval;
+  /** The share of resamples in which this setting outscores the next setting in point-score order; undefined on
+   *  the last. */
+  readonly beatsNext: number | undefined;
 }
 
 interface FamilyPick {
@@ -110,7 +64,8 @@ export interface RoleRanking {
   readonly mode: BenchmarkMode;
   readonly judge: RecordJudge;
   readonly otherJudges: readonly { judge: string; cells: number }[];
-  readonly corpora: readonly { persona: string; tasks: number }[];
+  /** Each corpus with its scorable task count, and for an implementer corpus how many of them are floor tasks. */
+  readonly corpora: readonly { persona: string; tasks: number; floor?: number }[];
   readonly guidance: readonly { persona: string; identity: string; cells: number }[];
   readonly settings: readonly RankedSetting[];
   readonly thresholds: { readonly quality: number; readonly false: number };
@@ -121,6 +76,8 @@ export interface RoleRanking {
   readonly notPooled: readonly NotPooled[];
   readonly picks: readonly FamilyPick[];
   readonly fallback: { tier: RankedModelTier; effort: string } | undefined;
+  /** The setting that the ranking names for the role, or undefined when no setting passes the filters. */
+  readonly named: DefaultNaming | undefined;
   readonly evidence: readonly string[];
 }
 
@@ -134,46 +91,6 @@ const FAMILIES: readonly RankingFamily[] = ["openai", "anthropic"];
 const TIER_OF_RANK: readonly RankedModelTier[] = ["cheap", "mid", "powerful"];
 const EFFORT_ORDER = new Map<string, number>(EFFORT_VALUES.map((effort, index) => [effort, index]));
 
-/** A task that the ranking can score: it states its opportunities. */
-type ScorableTask = RankingTask & { readonly opportunities: number };
-
-function scorable(task: RankingTask): task is ScorableTask {
-  return task.opportunities !== undefined;
-}
-
-/** Why a cell cannot join a ranking. `unscored` marks the reasons that a rejudge by the judge removes: the cell is
- *  current, and only its score under the current contract is missing. */
-interface StaleCell {
-  readonly reason: string;
-  readonly unscored?: true;
-}
-
-/** Where a current cell pools: its corpus, its scorable task, its pinned setting, its score under the contract, and
- *  an implementation cell's grade by the current grader. A timed-out implementer cell pools with no score and no
- *  grade: it made no change for a judge to read or a grader to run. */
-interface CellPlace {
-  readonly corpus: RankingCorpus;
-  readonly task: ScorableTask;
-  readonly model: string;
-  readonly effort: string;
-  readonly score: ScoreLine | undefined;
-  readonly grade?: CheckGrade;
-}
-
-interface PooledCell extends CellPlace {
-  readonly campaign: CampaignRecords;
-  readonly cell: CellLine;
-}
-
-/** Strings in code-unit order, as `Array.prototype.sort` orders them by default. */
-export function byCodeUnit(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function sameJudge(a: RecordJudge, b: RecordJudge): boolean {
-  return a.model === b.model && a.effort === b.effort;
-}
-
 export function median(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   // The middle value of an odd count, or the two middle values of an even count.
@@ -184,74 +101,21 @@ function mean(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
-/** The grade of an implementation cell by the task's current grader: the grade it recorded while its task is
- *  unchanged, otherwise the grade of a regrade by the current grader. Undefined when neither exists. */
-export function currentCellGrade(campaign: CampaignRecords, cell: CellLine, task: RankingTask): CheckGrade | undefined {
-  if (cell.output.kind !== "implementation") return undefined;
-  if (task.contentIdentity === cell.taskIdentity) return "grade" in cell.output ? cell.output.grade : undefined;
-  return task.implementation ? currentGrade(campaign, cell, task.implementation.graderIdentity) : undefined;
+/** One task's pooled cells of one setting. */
+interface TaskCells {
+  readonly task: ScorableTask;
+  readonly cells: readonly PooledCell[];
 }
 
-/** Why the task of a cell no longer matches the cell, or undefined while it does. */
-function taskChange(campaign: CampaignRecords, cell: CellLine, task: RankingTask): string | undefined {
-  if (cell.output.kind === "review" || cell.output.kind === "answer") return task.contentIdentity === cell.taskIdentity ? undefined : "task content changed";
-  if (task.contentIdentity !== cell.taskIdentity && cell.output.candidateIdentity !== task.implementation?.candidateIdentity) return "task content changed";
-  // A timed-out cell is a failed attempt under every grader.
-  if (cell.output.kind === "timed-out") return undefined;
-  return currentCellGrade(campaign, cell, task) ? undefined : "task grader changed (--regrade grades it with the current grader)";
-}
-
-/** Why a cell no longer answers its corpus task: the task left the corpus, or it changed in a way that no current
- *  grade covers. Undefined while the cell is current. */
-export function staleTask(cell: CellLine, campaign: CampaignRecords, corpus: RankingCorpus | undefined): string | undefined {
-  const task = corpus?.tasks.find(({ id }) => id === cell.task);
-  return task ? taskChange(campaign, cell, task) : "task removed from corpus";
-}
-
-/** Where a cell pools in a ranking under `judge`, or why it cannot. */
-export function cellStanding(cell: CellLine, campaign: CampaignRecords, corpus: RankingCorpus | undefined, judge: RecordJudge, version: string): StaleCell | CellPlace {
-  const { model, effort } = cell;
-  if (model === undefined || effort === undefined) return { reason: "no pinned model" };
-  const task = corpus?.tasks.find(({ id }) => id === cell.task);
-  if (!corpus || !task) return { reason: "task removed from corpus" };
-  const changed = taskChange(campaign, cell, task);
-  if (changed) return { reason: changed };
-  if (!scorable(task)) return { reason: "task has no answer key" };
-  if (cell.output.kind === "timed-out") return { corpus, task, model, effort, score: undefined };
-  const scores = campaign.scores.filter((line) => sameJudge(line.judge, judge) && line.scorer === recordScorer(campaign.header.mode) && line.score.variant === cell.variant && line.score.task === cell.task && line.score.repeat === cell.repeat);
-  const score = scores.find((line) => line.scoringVersion === version);
-  const grade = currentCellGrade(campaign, cell, task);
-  if (score) return { corpus, task, model, effort, score, ...(grade === undefined ? {} : { grade }) };
-  const old = scores[0];
-  return { reason: old ? `scored under ${old.scoringVersion}` : `not scored by ${judgeLabel(judge)}`, unscored: true };
-}
-
-/** The judge that scored the most current cells of a role, under the current scoring contract, or undefined when
- *  no judge scored any. When two judges scored as many, the one that more of those cells' own campaigns ran with
- *  wins: a rejudge of every cell does not displace the judge the campaigns chose. */
-function defaultJudge(role: string, campaigns: readonly CampaignRecords[], input: RankingInput): RecordJudge | undefined {
-  const counts = new Map<string, { judge: RecordJudge; cells: number; own: number }>();
-  for (const campaign of campaigns) {
-    const corpus = input.corpora.get(campaign.header.persona);
-    const version = input.scoringVersion(campaign.header.mode);
-    for (const line of campaign.scores) {
-      if (line.scoringVersion !== version) continue;
-      const cell = campaign.cells.find((candidate) => candidate.variant === line.score.variant && candidate.task === line.score.task && candidate.repeat === line.score.repeat);
-      if (!cell || "reason" in cellStanding(cell, campaign, corpus, line.judge, version)) continue;
-      const key = judgeLabel(line.judge);
-      const prior = counts.get(key);
-      counts.set(key, { judge: line.judge, cells: (prior?.cells ?? 0) + 1, own: (prior?.own ?? 0) + Number(sameJudge(line.judge, campaign.header.judge)) });
-    }
-  }
-  const ranked = [...counts.values()].sort((a, b) => b.cells - a.cells || b.own - a.own);
-  const [top, next] = ranked;
-  if (!top) return undefined;
-  if (next && next.cells === top.cells && next.own === top.own) throw new Error(`Judges ${judgeLabel(top.judge)} and ${judgeLabel(next.judge)} each scored ${top.cells} current cells of role ${role}; name one with --judge`);
-  return top.judge;
+/** One setting's pooled cells in one corpus, by task. A resample can hold one task several times. */
+interface CorpusCells {
+  readonly corpus: RankingCorpus;
+  readonly tasks: readonly TaskCells[];
 }
 
 /** Quality and false measures of one setting's pooled cells in one corpus. */
-function corpusMeasures(mode: BenchmarkMode, cells: readonly PooledCell[]): Pick<SettingMeasures, "quality" | "false"> {
+function corpusMeasures(mode: BenchmarkMode, tasks: readonly TaskCells[]): Pick<SettingMeasures, "quality" | "false"> {
+  const cells = tasks.flatMap((part) => part.cells);
   if (mode === "reviewer") {
     let caught = 0;
     let seeded = 0;
@@ -279,28 +143,31 @@ function corpusMeasures(mode: BenchmarkMode, cells: readonly PooledCell[]): Pick
     }
     return { quality: 100 * caught / facts, false: 100 * trapped / cells.length };
   }
-  // Each cell's core quality weighs the same within its task, and each task the same, whatever its check count:
-  // a timed-out cell has no grade to weigh by (ARCH-DIRECTORIES-024).
-  const rates = new Map<string, number[]>();
+  // Each cell weighs the same within its task, and each task the same, whatever its check count. A ranked task adds
+  // its mean core quality; a floor task subtracts its mean failed share, so a floor task that fails every check costs
+  // as much as one ranked task at 0 (ARCH-DIRECTORIES-022, ARCH-DIRECTORIES-024).
+  let ranked = 0;
+  let total = 0;
+  for (const { task, cells: taskCells } of tasks) {
+    if (task.tier === undefined) throw new Error(`Implementer task ${task.id} has no tier`);
+    const quality = mean(taskCells.map(cellQuality));
+    if (task.tier === "ranked") ranked++;
+    total += task.tier === "ranked" ? quality : quality - 1;
+  }
+  if (ranked === 0) throw new Error("An implementer corpus ranks no task: every task is floor");
   let followed = 0;
   let verdicts = 0;
-  for (const { cell, score, task, grade } of cells) {
-    const taskRates = rates.get(task.id) ?? [];
-    rates.set(task.id, taskRates);
-    if (cell.output.kind === "timed-out") {
-      taskRates.push(0);
-      continue;
-    }
-    if (score?.scorer !== "trap" || !grade) throw new Error("An implement corpus holds a non-implementation cell or score");
-    taskRates.push(checkQuality(grade));
+  for (const { score } of cells) {
+    if (score === undefined) continue;
+    if (score.scorer !== "trap") throw new Error("An implement corpus holds a non-trap score");
     followed += score.score.traps.filter((trap) => trap.outcome === "followed-blindly").length;
     verdicts += score.score.traps.length;
   }
-  return { quality: 100 * mean([...rates.values()].map(mean)), false: verdicts === 0 ? 0 : 100 * followed / verdicts };
+  return { quality: 100 * total / ranked, false: verdicts === 0 ? 0 : 100 * followed / verdicts };
 }
 
 /** Cost and latency of one setting's pooled cells in one corpus, or undefined when it has no cost. */
-function spendMeasures(cells: readonly PooledCell[]): Omit<SettingMeasures, "quality" | "false" | "cells" | "timedOutCells"> | undefined {
+function spendMeasures(cells: readonly PooledCell[]): Pick<SettingMeasures, "cost" | "costLowerBound" | "partlyUnpricedCells" | "latencySeconds"> | undefined {
   // A cell that states no amount at all would make any mean a guess, while a partly priced cell still bounds it.
   if (cells.some(({ cell }) => cell.accounting.estimatedUsd.kind === "unavailable" && cell.accounting.estimatedUsd.atLeast === undefined)) return undefined;
   const estimated = combineBenchmarkAccounting(cells.map(({ cell }) => cell.accounting)).estimatedUsd;
@@ -313,6 +180,48 @@ function spendMeasures(cells: readonly PooledCell[]): Omit<SettingMeasures, "qua
   };
 }
 
+/** One setting's measures over its cells in each corpus, or undefined when its cost is unavailable. Each corpus of
+ *  the role weighs the same, whatever its cell count, and cost and latency read only cells of tasks that are not
+ *  floor tasks. */
+function settingMeasures(mode: BenchmarkMode, perCorpus: readonly CorpusCells[]): SettingMeasures | undefined {
+  const spend = perCorpus.map(({ tasks }) => spendMeasures(tasks.filter(({ task }) => task.tier !== "floor").flatMap(({ cells }) => cells)));
+  if (spend.some((part) => part === undefined)) return undefined;
+  const priced = spend.filter((part) => part !== undefined);
+  const qualities = perCorpus.map(({ tasks }) => corpusMeasures(mode, tasks));
+  const cells = perCorpus.flatMap(({ tasks }) => tasks.flatMap((part) => part.cells));
+  return {
+    quality: mean(qualities.map((part) => part.quality)),
+    false: mean(qualities.map((part) => part.false)),
+    cost: mean(priced.map((part) => part.cost)),
+    costLowerBound: priced.some((part) => part.costLowerBound),
+    partlyUnpricedCells: priced.reduce((total, part) => total + part.partlyUnpricedCells, 0),
+    latencySeconds: mean(priced.map((part) => part.latencySeconds)),
+    cells: cells.length,
+    timedOutCells: cells.filter(({ cell }) => cell.output.kind === "timed-out").length,
+  };
+}
+
+/** The filters and score of each measured setting, in input order. The filters read the role's best quality and
+ *  lowest false measure, and the cost and latency baselines read the passing settings. */
+function scoreSettings<Setting extends SettingMeasures>(measured: readonly Setting[], rule: typeof RULE[BenchmarkMode]) {
+  const thresholds = measured.length === 0
+    ? { quality: 0, false: 0 }
+    : { quality: Math.max(...measured.map((setting) => setting.quality)) - 10, false: Math.min(...measured.map((setting) => setting.false)) + rule.slack };
+  const filterOf = (setting: SettingMeasures): Filter => setting.quality < thresholds.quality - 1e-9 ? "quality" : setting.false > thresholds.false + 1e-9 ? "false" : "pass";
+  const passing = measured.filter((setting) => filterOf(setting) === "pass");
+  const base = passing.length > 0 ? passing : measured;
+  const cheapest = Math.min(...base.map((setting) => setting.cost));
+  const fastest = Math.min(...base.map((setting) => setting.latencySeconds));
+  return {
+    thresholds,
+    scored: measured.map((setting) => ({
+      ...setting,
+      score: setting.quality - rule.weight * setting.false - 3 * Math.log2(setting.cost / cheapest) - 3 * Math.log2(setting.latencySeconds / fastest),
+      filter: filterOf(setting),
+    })),
+  };
+}
+
 /** A role whose records hold no cell that the ranking can pool, with what it left out. `judge` is undefined when no
  *  judge scored a current cell of the role; each campaign's own judge then states its cells' reasons. */
 export interface UnpooledRole {
@@ -321,42 +230,24 @@ export interface UnpooledRole {
   readonly notPooled: readonly NotPooled[];
 }
 
-function rankRole(role: string, campaigns: readonly CampaignRecords[], input: RankingInput): RoleRanking | UnpooledRole {
-  const chosen = input.judge ?? defaultJudge(role, campaigns, input);
-  const notPooledCounts = new Map<string, NotPooled>();
-  const pooled = new Map<string, { corpus: RankingCorpus; cells: PooledCell[] }>();
-  const otherJudges = new Map<string, number>();
-  for (const campaign of campaigns) {
-    const { persona, mode } = campaign.header;
-    const corpus = input.corpora.get(persona);
-    const version = input.scoringVersion(mode);
-    // Without a chosen judge, each campaign's own judge states why its cells do not pool.
-    const cellJudge = chosen ?? campaign.header.judge;
-    for (const cell of campaign.cells) {
-      const standing = cellStanding(cell, campaign, corpus, cellJudge, version);
-      if ("reason" in standing) {
-        const key = `${persona}\u0000${campaign.header.stamp}\u0000${standing.reason}`;
-        const prior = notPooledCounts.get(key);
-        notPooledCounts.set(key, {
-          persona, stamp: campaign.header.stamp, reason: standing.reason, cells: (prior?.cells ?? 0) + 1,
-          ...(standing.unscored ? { command: `bun bench/ab-persona/bench.ts --rejudge ${persona} --judge ${judgeLabel(cellJudge)}` } : {}),
-        });
-        continue;
-      }
-      const pool = pooled.get(persona) ?? { corpus: standing.corpus, cells: [] };
-      pool.cells.push({ ...standing, campaign, cell });
-      pooled.set(persona, pool);
-    }
-    for (const line of campaign.scores) {
-      if (chosen && !sameJudge(line.judge, chosen)) otherJudges.set(judgeLabel(line.judge), (otherJudges.get(judgeLabel(line.judge)) ?? 0) + 1);
-    }
+/** The resampling strata of a corpus: tasks resample within their stratum, so each resample keeps the corpus's
+ *  ranked and floor implementer tasks, and a reviewer corpus's seeded fixtures and controls, at their counts. */
+function strata(mode: BenchmarkMode, tasks: readonly ScorableTask[]): ScorableTask[][] {
+  const groups = new Map<string, ScorableTask[]>();
+  for (const task of tasks) {
+    const key = mode === "implement" ? task.tier ?? "" : mode === "reviewer" ? String(task.opportunities > 0) : "";
+    groups.set(key, [...groups.get(key) ?? [], task]);
   }
-  const pools = [...pooled.values()].sort((a, b) => byCodeUnit(a.corpus.persona, b.corpus.persona));
+  return [...groups.values()];
+}
+
+function rankRole(role: string, campaigns: readonly CampaignRecords[], input: RankingInput): RoleRanking | UnpooledRole {
+  const { judge: chosen, pools, notPooled, otherJudges } = poolRoleCells(role, campaigns, input);
   const corpora = pools.map(({ corpus }) => corpus);
   const modes = new Set(corpora.map(({ mode }) => mode));
   const [mode] = modes;
   // Without a chosen judge no cell pools, because no judge scored a current cell.
-  if (!chosen || mode === undefined) return { role, judge: chosen, notPooled: [...notPooledCounts.values()] };
+  if (!chosen || mode === undefined) return { role, judge: chosen, notPooled };
   const judge = chosen;
   if (modes.size !== 1) throw new Error(`Role ${role} pools corpora of several modes: ${[...modes].join(", ")}`);
   const rule = RULE[mode];
@@ -366,57 +257,69 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
   for (const pooledCell of pools.flatMap(({ cells }) => cells)) {
     if (!settingCells.has(pooledCell.cell.variant)) settingCells.set(pooledCell.cell.variant, pooledCell);
   }
+  const cellsOf = (setting: string, persona: string, task: string) => pools.find(({ corpus }) => corpus.persona === persona)?.cells.filter(({ cell }) => cell.variant === setting && cell.task === task) ?? [];
   const incomplete: { setting: string; missing: string[] }[] = [];
   const notRanked: { setting: string; reason: string }[] = [];
-  const measured: (Omit<RankedSetting, "score" | "filter">)[] = [];
+  const measured: MeasuredSetting[] = [];
+  // Each measured setting's pooled cells by corpus and task, which the resamples draw from.
+  const samples: ReadonlyMap<string, readonly PooledCell[]>[] = [];
   for (const [setting, { model, effort }] of [...settingCells].sort(([a], [b]) => byCodeUnit(a, b))) {
-    const perCorpus = pools.map(({ corpus, cells: pooledCells }) => {
-      const cells = pooledCells.filter(({ cell }) => cell.variant === setting);
-      const tasks = corpus.tasks.filter(scorable);
-      const covered = tasks.filter((task) => cells.some(({ cell }) => cell.task === task.id)).length;
-      return { corpus, cells, covered, scorable: tasks.length };
-    });
-    const missing = perCorpus.filter((part) => part.covered < part.scorable).map((part) => `${part.corpus.persona}: ${part.covered} of ${part.scorable} tasks`);
+    const perCorpus = pools.map(({ corpus }) => ({
+      corpus,
+      tasks: corpus.tasks.filter(scorable).flatMap((task) => {
+        const cells = cellsOf(setting, corpus.persona, task.id);
+        return cells.length > 0 ? [{ task, cells }] : [];
+      }),
+      scorable: corpus.tasks.filter(scorable).length,
+    }));
+    const missing = perCorpus.filter((part) => part.tasks.length < part.scorable).map((part) => `${part.corpus.persona}: ${part.tasks.length} of ${part.scorable} tasks`);
     if (missing.length > 0) {
       incomplete.push({ setting, missing });
       continue;
     }
-    const spend = perCorpus.flatMap((part) => spendMeasures(part.cells) ?? []);
-    if (spend.length < perCorpus.length) {
+    const measures = settingMeasures(mode, perCorpus);
+    if (!measures) {
       notRanked.push({ setting, reason: "cost unavailable" });
       continue;
     }
-    const qualities = perCorpus.map((part) => corpusMeasures(mode, part.cells));
     const { family, tier } = input.classify(model);
-    measured.push({
-      setting, model, effort, family, tier,
-      // Each corpus of the role weighs the same, whatever its cell count.
-      quality: mean(qualities.map((part) => part.quality)),
-      false: mean(qualities.map((part) => part.false)),
-      cost: mean(spend.map((part) => part.cost)),
-      costLowerBound: spend.some((part) => part.costLowerBound),
-      partlyUnpricedCells: spend.reduce((total, part) => total + part.partlyUnpricedCells, 0),
-      latencySeconds: mean(spend.map((part) => part.latencySeconds)),
-      cells: perCorpus.reduce((total, part) => total + part.cells.length, 0),
-      timedOutCells: perCorpus.reduce((total, part) => total + part.cells.filter(({ cell }) => cell.output.kind === "timed-out").length, 0),
-    });
+    measured.push({ setting, model, effort, family, tier, ...measures });
+    samples.push(new Map(perCorpus.flatMap(({ corpus, tasks }) => tasks.map(({ task, cells }) => [`${corpus.persona}\u0000${task.id}`, cells] as const))));
   }
+  const { thresholds, scored } = scoreSettings(measured, rule);
 
-  const thresholds = measured.length === 0
-    ? { quality: 0, false: 0 }
-    : { quality: Math.max(...measured.map((setting) => setting.quality)) - 10, false: Math.min(...measured.map((setting) => setting.false)) + rule.slack };
-  const filterOf = (setting: SettingMeasures): RankedSetting["filter"] => setting.quality < thresholds.quality - 1e-9 ? "quality" : setting.false > thresholds.false + 1e-9 ? "false" : "pass";
-  const passing = measured.filter((setting) => filterOf(setting) === "pass");
-  const base = passing.length > 0 ? passing : measured;
-  const cheapest = Math.min(...base.map((setting) => setting.cost));
-  const fastest = Math.min(...base.map((setting) => setting.latencySeconds));
-  const settings: RankedSetting[] = measured
-    .map((setting) => ({
+  // Each resample draws tasks with replacement within each stratum of each corpus, the same tasks for every setting,
+  // then each setting's repeats of each drawn task with replacement, and scores every setting again under the same
+  // formula, filters, and baselines (ARCH-DIRECTORIES-025).
+  const random = bootstrapRandom();
+  const corpusStrata = pools.map(({ corpus }) => strata(mode, corpus.tasks.filter(scorable)));
+  const draws: { quality: number[]; score: number[] }[] = measured.map(() => ({ quality: [], score: [] }));
+  for (let index = 0; index < BOOTSTRAP_RESAMPLES; index++) {
+    const drawn = corpusStrata.map((groups) => groups.flatMap((group) => resample(group, random)));
+    const resampled = samples.map((own) => {
+      const perCorpus = pools.map(({ corpus }, position) => ({
+        corpus,
+        tasks: (drawn[position] ?? []).map((task) => ({ task, cells: resample(own.get(`${corpus.persona}\u0000${task.id}`)!, random) })), // SAFETY: a measured setting covers every scorable task of every corpus, so each drawn task has cells.
+      }));
+      // SAFETY: a resample holds only cells of a setting whose cost every cell states, so its cost is available.
+      return settingMeasures(mode, perCorpus)!;
+    });
+    for (const [position, setting] of scoreSettings(resampled, rule).scored.entries()) {
+      draws[position]?.quality.push(setting.quality);
+      draws[position]?.score.push(setting.score);
+    }
+  }
+  const order = scored.map((setting, position) => ({ setting, draws: draws[position] ?? { quality: [], score: [] } })).sort((a, b) => b.setting.score - a.setting.score);
+  const settings: RankedSetting[] = order.map(({ setting, draws: own }, position) => {
+    const next = order[position + 1];
+    return {
       ...setting,
-      score: setting.quality - rule.weight * setting.false - 3 * Math.log2(setting.cost / cheapest) - 3 * Math.log2(setting.latencySeconds / fastest),
-      filter: filterOf(setting),
-    }))
-    .sort((a, b) => b.score - a.score);
+      qualityInterval: interval(own.quality),
+      scoreInterval: interval(own.score),
+      beatsNext: next ? share(BOOTSTRAP_RESAMPLES, (resampleIndex) => (own.score[resampleIndex] ?? 0) > (next.draws.score[resampleIndex] ?? 0)) : undefined,
+    };
+  });
+  const named = nameDefault(order.filter(({ setting }) => setting.filter === "pass").map(({ setting, draws: own }) => ({ setting: setting.setting, quality: setting.quality, qualitySamples: own.quality })));
 
   const picks = FAMILIES.flatMap((family): FamilyPick[] => {
     const own = settings.filter((setting) => setting.family === family);
@@ -454,11 +357,13 @@ function rankRole(role: string, campaigns: readonly CampaignRecords[], input: Ra
   return {
     role, entry: input.entryOf(role), mode, judge,
     otherJudges: [...otherJudges].map(([label, cells]) => ({ judge: label, cells })).sort((a, b) => a.judge.localeCompare(b.judge)),
-    corpora: corpora.map((corpus) => ({ persona: corpus.persona, tasks: corpus.tasks.filter(scorable).length })),
+    corpora: corpora.map((corpus) => {
+      const tasks = corpus.tasks.filter(scorable);
+      return { persona: corpus.persona, tasks: tasks.length, ...(mode === "implement" ? { floor: tasks.filter(({ tier }) => tier === "floor").length } : {}) };
+    }),
     guidance: [...guidance.values()],
-    settings, thresholds, incomplete, retry, notRanked,
-    notPooled: [...notPooledCounts.values()],
-    picks, fallback,
+    settings, thresholds, incomplete, retry, notRanked, notPooled,
+    picks, fallback, named,
     evidence: [...new Set(pools.flatMap(({ corpus, cells }) => cells.map(({ campaign }) => `${corpus.persona}-${campaign.header.stamp}`)))].sort(),
   };
 }
@@ -495,15 +400,21 @@ export function renderRoleRanking(ranking: RoleRanking | UnpooledRole): string[]
   }
   const rule = RULE[ranking.mode];
   const cost = (setting: RankedSetting) => `${setting.costLowerBound ? ">= " : ""}$${fixed(setting.cost, 3)}${setting.costLowerBound ? ` (${setting.partlyUnpricedCells} of ${setting.cells} cells partly unpriced)` : ""}`;
+  const range = ({ low, high }: Interval) => `${fixed(low, 1)} to ${fixed(high, 1)}`;
+  const percent = (value: number) => `${fixed(100 * value, 0)}%`;
+  const named = ranking.named;
+  const namedSetting = ranking.settings.find((setting) => setting.setting === named?.setting);
   return [
     `Judge: ${judgeLabel(ranking.judge)}${ranking.otherJudges.length > 0 ? ` (other judges in these records: ${ranking.otherJudges.map(({ judge, cells }) => `${judge} ${cells} scores`).join(", ")})` : ""}`,
-    `Corpora: ${ranking.corpora.map(({ persona, tasks }) => `${persona} (${tasks} tasks)`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
+    `Corpora: ${ranking.corpora.map(({ persona, tasks, floor }) => `${persona} (${tasks} tasks${floor === undefined ? "" : `: ${tasks - floor} ranked, ${floor} floor`})`).join(", ")}${ranking.corpora.length > 1 ? ", averaged with equal weight" : ""}`,
     `Persona guidance: ${ranking.guidance.map(({ persona, identity, cells }) => `${persona} ${identity.slice(0, 8)} (${cells} cells)`).join(", ")}`,
+    ...ranking.mode === "implement" ? ["Quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks."] : [],
     `Filters: ${rule.quality} >= ${fixed(ranking.thresholds.quality, 1)}, ${rule.false} <= ${fixed(ranking.thresholds.false, 2)}. Score = quality - ${rule.weight} x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.`,
+    `Confidence: each 90% interval spans the 5th to the 95th percentile over ${BOOTSTRAP_RESAMPLES} seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.`,
     "",
-    `| Setting | Family | Tier | ${rule.quality} | ${rule.false} | Cost/cell | Median latency | Score | Filter | Cells |`,
-    "|---|---|---|---:|---:|---:|---:|---:|---|---:|",
-    ...ranking.settings.map((setting) => `| ${setting.setting} | ${setting.family ?? "other"} | ${setting.tier ?? "unpriced"} | ${fixed(setting.quality, 1)} | ${fixed(setting.false, 2)} | ${cost(setting)} | ${fixed(setting.latencySeconds, 0)}s | ${fixed(setting.score, 1)} | ${setting.filter} | ${setting.cells}${setting.timedOutCells > 0 ? ` (${setting.timedOutCells} timed out)` : ""} |`),
+    `| Setting | Family | Tier | ${rule.quality} | Quality 90% | ${rule.false} | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |`,
+    "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|",
+    ...ranking.settings.map((setting) => `| ${setting.setting} | ${setting.family ?? "other"} | ${setting.tier ?? "unpriced"} | ${fixed(setting.quality, 1)} | ${range(setting.qualityInterval)} | ${fixed(setting.false, 2)} | ${cost(setting)} | ${fixed(setting.latencySeconds, 0)}s | ${fixed(setting.score, 1)} | ${range(setting.scoreInterval)} | ${setting.beatsNext === undefined ? "-" : percent(setting.beatsNext)} | ${setting.filter} | ${setting.cells}${setting.timedOutCells > 0 ? ` (${setting.timedOutCells} timed out)` : ""} |`),
     ...ranking.settings.some((setting) => setting.costLowerBound) ? ["", "A lower-bound cost enters the score as its bound, which can only flatter that setting."] : [],
     ...ranking.incomplete.length > 0 ? ["", "Incomplete (cells to run next):", ...ranking.incomplete.map(({ setting, missing }) => `- ${setting}: ${missing.join("; ")}`)] : [],
     ...ranking.retry.length > 0 ? ["", "Cells to retry (failed with no result; a resume runs them again):", ...ranking.retry.map(({ setting, task, repeat, persona, stamp, reason }) => `- ${setting} ${task} #${repeat} (${persona} ${stamp}): ${reason}`)] : [],
@@ -511,6 +422,9 @@ export function renderRoleRanking(ranking: RoleRanking | UnpooledRole): string[]
     ...ranking.notPooled.length > 0 ? ["", ...notPooledTable(ranking.notPooled)] : [],
     "", "Policy:", "", "```",
     `${ranking.role} (ROLE_MODEL_DEFAULTS entry: ${ranking.entry}${ranking.entry === ranking.role ? "" : ", inherited"})`,
+    `  named: ${!named || !namedSetting ? "none (no setting passes the filters)" : `${namedSetting.family ?? "other"} ${namedSetting.model} ${namedSetting.effort} (${named.kind === "lead"
+      ? `its quality exceeds every other passing setting's in ${percent(named.share)} of resamples`
+      : `no quality lead holds in 90% of resamples; the top scorer of the settings that ${named.leader} does not outscore on quality in 90% of resamples: ${named.tied.join(", ")}`})`}`,
     ...ranking.picks.map((pick, index) => `  ${index + 1}. ${pick.family} ${pick.setting.model} ${pick.setting.effort}${pick.passed ? "" : " (no setting of this family passes the filters)"}`),
     `  fallback: ${ranking.fallback ? `${ranking.fallback.tier}, ${ranking.fallback.effort}` : "none (no setting passes the filters)"}`,
     `  evidence: ${ranking.evidence.join(", ")}`, "```", "",

@@ -14,23 +14,25 @@ Judge: claude-opus-5.5:xhigh (other judges in these records: gpt-6.1-sol:xhigh 1
 Corpora: reviewer-mechanism (10 tasks)
 Persona guidance: reviewer-mechanism 00931ea6 (180 cells)
 Filters: recall % >= 90.0, false P1/P2 per review <= 0.65. Score = quality - 5 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | recall % | false P1/P2 per review | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| gpt-6.1-terra@medium | openai | cheap | 100.0 | 0.85 | $0.019 | 29s | 101.4 | false | 20 |
-| gpt-6.1-terra@high | openai | cheap | 100.0 | 1.15 | $0.020 | 31s | 99.5 | false | 20 |
-| gpt-6.1-sol@medium | openai | mid | 100.0 | 0.25 | $0.065 | 49s | 96.8 | pass | 20 |
-| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 0.10 | $0.143 | 31s | 96.1 | pass | 20 |
-| gpt-6.1-terra@xhigh | openai | cheap | 100.0 | 1.25 | $0.028 | 49s | 95.6 | false | 20 |
-| gpt-6.1-sol@high | openai | mid | 100.0 | 0.40 | $0.074 | 72s | 93.8 | pass | 20 |
-| gpt-6-astra@medium | openai | powerful | 100.0 | 0.05 | $0.300 | 52s | 90.9 | pass | 20 |
-| claude-fable-5.2@low | anthropic | powerful | 100.0 | 0.05 | $0.329 | 48s | 90.9 | pass | 20 |
-| gpt-6.1-sol@xhigh | openai | mid | 100.0 | 0.35 | $0.099 | 123s | 90.5 | pass | 20 |
+| Setting | Family | Tier | recall % | Quality 90% | false P1/P2 per review | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| gpt-6.1-terra@medium | openai | cheap | 100.0 | 100.0 to 100.0 | 0.85 | $0.019 | 29s | 101.4 | 96.8 to 102.7 | 99% | false | 20 |
+| gpt-6.1-terra@high | openai | cheap | 100.0 | 100.0 to 100.0 | 1.15 | $0.020 | 31s | 99.5 | 94.3 to 101.1 | 98% | false | 20 |
+| gpt-6.1-sol@medium | openai | mid | 100.0 | 100.0 to 100.0 | 0.25 | $0.065 | 49s | 96.8 | 90.2 to 97.9 | 78% | pass | 20 |
+| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 100.0 to 100.0 | 0.10 | $0.143 | 31s | 96.1 | 89.3 to 96.7 | 59% | pass | 20 |
+| gpt-6.1-terra@xhigh | openai | cheap | 100.0 | 100.0 to 100.0 | 1.25 | $0.028 | 49s | 95.6 | 90.1 to 97.4 | 85% | false | 20 |
+| gpt-6.1-sol@high | openai | mid | 100.0 | 100.0 to 100.0 | 0.40 | $0.074 | 72s | 93.8 | 87.4 to 95.0 | 99% | pass | 20 |
+| gpt-6-astra@medium | openai | powerful | 100.0 | 100.0 to 100.0 | 0.05 | $0.300 | 52s | 90.9 | 84.3 to 91.9 | 54% | pass | 20 |
+| claude-fable-5.2@low | anthropic | powerful | 100.0 | 100.0 to 100.0 | 0.05 | $0.329 | 48s | 90.9 | 84.1 to 91.8 | 56% | pass | 20 |
+| gpt-6.1-sol@xhigh | openai | mid | 100.0 | 100.0 to 100.0 | 0.35 | $0.099 | 123s | 90.5 | 84.6 to 92.7 | - | pass | 20 |
 
 Policy:
 
 ```
 reviewer-mechanism (ROLE_MODEL_DEFAULTS entry: reviewer-mechanism)
+  named: openai gpt-6.1-sol medium (no quality lead holds in 90% of resamples; the top scorer of the settings that gpt-6.1-sol@medium does not outscore on quality in 90% of resamples: gpt-6.1-sol@medium, claude-opus-5.5@medium, gpt-6.1-sol@high, gpt-6-astra@medium, claude-fable-5.2@low, gpt-6.1-sol@xhigh)
   1. openai gpt-6.1-sol medium
   2. anthropic claude-opus-5.5 medium
   fallback: mid, medium
@@ -43,23 +45,25 @@ Judge: gpt-6.1-sol:xhigh (other judges in these records: claude-opus-5.5:xhigh 1
 Corpora: reviewer-mechanism (10 tasks)
 Persona guidance: reviewer-mechanism 00931ea6 (180 cells)
 Filters: recall % >= 90.0, false P1/P2 per review <= 0.65. Score = quality - 5 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | recall % | false P1/P2 per review | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| gpt-6.1-terra@medium | openai | cheap | 100.0 | 0.85 | $0.019 | 29s | 101.4 | false | 20 |
-| gpt-6.1-terra@high | openai | cheap | 100.0 | 1.15 | $0.020 | 31s | 99.5 | false | 20 |
-| gpt-6.1-sol@medium | openai | mid | 100.0 | 0.25 | $0.065 | 49s | 96.8 | pass | 20 |
-| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 0.10 | $0.143 | 31s | 96.1 | pass | 20 |
-| gpt-6.1-terra@xhigh | openai | cheap | 100.0 | 1.25 | $0.028 | 49s | 95.6 | false | 20 |
-| gpt-6.1-sol@high | openai | mid | 100.0 | 0.40 | $0.074 | 72s | 93.8 | pass | 20 |
-| gpt-6-astra@medium | openai | powerful | 100.0 | 0.05 | $0.300 | 52s | 90.9 | pass | 20 |
-| claude-fable-5.2@low | anthropic | powerful | 100.0 | 0.05 | $0.329 | 48s | 90.9 | pass | 20 |
-| gpt-6.1-sol@xhigh | openai | mid | 100.0 | 0.35 | $0.099 | 123s | 90.5 | pass | 20 |
+| Setting | Family | Tier | recall % | Quality 90% | false P1/P2 per review | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| gpt-6.1-terra@medium | openai | cheap | 100.0 | 100.0 to 100.0 | 0.85 | $0.019 | 29s | 101.4 | 96.8 to 102.7 | 99% | false | 20 |
+| gpt-6.1-terra@high | openai | cheap | 100.0 | 100.0 to 100.0 | 1.15 | $0.020 | 31s | 99.5 | 94.3 to 101.1 | 98% | false | 20 |
+| gpt-6.1-sol@medium | openai | mid | 100.0 | 100.0 to 100.0 | 0.25 | $0.065 | 49s | 96.8 | 90.2 to 97.9 | 78% | pass | 20 |
+| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 100.0 to 100.0 | 0.10 | $0.143 | 31s | 96.1 | 89.3 to 96.7 | 59% | pass | 20 |
+| gpt-6.1-terra@xhigh | openai | cheap | 100.0 | 100.0 to 100.0 | 1.25 | $0.028 | 49s | 95.6 | 90.1 to 97.4 | 85% | false | 20 |
+| gpt-6.1-sol@high | openai | mid | 100.0 | 100.0 to 100.0 | 0.40 | $0.074 | 72s | 93.8 | 87.4 to 95.0 | 99% | pass | 20 |
+| gpt-6-astra@medium | openai | powerful | 100.0 | 100.0 to 100.0 | 0.05 | $0.300 | 52s | 90.9 | 84.3 to 91.9 | 54% | pass | 20 |
+| claude-fable-5.2@low | anthropic | powerful | 100.0 | 100.0 to 100.0 | 0.05 | $0.329 | 48s | 90.9 | 84.1 to 91.8 | 56% | pass | 20 |
+| gpt-6.1-sol@xhigh | openai | mid | 100.0 | 100.0 to 100.0 | 0.35 | $0.099 | 123s | 90.5 | 84.6 to 92.7 | - | pass | 20 |
 
 Policy:
 
 ```
 reviewer-mechanism (ROLE_MODEL_DEFAULTS entry: reviewer-mechanism)
+  named: openai gpt-6.1-sol medium (no quality lead holds in 90% of resamples; the top scorer of the settings that gpt-6.1-sol@medium does not outscore on quality in 90% of resamples: gpt-6.1-sol@medium, claude-opus-5.5@medium, gpt-6.1-sol@high, gpt-6-astra@medium, claude-fable-5.2@low, gpt-6.1-sol@xhigh)
   1. openai gpt-6.1-sol medium
   2. anthropic claude-opus-5.5 medium
   fallback: mid, medium

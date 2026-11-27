@@ -11,20 +11,22 @@ The ranking pools every current, scored cell of the role implementer, so it can 
 ### Judged by gpt-6.2-sol:high
 
 Judge: gpt-6.2-sol:high (other judges in these records: gpt-6.1-sol:xhigh 81 scores)
-Corpora: implementer (14 tasks)
+Corpora: implementer (14 tasks: 2 ranked, 12 floor)
 Persona guidance: implementer 1dfb0b75 (3 cells), implementer 645ae0c6 (322 cells)
+Quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks.
 Filters: core quality % >= 90.0, followed false claims % <= 20.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | core quality % | followed false claims % | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| gpt-6.2-sol@medium | openai | mid | 100.0 | 11.11 | >= $0.276 (1 of 57 cells partly unpriced) | 209s | 84.1 | pass | 57 |
-| gpt-6.2-sol@high | openai | mid | 100.0 | 10.00 | >= $0.386 (1 of 30 cells partly unpriced) | 316s | 81.9 | pass | 30 |
-| gpt-6.1-sol@medium | openai | mid | 97.4 | 15.00 | $0.193 | 168s | 80.0 | pass | 30 |
-| gemini-4-neon@medium | other | unpriced | 99.8 | 10.00 | $0.733 | 374s | 78.2 | pass | 30 |
-| claude-opus-5-5@medium | anthropic | powerful | 95.4 | 12.50 | $0.615 | 98s | 77.9 | pass | 56 (1 timed out) |
-| gemini-4-neon@high | other | unpriced | 99.7 | 10.00 | >= $2.260 (26 of 45 cells partly unpriced) | 590s | 71.3 | pass | 45 |
-| claude-opus-5-5@high | anthropic | powerful | 97.0 | 18.75 | $0.874 | 135s | 70.3 | pass | 31 |
-| gemini-4-hydrogen@high | other | unpriced | 94.0 | 11.54 | >= $2.048 (26 of 40 cells partly unpriced) | 477s | 65.3 | pass | 40 (1 timed out) |
+| Setting | Family | Tier | core quality % | Quality 90% | followed false claims % | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| gpt-6.2-sol@medium | openai | mid | 100.0 | 100.0 to 100.0 | 11.11 | $0.298 | 385s | 88.9 | 50.0 to 100.0 | 94% | pass | 57 |
+| gpt-6.2-sol@high | openai | mid | 100.0 | 100.0 to 100.0 | 10.00 | >= $0.443 (1 of 30 cells partly unpriced) | 514s | 87.0 | 46.4 to 97.4 | 93% | pass | 30 |
+| gemini-4-neon@medium | other | unpriced | 98.3 | 94.9 to 100.0 | 10.00 | $1.008 | 558s | 81.4 | 42.0 to 93.6 | 98% | pass | 30 |
+| gemini-4-neon@high | other | unpriced | 97.9 | 93.8 to 100.0 | 10.00 | >= $3.042 (4 of 45 cells partly unpriced) | 878s | 74.3 | 35.7 to 88.4 | 64% | pass | 45 |
+| gpt-6.1-sol@medium | openai | mid | 81.7 | 63.3 to 100.0 | 15.00 | $0.214 | 249s | 70.0 | 9.5 to 99.7 | 81% | quality | 30 |
+| claude-opus-5-5@high | anthropic | powerful | 78.9 | 58.7 to 99.1 | 18.75 | $0.939 | 98s | 61.1 | 32.8 to 83.1 | 60% | quality | 31 |
+| claude-opus-5-5@medium | anthropic | powerful | 68.1 | 48.6 to 85.9 | 12.50 | $0.921 | 253s | 52.5 | 16.8 to 74.3 | 68% | quality | 56 (1 timed out) |
+| gemini-4-hydrogen@high | other | unpriced | 57.8 | -8.3 to 100.0 | 11.54 | >= $2.419 (4 of 40 cells partly unpriced) | 874s | 33.6 | -32.1 to 82.4 | - | quality | 40 (1 timed out) |
 
 A lower-bound cost enters the score as its bound, which can only flatter that setting.
 
@@ -58,8 +60,9 @@ Policy:
 
 ```
 implementer (ROLE_MODEL_DEFAULTS entry: implementer)
+  named: openai gpt-6.2-sol medium (no quality lead holds in 90% of resamples; the top scorer of the settings that gpt-6.2-sol@medium does not outscore on quality in 90% of resamples: gpt-6.2-sol@medium, gpt-6.2-sol@high, gemini-4-neon@medium, gemini-4-neon@high)
   1. openai gpt-6.2-sol medium
-  2. anthropic claude-opus-5-5 medium
+  2. anthropic claude-opus-5-5 high (no setting of this family passes the filters)
   fallback: mid, high
   evidence: implementer-2026-11-13T21-16-42-634Z, implementer-2026-11-13T21-16-44-771Z, implementer-2026-11-24T07-13-03-614Z, implementer-2026-11-24T07-24-16-693Z, implementer-2026-11-24T14-59-24-385Z, implementer-2026-11-24T15-07-31-792Z, implementer-2026-11-24T15-17-18-831Z, implementer-2026-11-24T23-57-38-543Z, implementer-2026-11-26T06-06-30-601Z, implementer-2026-11-26T06-08-53-448Z, implementer-2026-11-26T06-24-57-058Z, implementer-2026-11-26T08-48-39-529Z, implementer-2026-11-26T08-56-29-270Z, implementer-2026-11-26T09-25-40-966Z, implementer-2026-11-26T14-27-47-990Z, implementer-2026-11-26T14-27-49-276Z, implementer-2026-11-26T20-31-14-559Z, implementer-2026-11-27T00-45-28-316Z
 ```
@@ -67,12 +70,14 @@ implementer (ROLE_MODEL_DEFAULTS entry: implementer)
 ### Judged by gpt-6.1-sol:xhigh
 
 Judge: gpt-6.1-sol:xhigh (other judges in these records: gpt-6.2-sol:high 338 scores)
-Corpora: implementer (14 tasks)
+Corpora: implementer (14 tasks: 2 ranked, 12 floor)
 Persona guidance: implementer 1dfb0b75 (84 cells), implementer 645ae0c6 (2 cells)
+Quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks.
 Filters: core quality % >= 0.0, followed false claims % <= 0.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | core quality % | followed false claims % | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
+| Setting | Family | Tier | core quality % | Quality 90% | followed false claims % | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
 
 Incomplete (cells to run next):
 - claude-fable-5.2@low: implementer: 4 of 14 tasks
@@ -121,30 +126,31 @@ Policy:
 
 ```
 implementer (ROLE_MODEL_DEFAULTS entry: implementer)
+  named: none (no setting passes the filters)
   fallback: none (no setting passes the filters)
   evidence: implementer-2026-11-13T21-16-42-634Z, implementer-2026-11-13T21-16-44-771Z, implementer-2026-11-24T15-17-18-831Z, implementer-2026-11-26T14-27-47-990Z
 ```
 
 ## Cells by task and setting
 
-Each cell lists every recorded repeat, oldest campaign first. Each setting has a core quality column and an edge column (ARCH-DIRECTORIES-024). Core quality p/t: p of the task's new core and serious checks passed, where t adds one failed check for each existing test that the change broke. Edge p/t: p of the task's t new edge checks passed; n/a: the task has no edge checks. (p/t): a grade before the check tags, p of all t hidden tests passed, with ? for its edge checks. T: the cell hit its time limit, a failed attempt. -: no recorded cell. A trailing * marks a cell whose task changed since it ran, so the ranking does not pool it; it shows the latest grade that the records hold.
+Each cell lists every recorded repeat, oldest campaign first. Tier: the task's committed tier; a ranked task sets quality, cost, and latency, and a floor task only deducts its failed checks (ARCH-DIRECTORIES-022). Each setting has a core quality column and an edge column (ARCH-DIRECTORIES-024). Core quality p/t: p of the task's new core and serious checks passed, where t adds one failed check for each existing test that the change broke. Edge p/t: p of the task's t new edge checks passed; n/a: the task has no edge checks. (p/t): a grade before the check tags, p of all t hidden tests passed, with ? for its edge checks. T: the cell hit its time limit, a failed attempt. -: no recorded cell. A trailing * marks a cell whose task changed since it ran, so the ranking does not pool it; it shows the latest grade that the records hold.
 
-| Task | claude-fable-5.2@low | claude-fable-5.2@low edge | claude-opus-5-5@high | claude-opus-5-5@high edge | claude-opus-5-5@medium | claude-opus-5-5@medium edge | claude-opus-5.5@high | claude-opus-5.5@high edge | claude-opus-5.5@medium | claude-opus-5.5@medium edge | gemini-3.8-flash@low | gemini-3.8-flash@low edge | gemini-4-hydrogen@high | gemini-4-hydrogen@high edge | gemini-4-neon@high | gemini-4-neon@high edge | gemini-4-neon@medium | gemini-4-neon@medium edge | gpt-6-astra@low | gpt-6-astra@low edge | gpt-6.1-sol@high | gpt-6.1-sol@high edge | gpt-6.1-sol@medium | gpt-6.1-sol@medium edge | gpt-6.1-sol@xhigh | gpt-6.1-sol@xhigh edge | gpt-6.2-sol@high | gpt-6.2-sol@high edge | gpt-6.2-sol@medium | gpt-6.2-sol@medium edge |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| astropy__astropy-14598 | - | - | 2/3 2/3 2/3 2/3 | n/a n/a n/a n/a | 2/3 2/3 2/3 2/3 | n/a n/a n/a n/a | - | - | - | - | - | - | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a n/a | 3/3 3/3 | n/a n/a | - | - | - | - | 2/3 2/3 | n/a n/a | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a |
-| ds1000-298 | - | - | (0/1)* (0/1)* 3/3 3/3 | ?* ?* n/a n/a | (0/1)* (0/1)* 3/3 3/3 3/3 3/3 | ?* ?* n/a n/a n/a n/a | - | - | - | - | - | - | (1/1)* (1/1)* (1/1)* 3/3 3/3 | ?* ?* ?* n/a n/a | (1/1)* (1/1)* (1/1)* 3/3 3/3 | ?* ?* ?* n/a n/a | (1/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | - | - | - | - | (1/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | - | - | (0/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | (1/1)* (0/1)* 3/3 3/3 3/3 3/3 | ?* ?* n/a n/a n/a n/a |
-| getmoto__moto-7365 | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a | - | - | - | - | - | - | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 | n/a n/a | - | - | - | - | 1/1 1/1 | n/a n/a | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a |
-| hosted-thinking-row-wait | 6/7 6/7 6/7 | n/a n/a n/a | 6/7 7/7 | n/a n/a | 7/7 6/7 7/7 7/7 | n/a n/a n/a n/a | 7/7 6/7 7/7 | n/a n/a n/a | 6/7 7/7 6/7 | n/a n/a n/a | - | - | 7/7 0/7 | n/a n/a | 7/7 7/7 7/7 | n/a n/a n/a | 7/7 7/7 | n/a n/a | 7/7 6/7 7/7 | n/a n/a n/a | 7/7 7/7 7/7 | n/a n/a n/a | 7/7 7/7 6/7 7/7 7/7 | n/a n/a n/a n/a n/a | 7/7 7/7 7/7 | n/a n/a n/a | 7/7 7/7 | n/a n/a | 7/7 7/7 7/7 7/7 | n/a n/a n/a n/a |
-| httpx-streaming-json-iteration | 88/88 88/88 87/88 | 20/20 20/20 20/20 | 87/88 86/88 | 20/20 20/20 | 88/88 84/88 86/88 87/88 | 20/20 20/20 20/20 20/20 | 86/88 87/88 87/88 | 20/20 20/20 20/20 | 87/88 86/88 87/88 | 20/20 20/20 20/20 | - | - | 86/88 87/88 88/88 | 20/20 20/20 20/20 | 83/88 86/88 84/88 | 20/20 20/20 20/20 | 85/88 85/88 | 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 88/88 88/88 88/88 | 20/20 20/20 20/20 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 | 20/20 20/20 | 88/88 88/88 88/88 88/88 | 20/20 20/20 20/20 20/20 |
-| jquense__yup-2305 | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a | - | - | - | - | - | - | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 | n/a n/a | - | - | - | - | 3/3 3/3 | n/a n/a | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a |
-| metrics-resteer | - | - | 10/10 10/10 | n/a n/a | 10/10 10/10 10/10 10/10 | n/a n/a n/a n/a | - | - | - | - | 10/10 10/10 8/10 | n/a n/a n/a | 10/10 10/10 10/10 | n/a n/a n/a | 10/10 10/10 10/10 | n/a n/a n/a | 10/10 10/10 | n/a n/a | - | - | - | - | 10/10 10/10 | n/a n/a | - | - | 10/10 10/10 | n/a n/a | 10/10 10/10 10/10 10/10 | n/a n/a n/a n/a |
-| psf__requests-6028 | - | - | 2/2 2/2 | n/a n/a | 2/2 2/2 2/2 2/2 | n/a n/a n/a n/a | - | - | - | - | - | - | 2/2 2/2 2/2 | n/a n/a n/a | 2/2 2/2 2/2 | n/a n/a n/a | 2/2 2/2 | n/a n/a | - | - | - | - | 2/2 2/2 | n/a n/a | - | - | 2/2 2/2 | n/a n/a | 2/2 2/2 2/2 2/2 | n/a n/a n/a n/a |
-| recall-punctuated-words | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 15/15 | 8/8 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | - | - | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 14/15 15/15 | 8/8 8/8 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 15/15 | 8/8 8/8 8/8 8/8 |
-| redis__redis-10068 | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a | - | - | - | - | - | - | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 | n/a n/a | - | - | - | - | 1/1 1/1 | n/a n/a | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a |
-| regex-chess | - | - | 103/103 103/103 | 1/1 1/1 | 103/103 103/103 103/103 103/103 | 1/1 1/1 1/1 1/1 | - | - | - | - | - | - | 103/103 103/103 103/103 | 1/1 1/1 1/1 | 103/103 103/103 103/103 | 1/1 1/1 1/1 | 103/103 103/103 | 1/1 1/1 | - | - | - | - | 103/103 103/103 | 1/1 1/1 | - | - | 103/103 103/103 | 1/1 1/1 | 103/103 103/103 103/103 103/103 | 1/1 1/1 1/1 1/1 |
-| rust-react | - | - | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | - | - | - | - | - | - | 15/15 15/15 15/15 | 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | - | - | - | - | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | - | - | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 5/5 5/5 |
-| scheme-metacircular | 63/63 63/63 63/63 | n/a n/a n/a | 63/63 63/63 | n/a n/a | T 63/63 63/63 63/63 | T n/a n/a n/a | 63/63 63/63 T | n/a n/a T | 63/63 63/63 63/63 | n/a n/a n/a | - | - | 63/63 T 63/63 | n/a T n/a | 63/63 63/63 63/63 | n/a n/a n/a | 63/63 63/63 | n/a n/a | 63/63 63/63 63/63 | n/a n/a n/a | T 63/63 63/63 | T n/a n/a | 63/63 63/63 63/63 63/63 63/63 | n/a n/a n/a n/a n/a | 63/63 63/63 T | n/a n/a T | 63/63 63/63 | n/a n/a | 63/63 63/63 63/63 63/63 | n/a n/a n/a n/a |
-| template-multiphase | - | - | 25/25 25/25 | 5/5 5/5 | 25/25 25/25 25/25 25/25 | 5/5 5/5 5/5 5/5 | - | - | - | - | - | - | 25/25 25/25 25/25 | 5/5 5/5 5/5 | 25/25 25/25 25/25 | 5/5 5/5 5/5 | 25/25 25/25 | 5/5 5/5 | - | - | - | - | 25/25 25/25 | 5/5 5/5 | - | - | 25/25 25/25 | 5/5 5/5 | 25/25 25/25 25/25 25/25 | 5/5 5/5 5/5 5/5 |
+| Task | Tier | claude-fable-5.2@low | claude-fable-5.2@low edge | claude-opus-5-5@high | claude-opus-5-5@high edge | claude-opus-5-5@medium | claude-opus-5-5@medium edge | claude-opus-5.5@high | claude-opus-5.5@high edge | claude-opus-5.5@medium | claude-opus-5.5@medium edge | gemini-3.8-flash@low | gemini-3.8-flash@low edge | gemini-4-hydrogen@high | gemini-4-hydrogen@high edge | gemini-4-neon@high | gemini-4-neon@high edge | gemini-4-neon@medium | gemini-4-neon@medium edge | gpt-6-astra@low | gpt-6-astra@low edge | gpt-6.1-sol@high | gpt-6.1-sol@high edge | gpt-6.1-sol@medium | gpt-6.1-sol@medium edge | gpt-6.1-sol@xhigh | gpt-6.1-sol@xhigh edge | gpt-6.2-sol@high | gpt-6.2-sol@high edge | gpt-6.2-sol@medium | gpt-6.2-sol@medium edge |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| astropy__astropy-14598 | ranked | - | - | 2/3 2/3 2/3 2/3 | n/a n/a n/a n/a | 2/3 2/3 2/3 2/3 | n/a n/a n/a n/a | - | - | - | - | - | - | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a n/a | 3/3 3/3 | n/a n/a | - | - | - | - | 2/3 2/3 | n/a n/a | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a |
+| ds1000-298 | floor | - | - | (0/1)* (0/1)* 3/3 3/3 | ?* ?* n/a n/a | (0/1)* (0/1)* 3/3 3/3 3/3 3/3 | ?* ?* n/a n/a n/a n/a | - | - | - | - | - | - | (1/1)* (1/1)* (1/1)* 3/3 3/3 | ?* ?* ?* n/a n/a | (1/1)* (1/1)* (1/1)* 3/3 3/3 | ?* ?* ?* n/a n/a | (1/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | - | - | - | - | (1/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | - | - | (0/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | (1/1)* (0/1)* 3/3 3/3 3/3 3/3 | ?* ?* n/a n/a n/a n/a |
+| getmoto__moto-7365 | floor | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a | - | - | - | - | - | - | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 | n/a n/a | - | - | - | - | 1/1 1/1 | n/a n/a | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a |
+| hosted-thinking-row-wait | floor | 6/7 6/7 6/7 | n/a n/a n/a | 6/7 7/7 | n/a n/a | 7/7 6/7 7/7 7/7 | n/a n/a n/a n/a | 7/7 6/7 7/7 | n/a n/a n/a | 6/7 7/7 6/7 | n/a n/a n/a | - | - | 7/7 0/7 | n/a n/a | 7/7 7/7 7/7 | n/a n/a n/a | 7/7 7/7 | n/a n/a | 7/7 6/7 7/7 | n/a n/a n/a | 7/7 7/7 7/7 | n/a n/a n/a | 7/7 7/7 6/7 7/7 7/7 | n/a n/a n/a n/a n/a | 7/7 7/7 7/7 | n/a n/a n/a | 7/7 7/7 | n/a n/a | 7/7 7/7 7/7 7/7 | n/a n/a n/a n/a |
+| httpx-streaming-json-iteration | floor | 88/88 88/88 87/88 | 20/20 20/20 20/20 | 87/88 86/88 | 20/20 20/20 | 88/88 84/88 86/88 87/88 | 20/20 20/20 20/20 20/20 | 86/88 87/88 87/88 | 20/20 20/20 20/20 | 87/88 86/88 87/88 | 20/20 20/20 20/20 | - | - | 86/88 87/88 88/88 | 20/20 20/20 20/20 | 83/88 86/88 84/88 | 20/20 20/20 20/20 | 85/88 85/88 | 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 88/88 88/88 88/88 | 20/20 20/20 20/20 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 | 20/20 20/20 | 88/88 88/88 88/88 88/88 | 20/20 20/20 20/20 20/20 |
+| jquense__yup-2305 | floor | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a | - | - | - | - | - | - | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 | n/a n/a | - | - | - | - | 3/3 3/3 | n/a n/a | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a |
+| metrics-resteer | floor | - | - | 10/10 10/10 | n/a n/a | 10/10 10/10 10/10 10/10 | n/a n/a n/a n/a | - | - | - | - | 10/10 10/10 8/10 | n/a n/a n/a | 10/10 10/10 10/10 | n/a n/a n/a | 10/10 10/10 10/10 | n/a n/a n/a | 10/10 10/10 | n/a n/a | - | - | - | - | 10/10 10/10 | n/a n/a | - | - | 10/10 10/10 | n/a n/a | 10/10 10/10 10/10 10/10 | n/a n/a n/a n/a |
+| psf__requests-6028 | floor | - | - | 2/2 2/2 | n/a n/a | 2/2 2/2 2/2 2/2 | n/a n/a n/a n/a | - | - | - | - | - | - | 2/2 2/2 2/2 | n/a n/a n/a | 2/2 2/2 2/2 | n/a n/a n/a | 2/2 2/2 | n/a n/a | - | - | - | - | 2/2 2/2 | n/a n/a | - | - | 2/2 2/2 | n/a n/a | 2/2 2/2 2/2 2/2 | n/a n/a n/a n/a |
+| recall-punctuated-words | floor | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 15/15 | 8/8 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | - | - | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 14/15 15/15 | 8/8 8/8 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 15/15 | 8/8 8/8 8/8 8/8 |
+| redis__redis-10068 | floor | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a | - | - | - | - | - | - | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 | n/a n/a | - | - | - | - | 1/1 1/1 | n/a n/a | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a |
+| regex-chess | floor | - | - | 103/103 103/103 | 1/1 1/1 | 103/103 103/103 103/103 103/103 | 1/1 1/1 1/1 1/1 | - | - | - | - | - | - | 103/103 103/103 103/103 | 1/1 1/1 1/1 | 103/103 103/103 103/103 | 1/1 1/1 1/1 | 103/103 103/103 | 1/1 1/1 | - | - | - | - | 103/103 103/103 | 1/1 1/1 | - | - | 103/103 103/103 | 1/1 1/1 | 103/103 103/103 103/103 103/103 | 1/1 1/1 1/1 1/1 |
+| rust-react | floor | - | - | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | - | - | - | - | - | - | 15/15 15/15 15/15 | 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | - | - | - | - | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | - | - | 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 | 15/15 15/15 15/15 15/15 15/15 15/15 | 5/5 5/5 5/5 5/5 5/5 5/5 |
+| scheme-metacircular | ranked | 63/63 63/63 63/63 | n/a n/a n/a | 63/63 63/63 | n/a n/a | T 63/63 63/63 63/63 | T n/a n/a n/a | 63/63 63/63 T | n/a n/a T | 63/63 63/63 63/63 | n/a n/a n/a | - | - | 63/63 T 63/63 | n/a T n/a | 63/63 63/63 63/63 | n/a n/a n/a | 63/63 63/63 | n/a n/a | 63/63 63/63 63/63 | n/a n/a n/a | T 63/63 63/63 | T n/a n/a | 63/63 63/63 63/63 63/63 63/63 | n/a n/a n/a n/a n/a | 63/63 63/63 T | n/a n/a T | 63/63 63/63 | n/a n/a | 63/63 63/63 63/63 63/63 | n/a n/a n/a n/a |
+| template-multiphase | floor | - | - | 25/25 25/25 | 5/5 5/5 | 25/25 25/25 25/25 25/25 | 5/5 5/5 5/5 5/5 | - | - | - | - | - | - | 25/25 25/25 25/25 | 5/5 5/5 5/5 | 25/25 25/25 25/25 | 5/5 5/5 5/5 | 25/25 25/25 | 5/5 5/5 | - | - | - | - | 25/25 25/25 | 5/5 5/5 | - | - | 25/25 25/25 | 5/5 5/5 | 25/25 25/25 25/25 25/25 | 5/5 5/5 5/5 5/5 |
 
 ## Totals by setting
 

@@ -112,6 +112,7 @@
     "bench:coding": "bun --conditions=browser run bench/chat-ab/coding-ab.ts",
     "bench:rank": "bun run bench/ab-persona/rank.ts",
     "bench:tables": "bun run bench/ab-persona/tables.ts",
+    "bench:tiers": "bun run bench/ab-persona/tiers.ts",
     "bench:planning": "bun --conditions=browser run bench/chat-ab/planning.ts",
     "bench:workflow-audit": "bun --conditions=browser run bench/chat-ab/workflow-audit.ts",
     "bench:workflow-authorship": "bun --conditions=browser run bench/chat-ab/workflow-authorship.ts",

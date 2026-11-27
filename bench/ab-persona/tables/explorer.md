@@ -14,17 +14,18 @@ Judge: gpt-6.1-sol:xhigh
 Corpora: explorer (12 tasks)
 Persona guidance: explorer 58d0c12d (96 cells)
 Filters: fact recall % >= 77.1, trap rate % <= 10.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | fact recall % | trap rate % | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| gpt-6.1-sol@low | openai | mid | 87.1 | 0.00 | >= $0.183 (2 of 12 cells partly unpriced) | 84s | 83.8 | pass | 12 |
-| gpt-6-luna@high | openai | cheap | 71.4 | 0.00 | >= $0.010 (2 of 12 cells partly unpriced) | 83s | 80.8 | quality | 12 |
-| claude-sonnet-5.5@low | anthropic | mid | 77.1 | 0.00 | $0.185 | 39s | 77.1 | pass | 12 |
-| claude-sonnet-5.5@medium | anthropic | mid | 85.7 | 8.33 | $0.243 | 49s | 75.1 | pass | 12 |
-| gpt-6-luna@xhigh | openai | cheap | 72.9 | 0.00 | $0.029 | 306s | 72.0 | quality | 12 |
-| gpt-6.1-sol@medium | openai | mid | 81.4 | 8.33 | >= $0.217 (5 of 12 cells partly unpriced) | 110s | 67.9 | pass | 12 |
-| claude-haiku-5.5@medium | anthropic | cheap | 80.0 | 16.67 | $0.047 | 105s | 65.0 | false | 12 |
-| claude-haiku-5.5@high | anthropic | cheap | 81.4 | 25.00 | $0.067 | 163s | 54.6 | false | 12 |
+| Setting | Family | Tier | fact recall % | Quality 90% | trap rate % | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| gpt-6.1-sol@low | openai | mid | 87.1 | 79.2 to 95.2 | 0.00 | >= $0.183 (2 of 12 cells partly unpriced) | 84s | 83.8 | 70.6 to 92.8 | 76% | pass | 12 |
+| gpt-6-luna@high | openai | cheap | 71.4 | 65.7 to 77.0 | 0.00 | >= $0.010 (2 of 12 cells partly unpriced) | 83s | 80.8 | 70.2 to 88.0 | 77% | quality | 12 |
+| claude-sonnet-5.5@low | anthropic | mid | 77.1 | 69.0 to 84.9 | 0.00 | $0.185 | 39s | 77.1 | 62.9 to 84.5 | 56% | pass | 12 |
+| claude-sonnet-5.5@medium | anthropic | mid | 85.7 | 77.8 to 93.3 | 8.33 | $0.243 | 49s | 75.1 | 56.0 to 86.7 | 68% | pass | 12 |
+| gpt-6-luna@xhigh | openai | cheap | 72.9 | 65.6 to 79.7 | 0.00 | $0.029 | 306s | 72.0 | 60.3 to 79.7 | 66% | quality | 12 |
+| gpt-6.1-sol@medium | openai | mid | 81.4 | 72.0 to 90.1 | 8.33 | >= $0.217 (5 of 12 cells partly unpriced) | 110s | 67.9 | 50.8 to 78.1 | 57% | pass | 12 |
+| claude-haiku-5.5@medium | anthropic | cheap | 80.0 | 73.7 to 86.2 | 16.67 | $0.047 | 105s | 65.0 | 40.7 to 82.2 | 75% | false | 12 |
+| claude-haiku-5.5@high | anthropic | cheap | 81.4 | 71.8 to 90.3 | 25.00 | $0.067 | 163s | 54.6 | 28.3 to 73.1 | - | false | 12 |
 
 A lower-bound cost enters the score as its bound, which can only flatter that setting.
 
@@ -32,6 +33,7 @@ Policy:
 
 ```
 explorer (ROLE_MODEL_DEFAULTS entry: explorer)
+  named: openai gpt-6.1-sol low (no quality lead holds in 90% of resamples; the top scorer of the settings that gpt-6.1-sol@low does not outscore on quality in 90% of resamples: gpt-6.1-sol@low, claude-sonnet-5.5@medium)
   1. openai gpt-6.1-sol low
   2. anthropic claude-sonnet-5.5 low
   fallback: mid, medium

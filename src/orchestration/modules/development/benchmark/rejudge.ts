@@ -8,7 +8,7 @@ import { scoreImplementTraps } from "./scoring/implement-scoring.js";
 import { createJsonLinesLedger } from "./campaign/json-lines.js";
 import type { JudgeAttemptReport, JudgeModel } from "./scoring/judge.js";
 import { planTasks, scoringVersion } from "./persona/persona-benchmark.js";
-import { cellStanding, rankingCorpus } from "./records/ranking.js";
+import { cellStanding, rankingCorpus } from "./records/ranking-pool.js";
 import { scoreResearch, snapshotLines } from "./scoring/research-scoring.js";
 import { PersonaRecordSchemas, type JudgeAttemptRecord, type ScoreRecord } from "./scoring/run-store.js";
 import { scoreReviews } from "./scoring/scoring.js";

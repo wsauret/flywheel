@@ -14,12 +14,13 @@ Judge: gpt-6.1-sol:xhigh (other judges in these records: claude-opus-5.5:xhigh 6
 Corpora: reviewer-code-quality (31 tasks), reviewer-plan-quality (10 tasks), averaged with equal weight
 Persona guidance: reviewer-code-quality 335687bc (652 cells), reviewer-plan-quality a89b31cc (60 cells)
 Filters: recall % >= 83.8, false P1/P2 per review <= 1.99. Score = quality - 5 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | recall % | false P1/P2 per review | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| gpt-6.1-sol@high | openai | mid | 92.3 | 1.39 | $0.216 | 148s | 83.1 | pass | 82 |
-| gpt-6.1-sol@xhigh | openai | mid | 93.8 | 1.50 | $0.309 | 296s | 79.4 | pass | 82 |
-| claude-opus-5.5@medium | anthropic | powerful | 89.4 | 1.46 | $0.542 | 88s | 78.1 | pass | 82 |
+| Setting | Family | Tier | recall % | Quality 90% | false P1/P2 per review | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| gpt-6.1-sol@high | openai | mid | 92.3 | 88.1 to 96.0 | 1.39 | $0.216 | 148s | 83.1 | 79.0 to 87.0 | 96% | pass | 82 |
+| gpt-6.1-sol@xhigh | openai | mid | 93.8 | 89.5 to 96.9 | 1.50 | $0.309 | 296s | 79.4 | 75.7 to 83.0 | 63% | pass | 82 |
+| claude-opus-5.5@medium | anthropic | powerful | 89.4 | 83.7 to 94.0 | 1.46 | $0.542 | 88s | 78.1 | 73.1 to 82.5 | - | pass | 82 |
 
 Incomplete (cells to run next):
 - claude-fable-5.2@low: reviewer-plan-quality: 0 of 10 tasks
@@ -46,6 +47,7 @@ Policy:
 
 ```
 reviewer-quality (ROLE_MODEL_DEFAULTS entry: reviewer-quality)
+  named: openai gpt-6.1-sol high (no quality lead holds in 90% of resamples; the top scorer of the settings that gpt-6.1-sol@xhigh does not outscore on quality in 90% of resamples: gpt-6.1-sol@high, gpt-6.1-sol@xhigh, claude-opus-5.5@medium)
   1. openai gpt-6.1-sol high
   2. anthropic claude-opus-5.5 medium
   fallback: mid, xhigh

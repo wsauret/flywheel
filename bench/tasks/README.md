@@ -28,6 +28,8 @@ Implement task files:
 - `manifest.json` contains `traps` and `judgment` arrays whose entries contain `id`, `title`, and `catchCriteria`.
 - `checks.json` maps each new hidden check to its tag: `core` (the use case the change was requested for), `serious` (a realistic failure that breaks the feature even when the normal path works), or `edge` (rare input, defensive handling, and packaging limits). A plan task names each acceptance test by its Bun JUnit name, `acceptance/<file> > <describe> > <test>`, and must tag every one; a native task names the ids that its adapter reports, and every other id the adapter reports is an existing test. Quality is the passed share of the core and serious checks, with each broken existing test counted as one more failed check; edge checks are reported apart (ARCH-DIRECTORIES-024). The file is part of the grader identity, so a change to it regrades stored diffs with `--regrade`.
 
+`implement/tiers.json` maps every implementer task id, plan or native, to its tier: `ranked` or `floor` (ARCH-DIRECTORIES-022). The ranking fails when a task has no entry or an entry names no task. The tier is ranking metadata decided from results, so the file lies outside every task identity and a tier change never makes a record stale. `bun run bench:tiers` prints each task's measures and the rule's result, `--check` fails when a committed tier differs from the rule, and `--write` commits the rule's tiers; `bench/README.md` states the rule. A new task needs an entry before any ranking command runs: commit it as `floor` until its pilot cells exist.
+
 ### Native tasks in the shared corpus
 
 The direct persona benchmark also discovers native tasks in `implement/`.

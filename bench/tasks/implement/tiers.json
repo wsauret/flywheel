@@ -1,0 +1,16 @@
+{
+  "astropy__astropy-14598": "ranked",
+  "ds1000-298": "floor",
+  "getmoto__moto-7365": "floor",
+  "hosted-thinking-row-wait": "floor",
+  "httpx-streaming-json-iteration": "floor",
+  "jquense__yup-2305": "floor",
+  "metrics-resteer": "floor",
+  "psf__requests-6028": "floor",
+  "recall-punctuated-words": "floor",
+  "redis__redis-10068": "floor",
+  "regex-chess": "floor",
+  "rust-react": "floor",
+  "scheme-metacircular": "ranked",
+  "template-multiphase": "floor"
+}

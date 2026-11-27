@@ -119,7 +119,7 @@ A benchmark ranking pools every recorded cell whose task content matches the cur
 
 ## ARCH-DIRECTORIES-022: A ranking reads one suite per role and counts a timeout as a failure
 
-Each benchmarked persona ranks on one committed suite of tasks: its whole catalog corpus, unless the ranking names a narrower list. Coverage, pooling, and averaging read only the suite, and a cell of another task is reported as not pooled. The implementer ranks on its whole catalog corpus. An implementer cell that timed out ranks as a failed attempt: no hidden test passes, its latency is the limit, and its cost is what it spent. Every other failed attempt stays out of the measures and is listed to retry.
+Each benchmarked persona ranks on one committed suite: its whole catalog corpus, unless the ranking names a narrower list. Coverage, pooling, and averaging read only the suite; a cell of another task is reported as not pooled. One committed rule over pilot results commits each implementer task as ranked or floor; ranked tasks set quality, cost, and latency, and floor tasks only check. A timed-out implementer cell ranks as a failed attempt: no hidden test passes, its latency is the limit, and its cost is its spend. Other failed attempts stay out of the measures and are listed to retry.
 
 Because: A failure that a ranking leaves out flatters the setting that failed.
 Not: Coverage against every catalog task, or a timed-out cell that is retried until it passes.
@@ -133,7 +133,14 @@ Not: A hand-maintained results table, which drifts from the records.
 
 ## ARCH-DIRECTORIES-024: An implementer cell scores the core checks of the change
 
-Each hidden check of an implementer task is committed as core, serious, or edge. A cell's quality is the share of the task's new core and serious checks that pass, where each existing test the patch breaks adds one failed check. A passing existing test earns nothing. Edge checks are reported apart and never enter quality or the filters.
+Each hidden check of an implementer task is committed as core, serious, or edge. A cell's quality is the share of the task's new core and serious checks that pass, where each existing test the patch breaks adds one failed check. A passing existing test earns nothing. On a floor task, only failed core and serious checks count, as deductions. Edge checks are reported apart and never enter quality or the filters.
 
 Because: A score that one missed edge case zeroes, or that unchanged tests inflate, ranks settings on test trivia instead of working code.
 Not: One pass-or-fail grade per task, or the plain share of every test the task runs.
+
+## ARCH-DIRECTORIES-025: A ranking states its confidence and names a default only on a held lead
+
+A ranking states a 90% interval for each setting's quality and score, from resampled tasks and repeats, and the chance that each setting beats the next. It names one setting for a role only when that setting's quality lead holds at 90% confidence. Otherwise it names the best-scoring setting among those tied for the top quality.
+
+Because: A default chosen on a gap that resampling reverses is a coin flip presented as evidence.
+Not: Ordering every setting by its point score alone.

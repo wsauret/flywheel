@@ -14,11 +14,12 @@ Judge: claude-opus-5.5:xhigh (other judges in these records: gpt-6.1-sol:xhigh 3
 Corpora: reviewer-code-elegance (12 tasks), reviewer-plan-elegance (10 tasks), averaged with equal weight
 Persona guidance: reviewer-code-elegance cec5130f (216 cells), reviewer-code-elegance 73caf06c (48 cells), reviewer-plan-elegance 6ed0c9ee (40 cells)
 Filters: recall % >= 90.0, false P1/P2 per review <= 2.43. Score = quality - 5 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | recall % | false P1/P2 per review | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 1.83 | $0.195 | 45s | 86.8 | pass | 68 |
-| gpt-6.1-sol@medium | openai | mid | 96.4 | 2.14 | $0.076 | 76s | 83.4 | pass | 68 |
+| Setting | Family | Tier | recall % | Quality 90% | false P1/P2 per review | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 100.0 to 100.0 | 1.83 | $0.195 | 45s | 86.8 | 85.3 to 90.9 | 82% | pass | 68 |
+| gpt-6.1-sol@medium | openai | mid | 96.4 | 90.6 to 100.0 | 2.14 | $0.076 | 76s | 83.4 | 78.8 to 88.3 | - | pass | 68 |
 
 Incomplete (cells to run next):
 - claude-fable-5.2@low: reviewer-plan-elegance: 0 of 10 tasks
@@ -39,6 +40,7 @@ Policy:
 
 ```
 reviewer-elegance (ROLE_MODEL_DEFAULTS entry: reviewer-elegance)
+  named: anthropic claude-opus-5.5 medium (no quality lead holds in 90% of resamples; the top scorer of the settings that claude-opus-5.5@medium does not outscore on quality in 90% of resamples: claude-opus-5.5@medium, gpt-6.1-sol@medium)
   1. anthropic claude-opus-5.5 medium
   2. openai gpt-6.1-sol medium
   fallback: mid, medium
@@ -51,15 +53,16 @@ Judge: gpt-6.1-sol:xhigh (other judges in these records: claude-opus-5.5:xhigh 3
 Corpora: reviewer-code-elegance (12 tasks), reviewer-plan-elegance (10 tasks), averaged with equal weight
 Persona guidance: reviewer-code-elegance cec5130f (216 cells), reviewer-code-elegance 73caf06c (48 cells), reviewer-plan-elegance 6ed0c9ee (120 cells)
 Filters: recall % >= 90.0, false P1/P2 per review <= 2.46. Score = quality - 5 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
-| Setting | Family | Tier | recall % | false P1/P2 per review | Cost/cell | Median latency | Score | Filter | Cells |
-|---|---|---|---:|---:|---:|---:|---:|---|---:|
-| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 1.86 | $0.195 | 45s | 86.6 | pass | 68 |
-| gpt-6.1-sol@medium | openai | mid | 96.4 | 2.14 | $0.076 | 76s | 83.4 | pass | 68 |
-| claude-fable-5.2@low | anthropic | powerful | 100.0 | 2.19 | $0.411 | 51s | 81.2 | pass | 44 |
-| gpt-6.1-sol@high | openai | mid | 96.4 | 2.36 | $0.097 | 117s | 79.4 | pass | 44 |
-| gpt-6-astra@medium | openai | powerful | 96.4 | 2.17 | $0.344 | 66s | 77.4 | pass | 44 |
-| gpt-6.1-sol@xhigh | openai | mid | 96.4 | 2.45 | $0.130 | 200s | 75.4 | pass | 44 |
+| Setting | Family | Tier | recall % | Quality 90% | false P1/P2 per review | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| claude-opus-5.5@medium | anthropic | powerful | 100.0 | 100.0 to 100.0 | 1.86 | $0.195 | 45s | 86.6 | 85.2 to 88.6 | 80% | pass | 68 |
+| gpt-6.1-sol@medium | openai | mid | 96.4 | 90.9 to 100.0 | 2.14 | $0.076 | 76s | 83.4 | 78.4 to 88.0 | 76% | pass | 68 |
+| claude-fable-5.2@low | anthropic | powerful | 100.0 | 100.0 to 100.0 | 2.19 | $0.411 | 51s | 81.2 | 79.4 to 83.7 | 63% | pass | 44 |
+| gpt-6.1-sol@high | openai | mid | 96.4 | 90.9 to 100.0 | 2.36 | $0.097 | 117s | 79.4 | 73.4 to 85.4 | 92% | pass | 44 |
+| gpt-6-astra@medium | openai | powerful | 96.4 | 90.9 to 100.0 | 2.17 | $0.344 | 66s | 77.4 | 72.2 to 82.2 | 94% | pass | 44 |
+| gpt-6.1-sol@xhigh | openai | mid | 96.4 | 90.9 to 100.0 | 2.45 | $0.130 | 200s | 75.4 | 69.5 to 81.1 | - | pass | 44 |
 
 Incomplete (cells to run next):
 - gpt-6.1-terra@high: reviewer-plan-elegance: 0 of 10 tasks
@@ -70,6 +73,7 @@ Policy:
 
 ```
 reviewer-elegance (ROLE_MODEL_DEFAULTS entry: reviewer-elegance)
+  named: anthropic claude-opus-5.5 medium (no quality lead holds in 90% of resamples; the top scorer of the settings that claude-opus-5.5@medium does not outscore on quality in 90% of resamples: claude-opus-5.5@medium, gpt-6.1-sol@medium, claude-fable-5.2@low, gpt-6.1-sol@high, gpt-6-astra@medium, gpt-6.1-sol@xhigh)
   1. anthropic claude-opus-5.5 medium
   2. openai gpt-6.1-sol medium
   fallback: mid, medium

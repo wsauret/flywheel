@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
+import { Schema } from "effect";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
 import { loadImplementTasks, PLAN_FILE, type ImplementTaskSpec } from "./implement-task/implement-task.js";
 import { immutableGitObjectSelector, objectValue, type CommitSnapshot } from "./tasks/task-schema.js";
@@ -88,6 +89,14 @@ export interface ReviewTask extends BenchmarkTask {
 
 /** An implementation task plus the direct subagent assignment and a bounded runtime. */
 export type ImplementTask = ImplementTaskSpec & BenchmarkTask & { timeoutMs: number };
+
+/** How an implementer task enters the ranking (ARCH-DIRECTORIES-022): a ranked task sets quality, cost, and latency;
+ *  a floor task only deducts its failed core and serious checks. `taskTierRule` in `task-tiers.ts` decides it from the
+ *  records, and `bench:tiers --check` fails when the committed tier differs. */
+const TASK_TIERS = ["ranked", "floor"] as const;
+export type TaskTier = typeof TASK_TIERS[number];
+
+const decodeTaskTiers = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Literals(TASK_TIERS)));
 
 type BenchmarkTaskSource = Pick<BenchmarkTask, "id" | "prompt">;
 
@@ -347,6 +356,10 @@ export interface BenchmarkCatalog {
    *  in `reviewers`, or every fixture without `reviewers` when none names it. */
   reviewTasks(persona: string): Promise<readonly ReviewTask[]>;
   implementTasks(): Promise<readonly ImplementTask[]>;
+  /** The committed tier of each implementer task: `implementTiersFile` maps each task id to ranked or floor. It
+   *  lies outside every task identity, so a tier change never makes a recorded cell stale. */
+  implementTiers(): Promise<ReadonlyMap<string, TaskTier>>;
+  readonly implementTiersFile: string;
   /** The one directory every results directory of this project lives in. The
    *  run store requires each of its results directories to stay beneath it. */
   readonly resultsRoot: string;
@@ -370,6 +383,7 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
   if (!isAbsolute(projectRoot)) throw new Error(`The benchmark catalog requires an absolute project root, got "${projectRoot}"`);
   const reviewFixturesDir = containedPath(projectRoot, "bench", "ab-persona", "fixtures", "reviews");
   const implementTasksDir = containedPath(projectRoot, "bench", "tasks", "implement");
+  const implementTiersFile = containedPath(implementTasksDir, "tiers.json");
   const researchTasksDir = containedPath(projectRoot, "bench", "tasks", "explorer");
   const resultsRoot = options.resultsRoot ?? containedPath(projectRoot, "bench", "ab-persona", "results");
   const recordsRoot = containedPath(projectRoot, "bench", "ab-persona", "records");
@@ -404,6 +418,14 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
           : implementPrompt(),
         timeoutMs: spec.timeoutMs ?? DEFAULT_IMPLEMENTER_TIMEOUT_MS,
       }));
+    },
+    implementTiersFile,
+    async implementTiers() {
+      try {
+        return new Map(Object.entries(decodeTaskTiers(await Bun.file(implementTiersFile).json())));
+      } catch (cause) {
+        throw new Error(`${implementTiersFile} must map each implementer task id to ranked or floor: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
+      }
     },
     resultsRoot,
     resultsDir: (persona, stamp) => containedPath(resultsRoot, `${persona}-${stamp}`),
