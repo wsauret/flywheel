@@ -1,0 +1,52 @@
+{
+  "name": "gemini-neon-trim-smoke",
+  "tasks": [
+    "config-lock-first-write"
+  ],
+  "repeats": 1,
+  "model": "gemini-4-neon",
+  "effort": "high",
+  "roles": {
+    "workflow-agent": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "explorer": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "implementer": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "reviewer": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "reviewer-quality": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "reviewer-elegance": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "reviewer-mechanism": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    },
+    "advisor": {
+      "model": "gemini-4-neon",
+      "effort": "high"
+    }
+  },
+  "treatments": {
+    "full": "a8356b1bde6509f25cd9572094c0e40407358020",
+    "trimmed": {
+      "revision": "a8356b1bde6509f25cd9572094c0e40407358020",
+      "patches": [
+        "bench/chat-ab/gemini-trim/patches/no-chat-doctrine.patch"
+      ]
+    }
+  }
+}

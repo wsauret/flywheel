@@ -1,0 +1,10 @@
+--- a/src/orchestration/agent-runtime/system-prompt.ts	2026-11-26 07:43:34
++++ b/src/orchestration/agent-runtime/system-prompt.ts	2026-11-26 07:43:34
+@@ -234,7 +234,6 @@
+   const engineeringDoctrine = renderedDoctrine(opts);
+   if (chat) {
+     stable("chat body", renderChatBody(opts.modelGuidance?.chat ?? [], has, FLYWHEEL_CHAT_HOST));
+-    if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
+   } else {
+     stable("core system prompt", renderAgentAsset(opts.corePrompt ?? bundledSystemPrompt, "system-prompt.md", opts.purpose?.kind === "unattended-chat" ? unattendedChatCheck(has) : has));
+     if (opts.purpose?.kind === "subagent" || opts.purpose?.kind === "workflow-agent") {
