@@ -370,8 +370,8 @@ Not: A change to a manifest field or a home-screen head tag that asks people to 
 
 ## ARCH-PROTOCOL-071: One account activity feed reports projects and questions
 
-The account socket offers one feed of known projects with their state, and of each question that starts or ends and each chat that stops for the person in an open project. It reads them from the open compositions without holding them. Hosts that page across projects read this feed.
-Because: A question keeps its project open and a chat stops only while its project is open, so the open compositions already hold everything that can page.
+The account socket offers one feed of known projects with their state, and of each question that starts or ends in an open project, read from the open compositions without holding them. Hosts that page across projects read this feed.
+Because: A session waiting on a question keeps its project open, so the open compositions already hold every question that can page.
 Not: A host that holds every project open to hear its questions.
 
 ## ARCH-PROTOCOL-072: Stopped and unread chats cross as one project set
