@@ -604,11 +604,11 @@ On a web pane wide enough to keep the transcript column beside it, Changes, Back
 
 ## PI-INTERACTION-057: The web session list leads with what needs the person
 
-The web session list shows Needs you, then Working, then Recent. Needs you holds every chat with a question that waits for the person's answer, then every chat that stopped and that the person has not read, closed chats included. An interrupted or crashed turn keeps a session in its place by work and recency. Each group lists its newest first within each kind, and a row shows its state and only its line counts that are not zero. When the list first shows, the open session's row is in view.
+The web session list shows Needs you, then Working, then Recent. Needs you holds every chat with a question that waits for the person's answer, then every chat that stopped and that the person has not read, closed chats included. An interrupted or crashed turn keeps a session in its place by work and recency. Needs you lists its newest first within each kind, and a row shows its state and only its line counts that are not zero. When the list first shows, the open session's row is in view.
 
 ## PI-INTERACTION-184: The terminal session picker leads with chats that need an answer
 
-The terminal session picker shows Needs you first: every chat of the project with a question that waits for the person's answer, then every chat that stopped and that the person has not read. Closed chats are included, newest first within each kind. Each row carries the mark that a tab in that state carries. The other chats follow in their groups by date. While a chat other than the one in front needs the person, the terminal shows how many do.
+The terminal session picker shows Needs you, then Working, then Recent. Needs you holds every chat of the project with a question that waits for the person's answer, then every chat that stopped and that the person has not read, closed chats included. Working holds the chats whose agent still works. Each row carries the mark that a tab in that state carries. While a chat other than the one in front needs the person, the terminal shows how many do.
 
 ## PI-INTERACTION-186: A chat that stops for the person says so
 
@@ -621,6 +621,10 @@ A chat's messages are read when the chat is in front of a client and the person 
 ## PI-INTERACTION-188: Unread messages mark a chat in place
 
 A chat with agent messages that the person has not read shows an unread mark on its row and its tab while its agent still works. The row keeps its place, and nothing notifies the person. Messages from before read tracking existed count as read.
+
+## PI-INTERACTION-189: Session lists order chats by their latest turn
+
+In Working and Recent, every client lists chats by the time their latest turn started or stopped, newest first. Opening, closing, or reading a chat does not move it, and neither does a restart of the service. A chat with no recorded turn takes the time of its last change.
 
 ## PI-INTERACTION-084: The web header names the open session and where it works
 

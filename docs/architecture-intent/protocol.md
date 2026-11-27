@@ -376,5 +376,10 @@ Not: A host that holds every project open to hear its questions.
 
 ## ARCH-PROTOCOL-072: Stopped and unread chats cross as one project set
 
-The account service holds, beside the set of sessions with a pending question, the project's stopped chats and each chat's unread state. It folds them from committed stop, start, receipt, and conversation facts as they are stored, with no read per change and none per listed session. It publishes them with the workspace snapshot and its patches. Clients derive every stopped and unread mark, count, and notification from it.
+The account service holds, beside the set of sessions with a pending question, the project's stopped chats and each chat's unread state. It folds them from committed stop, start, receipt, and conversation facts as they are stored, with no read per change and none per listed session. It also holds the time of each chat's latest turn, from the same facts. It publishes them with the workspace snapshot and its patches. Clients derive every stopped and unread mark, count, and notification from it.
 Not: A client that compares its own transcript with a local read position.
+
+## ARCH-PROTOCOL-073: One selector groups the session list for every client
+
+One shared selector files every listed chat under Needs you, Working, or Recent and orders each group. The terminal and the web client draw its result and hold no grouping or ordering rule of their own.
+Not: A grouping rule in each client that tests keep in step.
