@@ -1,0 +1,18 @@
+src/orchestration/config/schema/setting-definitions.ts
+  h_4b47e9e4a8b456 103
+src/orchestration/modules/project-notifications/module.ts
+  h_4b47e9e4a8b456 35
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 1268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d150e32f7e4e1421ba9a01c5e66e92e2999bc6e8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
