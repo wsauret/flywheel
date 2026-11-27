@@ -1,0 +1,94 @@
+# Flywheel config of a gemini-4-neon arm at effort medium for the DeepSWE model
+# screen. It keeps the workflows module and the reviewer and ship agent
+# types on, as Flywheel ships them. Only the advisor agent type is off: it
+# gives a second opinion from another model, which a run of one model cannot
+# give. Otherwise it follows tb-luna-high-shipped.toml.
+# It runs OpenRouter on the API key of the person's auth profile. Its host,
+# openrouter.ai, is one that the offline agent phase of a DeepSWE task
+# allows. No Google provider module declares its API hosts, so no Google
+# route can serve an offline task.
+# Every role runs gemini-4-neon at effort medium, so one model serves the whole
+# trial: the workflow agent, reviewer, and ship roles are set here because
+# their defaults name other models. The reviewer setting also covers every
+# reviewer-* role.
+# The launcher validates this file with Flywheel's config schema before any
+# trial and installs it in the trial as $HOME/.flywheel/flywheel.toml under
+# the neutral auth profile id "benchmark".
+
+allow_persistent_processes = true
+# Headless shell commands write in place; the guard that stops a write
+# outside the project would refuse ordinary task setup such as package installs.
+shell_write_guard = false
+idle_compaction = false
+auto_delete_session_days = 0
+
+disabled_modules = [
+  "ask-user",
+  "bug-reports",
+  "code-mode",
+  "development",
+  "experiments",
+  "learning",
+  "mcp",
+  "papercuts",
+  "project-notifications",
+  "provider-anthropic-api",
+  "provider-chatgpt",
+  "provider-claude-agent-sdk",
+  "provider-deepseek",
+  "provider-github-copilot",
+  "provider-google-antigravity",
+  "provider-google-api",
+  "provider-google-vertex",
+  "provider-openai-api",
+  "provider-opencode-go",
+  "provider-supergrok",
+  "remote",
+  "side-question",
+  "web",
+  "web-chatgpt",
+  "web-exa",
+]
+
+# The advisor gives a second opinion from another model, which a run of one
+# model cannot give. Every other agent type stays on.
+[subagents]
+disabled_types = ["advisor"]
+
+[updates]
+auto_install = false
+
+[profiles.benchmark]
+allow_training_routes = false
+
+[profiles.benchmark.roles.chat]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.title-generation]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.subagent-summary]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.explorer]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.implementer]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.workflow-agent]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.reviewer]
+model = "gemini-4-neon"
+effort = "medium"
+
+[profiles.benchmark.roles.ship]
+model = "gemini-4-neon"
+effort = "medium"
