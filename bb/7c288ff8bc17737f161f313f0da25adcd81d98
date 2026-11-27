@@ -1,0 +1,18 @@
+bench/harbor/configs/ds-neon-medium-shipped.toml
+  h_4b47e9e4a8b456 1-94
+bench/harbor/configs/ds-opus-medium-shipped.toml
+  h_4b47e9e4a8b456 1-94
+bench/harbor/configs/ds-sol-medium-shipped.toml
+  h_4b47e9e4a8b456 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bb7c288ff8bc17737f161f313f0da25adcd81d98",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
