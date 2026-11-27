@@ -1,0 +1,62 @@
+src/orchestration/app-service/account/projects/account-module-services.ts
+  h_4b47e9e4a8b456 7,25-28
+src/orchestration/app-service/account/projects/project-control-runtime.ts
+  h_4b47e9e4a8b456 32,390-391
+src/orchestration/app-service/projections/unread-chats-projection.ts
+  h_4b47e9e4a8b456 93-96,206,224-243,263,363-364,475-479
+src/orchestration/modules/remote/remote-notifier.ts
+  h_4b47e9e4a8b456 4,6,11-14,16,22-25,42-43,45,50-55,59-60,63,70,76,78,83,94-131,139-170,174,189-202,206-208,215-218
+src/orchestration/modules/remote/service.ts
+  h_4b47e9e4a8b456 71
+src/protocol/client/chat/desktop-pages.ts
+  h_4b47e9e4a8b456 1-2,6,8-10,15-40,42-43,50-57,64-65,69-70,74-75,78-85,88,95,97-102,104-122,126,128-134,141,143-149,153
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 301
+src/protocol/session/unread-protocol-types.ts
+  h_4b47e9e4a8b456 34-40
+src/tui/hooks/state/shell-state.ts
+  h_4b47e9e4a8b456 36,533
+src/tui/hooks/state/use-desktop-pages.ts
+  h_4b47e9e4a8b456 3-7,11-15,25-31
+tests/unit/orchestration/app-service/projections/unread-chats-projection.test.ts
+  h_4b47e9e4a8b456 278,355-383
+tests/unit/orchestration/modules/remote/remote-notifier.test.ts
+  h_4b47e9e4a8b456 1,7,10,13-15,49,57,64,67-74,87-139
+tests/unit/orchestration/modules/remote/service.test.ts
+  h_4b47e9e4a8b456 77
+tests/unit/protocol/client/chat/desktop-pages.test.ts
+  h_4b47e9e4a8b456 2-9,30,32,36-46,48,51,55,64-71,83-84,99,117-118,132-181
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 91
+tests/unit/tui/hooks/state/use-desktop-pages.test.ts
+  h_4b47e9e4a8b456 3,9,27-30,41,55-59,75,87-102
+webview/src/app/app.tsx
+  h_4b47e9e4a8b456 14,439
+webview/src/app/sheets/settings/setting-rows.tsx
+  h_4b47e9e4a8b456 18
+webview/src/client/actions.ts
+  h_4b47e9e4a8b456 17
+webview/src/client/notifications/desktop-notifier.ts
+  h_4b47e9e4a8b456 1-2,100-101,103,105
+webview/src/client/notifications/desktop-pager.test.ts
+  h_4b47e9e4a8b456 6,9-11,72,84-88,100,102-103,115,131-132,138,174-187,241,250,255,260
+webview/src/client/notifications/desktop-pager.ts
+  h_4b47e9e4a8b456 3,5-6,10-14,16-19,22,29
+webview/src/client/session/session-state.ts
+  h_4b47e9e4a8b456 20
+webview/src/client/session/session.ts
+  h_4b47e9e4a8b456 14
+webview/src/client/session/view-state.ts
+  h_4b47e9e4a8b456 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3ea61479cbd9454633b07690611313abe07a7fe0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
