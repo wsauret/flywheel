@@ -1,0 +1,94 @@
+src/infra/substrate/store/fact-retention-registry.ts
+  h_4b47e9e4a8b456 72-73
+src/orchestration/app-service/account/projects/project-control-client.ts
+  h_4b47e9e4a8b456 12,35-36,58-60,203,424,440,560,653-654,770,794
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 9,65,268,405
+src/orchestration/app-service/mutations/mutation-handler.ts
+  h_4b47e9e4a8b456 62
+src/orchestration/app-service/projections/unread-chats-projection.ts
+  h_4b47e9e4a8b456 1-455
+src/orchestration/chat/lifecycle/chat-request-options.ts
+  h_4b47e9e4a8b456 5-6,16,32-39,83-107,116
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 106,139,205,241,248-251,279,365,659
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 99-104,323-326,575
+src/orchestration/session/control/chat-turn-stops.ts
+  h_4b47e9e4a8b456 1,9-10,23-29,31,33,80-83,89,97-99,101-102,112,119-123,128,132,150,157,175,179
+src/orchestration/session/control/session-catalog-row.ts
+  h_4b47e9e4a8b456 1,163-176
+src/orchestration/session/conversation/tree/conversation-tree.ts
+  h_4b47e9e4a8b456 229-246
+src/orchestration/session/persistence/chat-read-receipt-facts.ts
+  h_4b47e9e4a8b456 1-29
+src/orchestration/session/persistence/session-fact-registry.ts
+  h_4b47e9e4a8b456 10,22
+src/orchestration/session/persistence/session-fact-writer.ts
+  h_4b47e9e4a8b456 11,20
+src/protocol/client/host/editor-protocol-coverage.ts
+  h_4b47e9e4a8b456 40-42
+src/protocol/client/runtime/lane-attach.ts
+  h_4b47e9e4a8b456 8-9,25
+src/protocol/client/session/needs-you.ts
+  h_4b47e9e4a8b456 1-48
+src/protocol/rpc/runtime-client-deadlines.ts
+  h_4b47e9e4a8b456 40
+src/protocol/rpc/runtime-delivery-policy.ts
+  h_4b47e9e4a8b456 79-80
+src/protocol/rpc/runtime-dispatch-result-schemas.ts
+  h_4b47e9e4a8b456 58
+src/protocol/rpc/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 8,289,338,417,549,574
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 298-304,306
+src/protocol/runtime/app-service-types.ts
+  h_4b47e9e4a8b456 16,103,151,396
+src/protocol/runtime/runtime-ui-protocol-types.ts
+  h_4b47e9e4a8b456 7,34,94
+src/protocol/session/unread-protocol-types.ts
+  h_4b47e9e4a8b456 1-60
+src/tui/hooks/state/shell-state.ts
+  h_4b47e9e4a8b456 12,316-335,456
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 425
+tests/unit/orchestration/app-service/_project-control-client-fixture.ts
+  h_4b47e9e4a8b456 13,68-76
+tests/unit/orchestration/app-service/chat-turn-stop.test.ts
+  h_4b47e9e4a8b456 46-48,255-280
+tests/unit/orchestration/app-service/project-control-client-history-routing.test.ts
+  h_4b47e9e4a8b456 2,312-333
+tests/unit/orchestration/app-service/project-control-session-holds.test.ts
+  h_4b47e9e4a8b456 8,535-538
+tests/unit/orchestration/app-service/project-control-settlement.test.ts
+  h_4b47e9e4a8b456 98
+tests/unit/orchestration/app-service/project-control-updates.test.ts
+  h_4b47e9e4a8b456 40
+tests/unit/orchestration/app-service/project-state/worker/project-state-turn-stop-recovery.test.ts
+  h_4b47e9e4a8b456 1-60
+tests/unit/orchestration/app-service/projections/unread-chats-projection.test.ts
+  h_4b47e9e4a8b456 1-497
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 47
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 95
+tests/unit/orchestration/chat/lifecycle/_chat-runner-lifecycle-fixtures.ts
+  h_4b47e9e4a8b456 6,64-66,68-70,72
+tests/unit/orchestration/chat/lifecycle/chat-runner-lifecycle-turn-stops.test.ts
+  h_4b47e9e4a8b456 6,10-12,14-19,21-22,25-35,47-53,160-161,178-179,183-184,189-194,196-197,199
+tests/unit/protocol/client/session/needs-you.test.ts
+  h_4b47e9e4a8b456 1-39
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 51,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1fe6331e25132a438ed58edb9d3f90847c7c5e57",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
