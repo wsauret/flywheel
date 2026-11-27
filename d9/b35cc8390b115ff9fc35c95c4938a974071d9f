@@ -1,0 +1,54 @@
+bench/README.md
+  h_4b47e9e4a8b456 142,148-150
+bench/ab-persona/tables/explorer.md
+  h_4b47e9e4a8b456 17-28,36
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 14,16,18-29,63,65,73,75,77,79-80,129,136-153
+bench/ab-persona/tables/reviewer-code-elegance.md
+  h_4b47e9e4a8b456 17,19-22,43,56,58-65,76
+bench/ab-persona/tables/reviewer-code-quality.md
+  h_4b47e9e4a8b456 17,19-23,50,63-79,94
+bench/ab-persona/tables/reviewer-mechanism.md
+  h_4b47e9e4a8b456 17-29,35,48-60,66
+bench/ab-persona/tables/reviewer-plan-elegance.md
+  h_4b47e9e4a8b456 17,19-26,37,50,52-55,76
+bench/ab-persona/tables/reviewer-plan-quality.md
+  h_4b47e9e4a8b456 17,19-23,50
+bench/ab-persona/tiers.ts
+  h_4b47e9e4a8b456 1-58
+bench/tasks/README.md
+  h_4b47e9e4a8b456 31-32
+bench/tasks/implement/tiers.json
+  h_4b47e9e4a8b456 1-16
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 122,136,140-146
+package.json
+  h_4b47e9e4a8b456 115
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 3,93-100,359-362,386,422-429
+src/orchestration/modules/development/benchmark/persona/results-pages.ts
+  h_4b47e9e4a8b456 8,11-12,24-26,33-34,55-65,280,294-295
+src/orchestration/modules/development/benchmark/records/ranking-confidence.ts
+  h_4b47e9e4a8b456 1-76
+src/orchestration/modules/development/benchmark/records/ranking-pool.ts
+  h_4b47e9e4a8b456 1-229
+src/orchestration/modules/development/benchmark/records/ranking.ts
+  h_4b47e9e4a8b456 3-4,6-7,9-12,16-18,33-35,43-51,67-68,79-80,104-107,110-113,117-118,146-157,160-162,166,170,183-224,233-239,241-245,250,260,263-265,267-275,280-281,286-305,307-310,312-315,317-322,360-363,365-366,403-406,409,411,413,415-417,425-427
+src/orchestration/modules/development/benchmark/records/task-tiers.ts
+  h_4b47e9e4a8b456 1-82
+src/orchestration/modules/development/benchmark/rejudge.ts
+  h_4b47e9e4a8b456 11
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 5-8,90-93,218,241-306,308,388-389,411-412,414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d9b35cc8390b115ff9fc35c95c4938a974071d9f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
