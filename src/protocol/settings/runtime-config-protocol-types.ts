@@ -5,6 +5,8 @@ interface RuntimeConfigDictionary<Value> { readonly [key: string]: Value }
 interface RuntimeConfigProfile {
   readonly gitAiAttribution: boolean
   readonly allowTrainingRoutes: boolean
+  /** Whether the Google Antigravity provider may sign in and serve for this profile (PI-MODEL-096). */
+  readonly allowGoogleAntigravity: boolean
   readonly roles: RuntimeConfigDictionary<RuntimeConfigRole>
   /** Provider-scoped numeric settings, keyed by provider then by the setting
    *  key each provider module declares. Every declared key is present: the
@@ -65,7 +67,7 @@ type RuntimeConfigSettingId =
   | "theme" | "moduleSelection" | "allowPersistentProcesses" | "shellWriteGuard" | "foregroundBashHoldSeconds"
   | "showThinking" | "idleCompaction" | "writeSyntaxTheme" | "requireWorkflowConfirmation" | "diffColors" | "compatibleRendering"
   | "webSearchProvider" | "fontTipDismissed" | "tabsHintDismissed" | "acknowledgedReleaseVersion"
-  | "proactiveCompactionThreshold" | "autoDeleteSessionDays" | "gitAiAttribution" | "allowTrainingRoutes"
+  | "proactiveCompactionThreshold" | "autoDeleteSessionDays" | "gitAiAttribution" | "allowTrainingRoutes" | "allowGoogleAntigravity"
   | "autoInstall" | "notificationsDesktop"
 
 export type RuntimeConfigDiagnostic = {
@@ -129,6 +131,7 @@ type RuntimeConfigProviderSetting = RuntimeConfigSettingMutation<"provider", num
 type RuntimeConfigProfileSetting =
   | RuntimeConfigSettingMutation<"gitAiAttribution", boolean>
   | RuntimeConfigSettingMutation<"allowTrainingRoutes", boolean>
+  | RuntimeConfigSettingMutation<"allowGoogleAntigravity", boolean>
   | RuntimeConfigProviderSetting
 
 export type RuntimeConfigMutation =

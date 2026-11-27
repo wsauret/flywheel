@@ -34,6 +34,9 @@ interface EligibilityPreparationDeps {
   readonly userDataRoot: string
   readonly resolveKey: KeyResolver
   readonly allowTrainingRoutes: (profileId: string) => boolean
+  /** The providers that the profile's settings keep off (`profileOptIn`), read at each preparation. Their accounts
+   *  read only their saved listing and never serve (ARCH-PROVIDERS-088). */
+  readonly turnedOffProviders: (profileId: string) => ReadonlySet<string>
   /** The owner's launch authority, for a provider whose listing runs a local process. */
   readonly launcher?: LauncherScope
   readonly moduleSelection: FirstPartyModuleSnapshot
@@ -235,6 +238,10 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       usage?.dispose()
     }
   }
+  /** Whether `state` was prepared from the profile's current inputs: its auth and preference revisions, and the
+   *  providers that its settings keep off, so a state prepared before a provider turned on or off never serves. */
+  const isCurrent = (profile: EligibilityProfile, state: ProviderModelEligibilityState): boolean =>
+    sameInputRevision(state.inputRevision, deps.inputRevision(profile)) && marksTurnedOff(state, deps.turnedOffProviders(profile.id))
   const prepare = async (profile: EligibilityProfile, discoveryMode: ModelDiscoveryMode, signal: AbortSignal, audit?: AuditRun, capturedComposition?: FirstPartyModuleComposition): Promise<ProviderModelEligibilityState> => {
     for (let attempt = 0; attempt < PROFILE_INPUT_PREPARATION_ATTEMPTS; attempt += 1) {
       signal.throwIfAborted()
@@ -244,18 +251,19 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       signal.throwIfAborted()
       const inputRevision = deps.inputRevision(profile)
       const composition = capturedComposition ?? deps.moduleSelection()
+      const turnedOff = deps.turnedOffProviders(profile.id)
       const auth = await resolveAuth(profile, signal, composition)
       signal.throwIfAborted()
-      const resolved = await (deps.resolveCatalog ?? resolveProviderModelCatalog)({ userDataRoot: deps.userDataRoot, authDirectory: () => profile.directory, moduleSelection: () => composition, auth, discoveryMode, signal, ...(deps.launcher === undefined ? {} : { launcher: deps.launcher }), ...(audit?.projection === undefined ? {} : { onAccessAudit: audit.projection.notify }), ...(audit?.recheck === undefined ? {} : { recheckAccount: audit.recheck }) })
+      const resolved = await (deps.resolveCatalog ?? resolveProviderModelCatalog)({ userDataRoot: deps.userDataRoot, authDirectory: () => profile.directory, moduleSelection: () => composition, auth, discoveryMode, signal, savedOnlyProviders: turnedOff, ...(deps.launcher === undefined ? {} : { launcher: deps.launcher }), ...(audit?.projection === undefined ? {} : { onAccessAudit: audit.projection.notify }), ...(audit?.recheck === undefined ? {} : { recheckAccount: audit.recheck }) })
       // Every projected result publishes before this final state, so an older view never replaces it.
       await audit?.projection?.settled()
       signal.throwIfAborted()
-      if (!sameInputRevision(inputRevision, deps.inputRevision(profile))) {
+      if (!sameInputRevision(inputRevision, deps.inputRevision(profile)) || !sameProviders(turnedOff, deps.turnedOffProviders(profile.id))) {
         continue
       }
       const current = deps.current(profile.id)
       if (discoveryMode === "cached-first" && current !== initialState) {
-        if (current !== undefined && sameInputRevision(current.inputRevision, inputRevision)) return current
+        if (current !== undefined && sameInputRevision(current.inputRevision, inputRevision) && marksTurnedOff(current, turnedOff)) return current
         continue
       }
       const accounts = new Map(resolved.accounts)
@@ -264,7 +272,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
         const discovery = catalogDiscovery(candidate.outcome)
         // First-party fallback is not saved as a successful listing. An audit must keep
         // its settled account evidence, not just its label, within the same input revision.
-        const kept = audit !== undefined && current !== undefined && sameInputRevision(current.inputRevision, inputRevision)
+        const kept = audit !== undefined && current !== undefined && sameInputRevision(current.inputRevision, inputRevision) && marksTurnedOff(current, turnedOff)
           && candidate.audit === undefined && discovery.kind === "unavailable" && discovery.reason === "discovery-pending"
           ? current.inventoryCandidates.get(key)
           : undefined
@@ -299,7 +307,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       const releaseDates = resolveReleaseDates(inventoryCandidates)
       const idle = idleFreePlans(profile, auth, composition, idleOf(current))
       signal.throwIfAborted()
-      const state = deps.prepare({ profileId: profile.id, autoEnableNewModels: resolved.autoEnableNewModels, inputRevision, catalogs: new Map(catalogs), accountCatalogs: accounts, inventoryCandidates: withIdleFreePlans(inventoryCandidates, idle), releaseDates })
+      const state = deps.prepare({ profileId: profile.id, autoEnableNewModels: resolved.autoEnableNewModels, inputRevision, catalogs: new Map(catalogs), accountCatalogs: accounts, inventoryCandidates: withIdleFreePlans(withTurnedOff(inventoryCandidates, turnedOff), idle), releaseDates })
       signal.throwIfAborted()
       deps.publish(state)
       return state
@@ -456,10 +464,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     const discoveryMode = options?.mode ?? (options?.force === true ? "refresh" : "cached-first")
     if (discoveryMode === "cached-first") {
       const current = deps.current(profile.id)
-      if (current) {
-        const inputRevision = deps.inputRevision(profile)
-        if (sameInputRevision(current.inputRevision, inputRevision)) return settle(profile, Promise.resolve(current), options)
-      }
+      if (current && isCurrent(profile, current)) return settle(profile, Promise.resolve(current), options)
     }
     const existing = cachedPreparations.get(profile.id)
     if (existing && discoveryMode === "cached-first") return settle(profile, awaitWithAbortSignal(existing, options?.signal), options)
@@ -598,8 +603,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       for (let attempt = 0; attempt < PROFILE_INPUT_PREPARATION_ATTEMPTS; attempt += 1) {
         signal.throwIfAborted()
         let state = deps.current(profile.id)
-        const inputRevision = deps.inputRevision(profile)
-        if (state === undefined || !sameInputRevision(state.inputRevision, inputRevision)) {
+        if (state === undefined || !isCurrent(profile, state)) {
           state = mode === "saved-only"
             ? await prepare(profile, "cached-first", signal)
             : await prepareEligibility(profile, { signal })
@@ -611,7 +615,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
         const auth = await awaitWithAbortSignal(resolveAuth(profile, signal, composition), signal)
         signal.throwIfAborted()
         const result = capture(state, auth, composition)
-        if (sameInputRevision(state.inputRevision, deps.inputRevision(profile))) return result
+        if (isCurrent(profile, state)) return result
       }
       throw new Error("auth profile inputs did not stabilize during provider-model read capture")
     })()
@@ -650,12 +654,26 @@ function withIdleFreePlans(candidates: ReadonlyMap<string, ProviderModelInventor
   }))
 }
 
+/** Marks each candidate of a provider that the profile keeps off, and clears the mark of every other candidate. */
+function withTurnedOff(candidates: ReadonlyMap<string, ProviderModelInventoryCandidate>, turnedOff: ReadonlySet<string>): ReadonlyMap<string, ProviderModelInventoryCandidate> {
+  return new Map([...candidates].map(([key, { turnedOff: _previous, ...candidate }]) => [key, turnedOff.has(candidate.candidate.providerId) ? { ...candidate, turnedOff: true as const } : candidate]))
+}
+
+function sameProviders(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  return left.size === right.size && [...left].every((providerId) => right.has(providerId))
+}
+
+/** Whether every candidate of `state` carries the turned-off mark exactly when its provider is in `turnedOff`. */
+function marksTurnedOff(state: ProviderModelEligibilityState, turnedOff: ReadonlySet<string>): boolean {
+  return [...state.inventoryCandidates.values()].every((candidate) => (candidate.turnedOff === true) === turnedOff.has(candidate.candidate.providerId))
+}
+
 function sameMarks(left: ReadonlyMap<string, IdleFreePlanMark>, right: ReadonlyMap<string, IdleFreePlanMark>): boolean {
   return left.size === right.size && [...left].every(([key, mark]) => right.has(key) && right.get(key)?.identity === mark.identity)
 }
 
 function hasPendingDiscovery(state: ProviderModelEligibilityState): boolean {
-  return [...state.inventoryCandidates.values()].some(({ catalog }) => catalog.kind === "unavailable" && catalog.reason === "discovery-pending")
+  return [...state.inventoryCandidates.values()].some(({ catalog, turnedOff }) => turnedOff === undefined && catalog.kind === "unavailable" && catalog.reason === "discovery-pending")
 }
 
 /** A completed login must leave its exact account with a usable catalog before requests resume. */

@@ -13,7 +13,7 @@ function publishedMutation(view: RuntimeConfigView | undefined, command: Runtime
   if (view === undefined || view.revision < revision) return false
   // A reset commits several values under one revision; reaching it is the settlement.
   if (command.type === "config.reset") return true
-  if (command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes" || command.setting.id === "provider") {
+  if (command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes" || command.setting.id === "allowGoogleAntigravity" || command.setting.id === "provider") {
     if (command.target?.kind !== "profile") return false
     const profile = view.values.profiles[command.target.profileId]
     const actual = command.setting.id === "provider"

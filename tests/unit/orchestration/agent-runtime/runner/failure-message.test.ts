@@ -42,6 +42,12 @@ describe("describeAgentFailure", () => {
     )
     expect(formatAgentFailure(reason)).not.toContain("wire model id")
   })
+
+  it("says that the provider is off for the profile and points to Settings, when only a turned-off provider offers the model (PI-MODEL-096)", () => {
+    const reason = { kind: "model_unavailable", missing: "turned_off", message: "Google Antigravity is off for this profile. Turn it on in Settings." } as const
+    expect(describeAgentFailure(reason)).toMatchObject({ message: reason.message, action: { command: "/settings" } })
+    expect(formatAgentFailure(reason)).toBe(reason.message)
+  })
 })
 
 describe("formatAgentFailure", () => {

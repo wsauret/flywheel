@@ -19,7 +19,7 @@ import { loadAuthStoreWithDiagnostics } from "../../../../infra/providers/auth/s
 import { prepareWorkflowDeps, type PrepareWorkflowDepsInput, type WorkflowDeps } from "../../../agent-runtime/runner/workflow-deps.js"
 import type { CaptureRuntimeConfig } from "../../../config/request-config.js"
 
-import { accessProviderRegistry } from "../../../config/models/access-provider-registry.js"
+import { accessProviderRegistry, turnedOffProviders, type ProviderOptIns } from "../../../config/models/access-provider-registry.js"
 import { normalizeAuthProfile } from "../../../../infra/providers/auth/auth-profile-normalization.js"
 import { createHeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 import { connectionEligibilitySources } from "./snapshot-eligibility.js"
@@ -116,6 +116,8 @@ interface HeadlessProfileRuntimeOptions {
   readonly profile: { readonly id: string; readonly directory: string }
   readonly moduleSelection: FirstPartyModuleSnapshot
   readonly allowTrainingRoutes: boolean
+  /** The profile's provider opt-ins; a provider that they keep off lists nothing and serves no request of the run. */
+  readonly providerOptIns: ProviderOptIns
   readonly resolveKey: KeyResolver
   readonly connection?: ProviderConnection
   readonly workflowPreparation: Omit<ProfileRequestWorkflowPreparation, "onNotification">
@@ -165,6 +167,7 @@ export async function createHeadlessProfileRuntime(options: HeadlessProfileRunti
   })
   const prepareEligibility = createEligibilityPreparation({
     allowTrainingRoutes: () => options.allowTrainingRoutes,
+    turnedOffProviders: () => turnedOffProviders(accessProviderRegistry(options.moduleSelection()).selection.definitions, options.providerOptIns),
     userDataRoot: options.userDataRoot,
     resolveKey: options.resolveKey,
     ...(options.workflowPreparation.launcher === undefined ? {} : { launcher: options.workflowPreparation.launcher }),

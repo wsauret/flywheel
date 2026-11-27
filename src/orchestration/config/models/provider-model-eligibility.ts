@@ -19,6 +19,9 @@ export interface ProviderModelEnabledCandidate {
   readonly preferFreeRoutes?: boolean;
   /** A free-plan account beside another account of its provider. It stays connected and never serves (PI-MODEL-038). */
   readonly idleFreePlan?: IdleFreePlanMark;
+  /** An account of a provider that the profile's setting keeps off. It keeps its login and saved catalog, lists
+   *  nothing new, and never serves until the setting turns on (PI-MODEL-096). */
+  readonly turnedOff?: true;
 }
 
 type AvailableProviderModelEnabledCandidate = ProviderModelEnabledCandidate & {
@@ -106,9 +109,15 @@ function buildWorkerProviderModelEligibility(input: ProviderModelEligibilityDeci
       return accountCatalog === undefined ? Object.freeze([]) : selectCandidateOfferings(accountCatalog, model, allowTrainingRoutes);
     },
     accessPending(allowTrainingRoutes = false) {
-      const accounts = [...enabledCandidates.values()].filter(({ configured, currentConnection }) => configured && currentConnection);
+      const accounts = [...enabledCandidates.values()].filter(({ configured, currentConnection, turnedOff }) => configured && currentConnection && turnedOff === undefined);
       return accounts.some(({ catalog }) => catalog.kind === "unavailable" && catalog.reason === "discovery-pending")
         && !providerModelsCanServeRequest(accounts, allowTrainingRoutes);
+    },
+    turnedOffProvider(model: string) {
+      for (const { turnedOff, ...entry } of enabledCandidates.values()) {
+        if (turnedOff === true && isAvailableCandidate(entry) && entry.enabledOfferings.has(model)) return entry.candidate.providerId;
+      }
+      return undefined;
     },
   });
 }
@@ -120,7 +129,7 @@ export function providerModelsCanServeRequest(candidates: Iterable<ProviderModel
 }
 
 function selectCandidateOfferings(entry: ProviderModelEnabledCandidate, model: string, allowTrainingRoutes: boolean): readonly AccessProviderCandidateAttribution[] {
-  if (entry.catalog.kind !== "available" || entry.idleFreePlan !== undefined) return Object.freeze([]);
+  if (entry.catalog.kind !== "available" || entry.idleFreePlan !== undefined || entry.turnedOff !== undefined) return Object.freeze([]);
   const catalog = entry.catalog;
   const offerings = entry.enabledOfferings?.get(model) ?? [];
   const ordinary = offerings.filter(({ dataUse, routeKind }) => dataUse === "standard" && routeKind !== "free");
@@ -147,6 +156,6 @@ function selectCandidateOfferings(entry: ProviderModelEnabledCandidate, model: s
 }
 
 function isAvailableCandidate(entry: ProviderModelEnabledCandidate): entry is AvailableProviderModelEnabledCandidate {
-  return entry.configured && entry.currentConnection && entry.idleFreePlan === undefined && entry.catalog.kind === "available" && entry.enabledOfferings !== null;
+  return entry.configured && entry.currentConnection && entry.idleFreePlan === undefined && entry.turnedOff === undefined && entry.catalog.kind === "available" && entry.enabledOfferings !== null;
 }
 

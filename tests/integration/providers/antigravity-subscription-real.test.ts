@@ -14,7 +14,9 @@
  * later one. A bump of agy that moves those fields fails it.
  *
  * A host whose profile has no Google Antigravity login fails here, and the refusal names the command that adds one.
- * Readiness reports a profile without one as a blocker before it starts the tier.
+ * Readiness reports a profile without one as a blocker before it starts the tier. The tier turns Google Antigravity on
+ * for its own run of the profile, which keeps the provider off until the person turns it on (PI-MODEL-096), and it
+ * writes nothing to the person's configuration.
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
@@ -139,7 +141,7 @@ async function onLiveRoute(label: string, use: (open: (tree?: string) => Promise
     } finally {
       for (const lifetime of lifetimes) await Effect.runPromise(Scope.close(lifetime, Exit.void));
     }
-  }, { model: MODEL, refuse: refuseOtherRoutes }));
+  }, { model: MODEL, refuse: refuseOtherRoutes, turnOn: ["allowGoogleAntigravity"] }));
   expect(served.length).toBeGreaterThan(0);
   expect(served.map((attempt) => attempt.accessProviderCandidate)).toEqual(served.map(() => expect.objectContaining({ kind: "subscription", providerId: GOOGLE_ANTIGRAVITY_PROVIDER_ID, spendMode: "included" })));
 }

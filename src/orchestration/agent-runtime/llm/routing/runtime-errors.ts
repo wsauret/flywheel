@@ -29,7 +29,7 @@ export class ApiError extends Schema.TaggedError<ApiError>()("ApiError", { messa
 /** No configured provider offers the model, so no provider was called. Apart
  *  from ApiError so that a caller can tell a wrong model id from a provider
  *  failure. */
-export class ModelUnavailable extends Schema.TaggedError<ModelUnavailable>()("ModelUnavailable", { message: Schema.String, missing: Schema.Literals(["provider", "offering", "access"]) }) {}
+export class ModelUnavailable extends Schema.TaggedError<ModelUnavailable>()("ModelUnavailable", { message: Schema.String, missing: Schema.Literals(["provider", "offering", "access", "turned_off"]) }) {}
 class TransientDisconnect extends Schema.TaggedError<TransientDisconnect>()("TransientDisconnect", { message: Schema.String }) {}
 const StallAttributionSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("provider"), provider: AccessProviderIdSchema }),

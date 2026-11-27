@@ -113,7 +113,8 @@ export function mountProfileDeletion(preview: RuntimeAuthProfileDeletionPreview,
 
 /** Mounts the real shared Authentication sheet against an in-memory Solid host.
  *  Pass `deviceCode` to answer the login with a device-code step; its `userCode` is optional as on the wire.
- *  Pass `prompt` to answer the login first with that pre-flight question. */
+ *  Pass `prompt` to answer the login first with that pre-flight question.
+ *  Pass `optInWarning` to answer a login without `turnOn` as for a provider that the profile keeps off. */
 export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: string }, providers?: readonly AuthProviderStatus[], recovery?: {
   readonly question: RuntimeAuthLoginQuestion
   readonly response?: Promise<RuntimeAuthLoginResult>
@@ -121,7 +122,7 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
 }, prompt?: RuntimeAuthLoginPrompt, paidUse?: {
   readonly consent: SubscriptionSpendConsentView
   readonly response: () => Promise<SubscriptionSpendConsentMutationResult>
-}, renameResponse?: () => Promise<MutationResult<Extract<FrontendMutation, { readonly type: "auth.account.rename" }>>>) {
+}, renameResponse?: () => Promise<MutationResult<Extract<FrontendMutation, { readonly type: "auth.account.rename" }>>>, optInWarning?: string) {
   return createRoot((disposeRoot) => {
     const root = createElement("root")
     const [auth, setAuth] = createSignal({ ...initialAuth, ...(providers === undefined ? {} : { providers }), ...(paidUse === undefined ? {} : { subscriptionSpendConsent: paidUse.consent }) })
@@ -156,6 +157,7 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
           },
           "auth.login.cancel": () => ({ ok: true }),
           "auth.login": (mutation) => {
+            if (optInWarning !== undefined && mutation.turnOn !== true) return { kind: "needs_opt_in", providerId: "chatgpt", profileId: mutation.profileId ?? "default", displayName: "ChatGPT", warning: optInWarning }
             if (!mutation.loginQuestionId && recovery?.manualResponse) return recovery.manualResponse
             if (recovery?.response) return recovery.response
             if (prompt !== undefined) return { kind: "prompt", operationId: "device-operation", providerId: "chatgpt", prompt }

@@ -22,9 +22,10 @@ export interface AuthProviderAttention {
 
 /** What keeps one account from serving, with the step that repairs it in `message`: for an external login, the
  *  provider refused its login at its last request, the program exited while it served one, or the program could not
- *  start for one; for any account, it is a free-plan account beside another account of its provider (PI-MODEL-038). */
+ *  start for one; for any account, it is a free-plan account beside another account of its provider (PI-MODEL-038), or
+ *  the profile keeps its provider off (PI-MODEL-096). */
 export interface AuthAccountAttention {
-  readonly kind: "login-rejected" | "program-exited" | "program-cannot-start" | "free-plan"
+  readonly kind: "login-rejected" | "program-exited" | "program-cannot-start" | "free-plan" | "turned-off"
   readonly message: string
 }
 

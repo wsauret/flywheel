@@ -34,7 +34,7 @@ const AuthProviderAccountStatusSchema = Schema.Struct({
   catalog: Schema.optionalKey(ProviderCatalogDiscoverySchema),
   servingCandidate: Schema.optionalKey(AccessProviderCandidateSchema),
   freeRoutes: Schema.optionalKey(Schema.Struct({ enabled: Schema.Boolean, eligibilityRevision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)) })),
-  attention: Schema.optionalKey(Schema.Struct({ kind: Schema.Literals(["login-rejected", "program-exited", "program-cannot-start", "free-plan"]), message: Schema.String })),
+  attention: Schema.optionalKey(Schema.Struct({ kind: Schema.Literals(["login-rejected", "program-exited", "program-cannot-start", "free-plan", "turned-off"]), message: Schema.String })),
 })
 const AuthProviderStatusSchema = Schema.Struct({
   // Provider identities cross the wire from the installed provider catalogs.

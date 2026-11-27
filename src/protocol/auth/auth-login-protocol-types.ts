@@ -45,6 +45,9 @@ export interface RuntimeAuthLoginMutation {
    *  completes without a pasted code. Absent, the client opens each reported
    *  page in its own host, and nothing opens on the runtime's machine. */
   readonly openBrowser?: true
+  /** The person confirmed the warning of a provider that the profile keeps off (`needs_opt_in`), so the runtime turns
+   *  the provider on for the profile before it signs in. */
+  readonly turnOn?: true
 }
 
 /** A question a login flow asks before it starts. */
@@ -60,6 +63,10 @@ export type RuntimeAuthLoginResult =
   | { readonly kind: "ignored"; readonly providerId: string }
   /** Stored. The `auth` cursor carries the new status. */
   | { readonly kind: "completed"; readonly providerId: string; readonly identity?: string }
+  /** The profile `profileId` keeps this provider off (PI-MODEL-096). The client shows `warning`, and only after the
+   *  person confirms it dispatches again with `turnOn` for that profile. Nothing was stored, and the runtime contacted
+   *  no one. */
+  | { readonly kind: "needs_opt_in"; readonly providerId: string; readonly profileId: string; readonly displayName: string; readonly warning: string }
   /** This provider authenticates with a secret the client must collect. */
   | { readonly kind: "needs_key"; readonly providerId: string; readonly displayName: string; readonly hint?: string }
   /** Show this code, send them to this URL. The flow runs on until they finish

@@ -182,6 +182,9 @@ interface ModelListingRequest {
   /** The caller's launch authority. A provider whose listing runs a local process launches it only in this scope, so
    *  the process ends with the caller; without a scope that listing fails and its fallback applies. */
   readonly launcher?: LauncherScope;
+  /** Providers whose accounts read their saved evidence only, as under `cached-first`, whatever the mode: the
+   *  profile keeps them off, so their listing starts nothing and contacts no one (ARCH-PROVIDERS-088). */
+  readonly savedOnlyProviders?: ReadonlySet<AccessProviderId>;
 }
 
 /** One candidate account to list, captured once with the evidence saved for its exact account lineage. */
@@ -568,8 +571,10 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
       }
       return baseline;
     };
-    const pass: ListingPass = { mode, baselineForListing, onAccessAudit: request.onAccessAudit, recheckAccount: request.recheckAccount, launcher: request.launcher };
+    const listingPass: ListingPass = { mode, baselineForListing, onAccessAudit: request.onAccessAudit, recheckAccount: request.recheckAccount, launcher: request.launcher };
+    const savedOnlyPass: ListingPass = { ...listingPass, mode: "cached-first" };
     for (const providerId of configured) {
+      const pass = request.savedOnlyProviders?.has(providerId) === true ? savedOnlyPass : listingPass;
       const custom = customProviderById(providerId);
       if (custom) {
         const candidate: AccessProviderCandidate = { kind: "singleton", providerId, spendMode: options.providers.spendMode(providerId) };

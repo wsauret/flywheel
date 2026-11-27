@@ -11,6 +11,8 @@ import { resolveConversationResources } from "../../session/conversation-records
 import { ownedCommandRunner } from "../../../infra/owned-command.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../infra/definitions/agent-assets/system-prompt.js";
 import { canonicalize } from "../../../infra/providers/canonical-name.js";
+import { canonicalModelId } from "../../../infra/providers/model-id.js";
+import { providerTurnedOffMessage } from "../../../infra/providers/llm/access/access-provider.js";
 import { REASONING_EFFORTS, type ReasoningEffort } from "../../../infra/providers/llm/models/models.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../../../infra/definitions/modules/module-runtime.js";
 import type { AgentLoopOptions } from "../agent-loop-types.js";
@@ -192,14 +194,15 @@ function headlessPromptOf(purpose: AgentOptions["purpose"]) {
  *  account, or a model setting changes (PI-MODEL-039). An agent of an unattended run has no person who can change any
  *  of these, so its failure stands (PI-AGENT-128). An id that no catalog lists is no model that a wait can serve, so
  *  its failure also stands (PI-MODEL-095). */
-function notOfferedFailure(options: AgentOptions, model: string, listed: boolean, fixedModel?: boolean): Error {
+function notOfferedFailure(options: AgentOptions, model: string, listed: boolean, fixedModel?: boolean, turnedOffProvider?: string): Error {
   if (!listed) return new ModelUnavailable({ missing: "offering", message: `No provider catalog lists the model "${model}". Choose a model that a provider offers, or a tier: cheap, mid, or powerful.` });
-  const message = `No signed-in account or enabled provider offers "${model}".`;
-  if (fixedModel || options.capabilityAccess?.unattended === true) return new ModelUnavailable({ missing: "provider", message });
+  // The account that would serve the model belongs to a provider that the profile keeps off (PI-MODEL-096).
+  const message = turnedOffProvider === undefined ? `No signed-in account or enabled provider offers "${model}".` : providerTurnedOffMessage(turnedOffProvider);
+  if (fixedModel || options.capabilityAccess?.unattended === true) return new ModelUnavailable({ missing: turnedOffProvider === undefined ? "provider" : "turned_off", message });
   return new AllCandidatesExhaustedError({
     message,
     recovery: { kind: "at", atMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "recheck" } },
-    unserved: { model, reason: "not_offered" },
+    unserved: { model, reason: turnedOffProvider === undefined ? "not_offered" : "turned_off" },
   });
 }
 
@@ -520,7 +523,11 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       roleHold.held = { setting: rolePickSettingKey(pickSetting), model: resolved.role.model, effort: resolved.role.effort };
       await recordedPicks?.record({ setting: pickSetting, model: resolved.role.model, effort: resolved.role.effort });
     }
-    if (resolved?.kind === "unserved") throw notOfferedFailure(options, resolved.role.model, resolved.listed, authored.fixedModel);
+    if (resolved?.kind === "unserved") {
+      const turnedOffId = capture?.eligibility?.turnedOffProvider(canonicalModelId(resolved.role.model));
+      const turnedOff = capture?.providers.selection.definitions.find(({ id }) => id === turnedOffId);
+      throw notOfferedFailure(options, resolved.role.model, resolved.listed, authored.fixedModel, turnedOff?.displayName);
+    }
     const selection = resolved?.kind === "selected" ? { ...resolved.role, effort: mapEffort(resolved.role.effort) } : authored;
     const { model, providerOptions } = selection;
     if (!model) throw new ModelUnavailable({ missing: "provider", message: "The active profile has no reachable model." });

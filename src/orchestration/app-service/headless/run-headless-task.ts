@@ -40,7 +40,7 @@ import { createHeadlessUsageAuthorityOwner, type HeadlessUsageAuthorityOwner } f
 import { captureRuntimeConfigRequest } from "../../config/request-config.js"
 import { shellWriteGuardObserver } from "../../config/policy/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "../auth/headless/headless-profile-runtime.js"
-import { accessProviderRegistry } from "../../config/models/access-provider-registry.js"
+import { accessProviderRegistry, profileProviderOptIns } from "../../config/models/access-provider-registry.js"
 import { personaRoleIds } from "../../../workflows/definitions/definition-registry.js"
 export interface RunHeadlessTaskOptions {
   directories: StartupDirectories
@@ -207,6 +207,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         profile: { id: capturedProfileId, directory: authProfile.directory },
         moduleSelection,
         allowTrainingRoutes: requestConfig.allowTrainingRoutes,
+        providerOptIns: profileProviderOptIns(oneShotConfig.profiles[capturedProfileId]),
         resolveKey,
         ...(snapshot ? { connection: snapshot.connection } : {}),
         workflowPreparation: {

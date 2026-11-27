@@ -374,7 +374,7 @@ Enable this claude.ai connector.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -409,7 +409,7 @@ Enable this claude.ai connector.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -446,7 +446,7 @@ Arguments passed to the MCP stdio command.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -480,7 +480,7 @@ The MCP client that connects to this server. `claude` connects through the Claud
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -514,7 +514,7 @@ Command to start the MCP stdio server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -547,7 +547,7 @@ Enable this MCP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -579,7 +579,7 @@ Enable this MCP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -612,7 +612,7 @@ Override only the global server's enabled state in this project.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -640,7 +640,7 @@ Environment variables passed to the MCP stdio command.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -673,7 +673,7 @@ HTTP headers sent to the MCP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -706,7 +706,7 @@ Fixed local port for the OAuth redirect `http://127.0.0.1:<port>/callback`. Set 
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -742,7 +742,7 @@ Client ID of an OAuth client registered with the server's authorization server. 
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -778,7 +778,7 @@ Space-separated OAuth scopes to request. Without it, every scope that the server
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -814,7 +814,7 @@ URL of the MCP HTTP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.servers."local tool-3"]
 command = "example"
@@ -847,7 +847,7 @@ Arguments passed to the MCP stdio command.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -884,7 +884,7 @@ The MCP client that connects to this server. `claude` connects through the Claud
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -921,7 +921,7 @@ Command to start the MCP stdio server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -957,7 +957,7 @@ Enable this MCP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -992,7 +992,7 @@ Enable this MCP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1028,7 +1028,7 @@ Environment variables passed to the MCP stdio command.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1064,7 +1064,7 @@ HTTP headers sent to the MCP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1100,7 +1100,7 @@ Fixed local port for the OAuth redirect `http://127.0.0.1:<port>/callback`. Set 
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1139,7 +1139,7 @@ Client ID of an OAuth client registered with the server's authorization server. 
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1178,7 +1178,7 @@ Space-separated OAuth scopes to request. Without it, every scope that the server
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1217,7 +1217,7 @@ URL of the MCP HTTP server.
 
 ```toml
 [mcp]
-claude_ai_connectors = true
+claude_ai_connectors = false
 
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
@@ -1289,6 +1289,78 @@ proactive_compaction_threshold = 500000
 
 ## `profiles`
 
+### `profiles."*".allow_google_antigravity`
+
+- Type: `boolean`
+- Default: `false`
+- Application: `next-request`. Applies when the next provider request captures configuration.
+
+Turn on Google Antigravity for this profile. Google has suspended Antigravity accounts that were used through other coding agents, so it stays off until the person turns it on.
+
+```toml
+[profiles.work]
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = true
+
+[profiles.work.roles."review role"]
+model = "example"
+effort = "low"
+
+[profiles.work.roles."review role".provider_options.openai]
+parallel_tool_calls = true
+text_verbosity = "low"
+reasoning_summary = "auto"
+speed = "fast"
+service_tier = "example"
+
+[profiles.work.roles."review role".provider_options.openai.extra_body]
+example = "value"
+
+[profiles.work.roles."review role".provider_options.anthropic]
+thinking_display = "updates"
+user_id = "example"
+speed = "fast"
+
+[profiles.work.roles."review role".provider_options.anthropic.extra_body]
+example = "value"
+
+[profiles.work.roles."review role".provider_options.google]
+temperature = 0
+
+[profiles.work.roles."review role".provider_options.google.thinking_budgets]
+low = 0
+medium = 0
+high = 0
+
+[profiles.work.roles."review role".provider_options.google.extra_body]
+example = "value"
+
+[profiles.work.roles."review role".provider_options.openrouter]
+allow_fallbacks = true
+require_parameters = true
+zdr = true
+enforce_distillable_text = true
+data_collection = "deny"
+order = []
+only = []
+ignore = []
+quantizations = []
+sort = "example"
+preferred_min_throughput = 1
+preferred_max_latency = 1
+
+[profiles.work.roles."review role".provider_options.openrouter.max_price]
+prompt = 1
+completion = 1
+image = 1
+audio = 1
+request = 1
+
+[profiles.work.providers."provider id"]
+example = 0
+```
+
 ### `profiles."*".allow_training_routes`
 
 - Type: `boolean`
@@ -1299,7 +1371,8 @@ Allow model routes that may use requests for training for this profile.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
+git_ai_attribution = false
+allow_google_antigravity = false
 allow_training_routes = true
 
 [profiles.work.roles."review role"]
@@ -1370,7 +1443,8 @@ Add AI attribution to Git commits created for this profile.
 
 ```toml
 [profiles.work]
-allow_training_routes = true
+allow_training_routes = false
+allow_google_antigravity = false
 git_ai_attribution = true
 
 [profiles.work.roles."review role"]
@@ -1442,8 +1516,9 @@ Numeric settings the provider module declares, keyed by setting.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.roles."review role"]
 model = "example"
@@ -1514,8 +1589,9 @@ Select the reasoning effort for this role.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1534,8 +1610,9 @@ Select the model for this role: a model id, a tier (powerful, mid, or cheap), or
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1555,8 +1632,9 @@ Add arbitrary provider request body fields.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1576,8 +1654,9 @@ Use the provider fast request mode.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1597,8 +1676,9 @@ Set how thinking content is displayed.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1618,8 +1698,9 @@ Set the stable end-user abuse-tracking identifier.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1639,8 +1720,9 @@ Add arbitrary provider request body fields.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1660,8 +1742,9 @@ Set the response sampling temperature.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1681,8 +1764,9 @@ Set the high-effort thinking token budget.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1702,8 +1786,9 @@ Set the low-effort thinking token budget.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1723,8 +1808,9 @@ Set the medium-effort thinking token budget.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1744,8 +1830,9 @@ Add arbitrary provider request body fields.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1764,8 +1851,9 @@ Allow parallel tool calls.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1785,8 +1873,9 @@ Set reasoning summary detail.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1806,8 +1895,9 @@ Set the OpenAI service tier.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1827,8 +1917,9 @@ Use the provider fast request mode.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1848,8 +1939,9 @@ Set response text verbosity.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1868,8 +1960,9 @@ Allow fallback models.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1889,8 +1982,9 @@ Set the data collection policy.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1909,8 +2003,9 @@ Require distillable text outputs.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1930,8 +2025,9 @@ Exclude these providers from routing.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1951,8 +2047,9 @@ Set the maximum audio price.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1972,8 +2069,9 @@ Set the maximum completion price.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -1993,8 +2091,9 @@ Set the maximum image price.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2014,8 +2113,9 @@ Set the maximum prompt price.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2035,8 +2135,9 @@ Set the maximum request price.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2056,8 +2157,9 @@ Restrict routing to these providers.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2077,8 +2179,9 @@ Set preferred provider order.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2098,8 +2201,9 @@ Set preferred maximum latency.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2119,8 +2223,9 @@ Set preferred minimum throughput.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2140,8 +2245,9 @@ Restrict routing to these quantizations.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2160,8 +2266,9 @@ Require models to support all request parameters.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2181,8 +2288,9 @@ Set the provider routing sort.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2201,8 +2309,9 @@ Require zero-data-retention endpoints.
 
 ```toml
 [profiles.work]
-git_ai_attribution = true
-allow_training_routes = true
+git_ai_attribution = false
+allow_training_routes = false
+allow_google_antigravity = false
 
 [profiles.work.providers."provider id"]
 example = 0
@@ -2297,9 +2406,9 @@ Days before a stale managed skill is archived.
 
 ```toml
 [skills]
-notifications = "off"
-review_interval_iterations = 0
-stale_after_days = 0
+notifications = "on"
+review_interval_iterations = 10
+stale_after_days = 30
 archive_after_days = 90
 ```
 
@@ -2314,9 +2423,9 @@ Set managed-skill notification detail.
 
 ```toml
 [skills]
-review_interval_iterations = 0
-stale_after_days = 0
-archive_after_days = 0
+review_interval_iterations = 10
+stale_after_days = 30
+archive_after_days = 90
 notifications = "on"
 ```
 
@@ -2331,9 +2440,9 @@ Iterations between managed-skill reviews.
 
 ```toml
 [skills]
-notifications = "off"
-stale_after_days = 0
-archive_after_days = 0
+notifications = "on"
+stale_after_days = 30
+archive_after_days = 90
 review_interval_iterations = 10
 ```
 
@@ -2348,9 +2457,9 @@ Days before a managed skill becomes stale.
 
 ```toml
 [skills]
-notifications = "off"
-review_interval_iterations = 0
-archive_after_days = 0
+notifications = "on"
+review_interval_iterations = 10
+archive_after_days = 90
 stale_after_days = 30
 ```
 

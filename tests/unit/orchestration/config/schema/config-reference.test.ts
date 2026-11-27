@@ -73,6 +73,9 @@ describe("configuration reference coverage", () => {
   test("projects dynamic records with concrete safe examples and separate MCP branches", () => {
     expect(configReference().entries.find(({ path }) => path === 'profiles."*".roles."*".model')?.examplePath).toBe('profiles.work.roles."review role".model');
     expect(configReference().entries.some(({ path }) => path.startsWith('profiles."*".roles."*"'))).toBe(true);
+    // A sibling shows its decoded default, so only its own entry turns on a consent that is off by default (PI-MODEL-096).
+    const turnedOn = configReference().entries.filter(({ example }) => example?.includes("allow_google_antigravity = true"));
+    expect(turnedOn.map(({ path }) => path)).toEqual(['profiles."*".allow_google_antigravity']);
     const projectProfile = configReference().entries.find(({ path }) => path === 'auth.project_profiles."*"');
     expect(projectProfile?.example).toContain('"/workspace/project" = "example"');
     expect(configReference().entries.some(({ path }) => path.startsWith('custom_providers."*"'))).toBe(true);

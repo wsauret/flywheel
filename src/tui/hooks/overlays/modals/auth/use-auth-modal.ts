@@ -7,7 +7,7 @@ import type { CredentialProviderId } from "../../../../../infra/providers/auth/s
 import { Log } from "../../../../../infra/diagnostics/log.js"
 import type { RuntimeAuthLoginResult } from "../../../../../protocol/auth/auth-login-protocol-types.js"
 import type { AuthOperationConfirmation, AuthOperationSettlement, AuthProviderAccountStatus } from "../../../../../protocol/auth/auth-status-protocol-types.js"
-import { keptFreePlanMessage, loginOutcome } from "../../../../../protocol/client/auth-login.js"
+import { keptFreePlanMessage, keptOffMessage, loginOutcome } from "../../../../../protocol/client/auth-login.js"
 import { createListModalKeys } from "../../../../components/modal/select/modal-list-keys.js"
 import type { ModalHandle } from "../../../../components/modal-stack.js"
 import { paidModeAwaitsAnswer, type SubscriptionSpendConsentView } from "../../../../../protocol/auth/subscription-spend-consent-protocol-types.js"
@@ -313,16 +313,13 @@ export function useAuthModal(deps: AuthModalDeps): AuthModalHook {
     try {
       const profileId = auth?.profile.id
       if (profileId === undefined) throw new Error("Auth profile is unavailable")
-      let result = adopt(await deps.appService.dispatch({
-        type: "auth.login", providerId: target.id, profileId, ...deps.signInPage.request,
-        ...(reconnectInstanceId === undefined ? {} : { instanceId: reconnectInstanceId }),
-        ...(apiKey === undefined ? {} : { apiKey: Redacted.make(apiKey) }),
-      }))
+      const startLogin = async (turnOn: boolean) => adopt(await deps.appService.dispatch({ type: "auth.login", providerId: target.id, profileId, ...deps.signInPage.request, ...(reconnectInstanceId === undefined ? {} : { instanceId: reconnectInstanceId }), ...(apiKey === undefined ? {} : { apiKey: Redacted.make(apiKey) }), ...(turnOn ? { turnOn: true as const } : {}) }))
+      let result = await startLogin(false)
       let settlement: AuthOperationSettlement | undefined
       /** Asks the runtime's question before a new account replaces free-plan accounts, and returns the runtime's answer,
        *  or undefined when the person keeps the free-plan account, which ends the login as their choice. */
       const confirmReplace = async (question: AuthOperationConfirmation): Promise<RuntimeAuthLoginResult | undefined> => {
-        if (await loginInput.confirm(attempt.id, attempt.signal, target, question.message)) return adopt(await deps.appService.dispatch({ type: "auth.login.answer", providerId: target.id, operationId: question.operationId, answer: "confirm" }))
+        if (await loginInput.confirm(attempt.id, attempt.signal, target, question.message, "replace-free-plan")) return adopt(await deps.appService.dispatch({ type: "auth.login.answer", providerId: target.id, operationId: question.operationId, answer: "confirm" }))
         cancelOperation()
         if (settleAttempt(attempt.id)) {
           deps.showToast({ message: keptFreePlanMessage(target.label), variant: "info" })
@@ -344,6 +341,12 @@ export function useAuthModal(deps: AuthModalDeps): AuthModalHook {
           const answer = await loginInput.ask(attempt.id, attempt.signal, target, step.prompt)
           result = adopt(await deps.appService.dispatch({ type: "auth.login.answer", providerId: target.id, operationId: step.operationId, answer }))
           continue
+        }
+        if (step.kind === "opt-in") {
+          // The profile keeps the provider off: only a confirmed warning turns it on and signs in (PI-MODEL-096).
+          // A confirmed sign-in goes on from the provider list, as a sign-in of a provider that is on does, until its next step.
+          if (await loginInput.confirm(attempt.id, attempt.signal, target, step.warning, "turn-on")) { batch(() => { setState({ view: { kind: "list" } }); refreshProviders() }); result = await startLogin(true); continue }
+          if (settleAttempt(attempt.id)) { deps.showToast({ message: keptOffMessage(target.label), variant: "info" }); if (owner?.isOpen()) navigateToList() } return
         }
         if (step.kind === "needs-key") {
           // The runtime says this provider takes a key: ask for it, as selecting the provider does.
@@ -570,7 +573,7 @@ export function useAuthModal(deps: AuthModalDeps): AuthModalHook {
     setLoginChoice: (view) => setState("view", view),
     answerLoginQuestion: (yes) => loginQuestion.answer(yes),
     setConfirmationChoice: (view) => setState("view", view),
-    answerLoginConfirmation: (replace) => loginInput.answerConfirmation(replace),
+    answerLoginConfirmation: (replace) => { if (!loginQuestion.answerTurnOn(replace)) loginInput.answerConfirmation(replace) },
     navigateToList,
     setDeleteConfirmation: (view) => setState("view", reconcile(view)),
     navigateToProfile,
@@ -666,7 +669,7 @@ export function useAuthModal(deps: AuthModalDeps): AuthModalHook {
     authModalCursor: () => state.cursor,
     apiKeyDraft, authInputPresentation,
     openAuthModal, closeAuthModal, finishRename,
-    openLoginQuestion, answerLoginQuestion: loginQuestion.answer, answerLoginConfirmation: loginInput.answerConfirmation,
+    openLoginQuestion, answerLoginQuestion: loginQuestion.answer, answerLoginConfirmation: (replace: boolean) => { if (!loginQuestion.answerTurnOn(replace)) loginInput.answerConfirmation(replace) },
     selectProvider, focusProvider,
     selectProviderModel: modelActions.selectProviderModel,
     recheckProviderModels: modelActions.recheckProviderModels,

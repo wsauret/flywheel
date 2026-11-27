@@ -225,6 +225,31 @@ test("close before URL cancels exactly its question and ignores a late response"
   expect(f.requests.filter((request) => request.type === "auth.login.cancel")).toEqual([{ type: "auth.login.cancel", loginQuestionId: "episode" }])
 })
 
+test.each([true, false])("the warning of a provider that the account's profile keeps off starts on keep, and only a yes logs in with turnOn (confirm: %s, PI-MODEL-096)", async (yes) => {
+  const answers: import("../../../../../src/protocol/auth/auth-login-protocol-types.js").RuntimeAuthLoginResult[] = [
+    { kind: "needs_opt_in", providerId: question.providerId, profileId: "personal", displayName: "Anthropic Subscription", warning: "WARNING" },
+    { kind: "browser", providerId: question.providerId, operationId: "op", authorizeUri: "https://example.com/login" },
+  ]
+  const f = fixture()
+  const login = f.requests
+  const helper = createAuthModalLoginQuestion({ auth: () => auth(), dispatch: recordedDispatch((request) => { login.push(request) }, runtimeDispatch({ "auth.login": async () => answers.shift()!, "auth.login.decline": acknowledge, "auth.login.cancel": acknowledge })), showToast: (toast) => { f.toasts.push(toast) }, signInPage: LOCAL_SIGN_IN, openSignInPage: () => {}, setView: () => {}, prepareInput: () => {}, close: () => {} })
+  helper.open(question)
+  helper.answer(true)
+  await tick()
+  expect(login.filter((request) => request.type === "auth.login")).toHaveLength(1)
+  expect(helper.answerTurnOn(yes)).toBe(true)
+  await tick()
+  if (yes) {
+    expect(login.filter((request) => request.type === "auth.login").at(-1)).toMatchObject({ loginQuestionId: question.questionId, turnOn: true })
+    expect(login.filter((request) => request.type === "auth.login.decline")).toEqual([])
+  } else {
+    expect(login.filter((request) => request.type === "auth.login")).toHaveLength(1)
+    expect(login.filter((request) => request.type === "auth.login.decline")).toEqual([{ type: "auth.login.decline", providerId: question.providerId, loginQuestionId: question.questionId }])
+    expect(f.toasts).toEqual([{ message: "Anthropic Subscription stays off. Nothing was changed.", variant: "info" }])
+  }
+  expect(helper.answerTurnOn(true)).toBe(false)
+})
+
 test.each(["ignored", "failed"] as const)("a %s response closes without cancelling a settled flow", async (kind) => {
   const f = fixture(Promise.resolve(kind === "ignored" ? { kind, providerId: question.providerId } : { kind, providerId: question.providerId, message: "refused again" }))
   f.helper.open(question)

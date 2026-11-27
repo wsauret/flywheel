@@ -95,6 +95,42 @@ describe("auth login instance selection", () => {
     } finally { finish.resolve(); login.dispose(); }
   });
 
+  test("an account question of a profile that keeps the provider off answers its warning and stays open for the confirmed login (PI-MODEL-096)", async () => {
+    const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    const observations = observedLogins(target);
+    observations.recordRequest(target, "login-rejected");
+    const waiting = observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
+    const id = observations.loginQuestions()[0]!.id;
+    const turnedOn: string[] = [];
+    let starts = 0;
+    const login = createAuthLoginService({
+      resolveProfile: () => ({ id: "a", directory: "/scratch/profile-a" }), openBrowser: async () => false,
+      resolveLoginProfile: (directory) => directory === "/scratch/profile-b" ? { id: "b", directory } : undefined,
+      recovery: () => observations,
+      resolveKey: async (value) => Redacted.make(value), launcher: refusingLauncher,
+      admit: async (request) => ({ ok: true, grant: { ...defaultModuleState(), ...request } }),
+      providers: async () => [provider({ providerId: "anthropic_sub", loginMethod: "browser-auth", accounts: [account("one")] })],
+      settleCatalog: () => async () => {}, refresh: async () => {}, publishNotice: async () => {},
+      optIn: (_providerId, profileId) => turnedOn.includes(profileId) ? undefined : { warning: "WARNING", turnOn: async () => { turnedOn.push(profileId); } },
+      loginFlows: () => ({
+        flow: "browser",
+        login: async () => { throw new Error("must reconnect"); },
+        reconnect: async (_instanceId, ports) => { starts += 1; ports.onAuthorizeUrl?.({ url: "https://example.invalid/login" }); return await new Promise<boolean>(() => {}); },
+      }),
+      log: silentLog,
+    });
+    try {
+      expect(await login.login({ providerId: "anthropic_sub", instanceId: "one", loginQuestionId: id })).toMatchObject({ kind: "needs_opt_in", profileId: "b", warning: "WARNING" });
+      expect(observations.loginQuestions().map((question) => question.phase)).toEqual(["asking"]);
+      let released = false;
+      void waiting.then(() => { released = true; });
+      await Promise.resolve();
+      expect(released).toBe(false);
+      expect(await login.login({ providerId: "anthropic_sub", instanceId: "one", loginQuestionId: id, turnOn: true })).toMatchObject({ kind: "browser" });
+      expect({ turnedOn, starts }).toEqual({ turnedOn: ["b"], starts: 1 });
+    } finally { login.dispose(); }
+  });
+
   test.each(["preflight", "before-url"] as const)("a scoped close during %s prevents a late login from starting or opening", async (stage) => {
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
     const observations = observedLogins(target);

@@ -96,6 +96,22 @@ describe("createSettingsStore", () => {
       dispose()
     })
   })
+  it("accepts a turn-off whose publication drops the profile table", async () => {
+    clearMocks()
+    await createRoot(async (dispose) => {
+      const { settings, configDispatch, publishConfig } = createModal()
+      publishConfig({ revision: 2, values: configValues({ profiles: { work: { ...profileConfig(), allowGoogleAntigravity: true } } }), status: { kind: "valid" }, warnings: [], diagnostics: [] })
+      configDispatch.mockResolvedValueOnce({ kind: "committed", revision: 3 })
+
+      const update = settings.updateProfileBoolean("work", "allowGoogleAntigravity", false)
+      await Promise.resolve()
+      publishConfig({ revision: 3, values: configValues({ profiles: {} }), status: { kind: "valid" }, warnings: [], diagnostics: [] })
+
+      expect(await update).toEqual({ ok: true })
+      expect(settings.profileBoolean("work", "allowGoogleAntigravity")).toBe(false)
+      dispose()
+    })
+  })
   it("writes Show build to the connected project scope and reads the resolved value", async () => {
     clearMocks()
     await createRoot(async (dispose) => {

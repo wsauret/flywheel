@@ -251,6 +251,9 @@ export interface AccessProviderModelEligibility {
   readonly candidateOfferings: (candidate: AccessProviderCandidate, model: string, allowTrainingRoutes: boolean) => readonly AccessProviderCandidateAttribution[];
   /** Whether no account can serve a request yet because a configured account's model access is still being checked. */
   readonly accessPending: (allowTrainingRoutes?: boolean) => boolean;
+  /** The provider whose account would offer `model` but is turned off for the profile (`profileOptIn`), when no other
+   *  reason keeps it from serving; undefined otherwise. */
+  readonly turnedOffProvider: (model: string) => AccessProviderId | undefined;
 }
 
 export interface AccessProviderCatalogFetchInput {
@@ -368,7 +371,14 @@ interface AccessProviderDefinitionBase {
   readonly usage?: AccessProviderUsage;
   /** Conversions of the state that this provider stored in an earlier shape, each with its removal date. */
   readonly profileConversions?: readonly AuthProfileConversion[];
+  /** The auth profile setting that turns the provider on, for a provider that stays off in each profile until the
+   *  person confirms `warning` (PI-MODEL-096). While the setting is off, the provider signs in to nothing, lists no
+   *  model, and serves no request of that profile (ARCH-PROVIDERS-088). */
+  readonly profileOptIn?: { readonly setting: ProviderOptInSettingId; readonly warning: string };
 }
+
+/** The auth profile settings that turn on a provider which stays off until the person turns it on. */
+export type ProviderOptInSettingId = "allowGoogleAntigravity";
 
 /** Whether a request may move between the accounts of one provider. Absent, it moves in account order when an account
  *  cannot serve (PI-MODEL-058). `never` is for a provider whose terms forbid that move (PI-MODEL-094): each request
@@ -415,6 +425,11 @@ export function apiKeyRejectionReason(definitions: readonly AccessProviderDefini
   return `This looks like ${match.description} ("${match.prefix}..."). Use the ${match.definition.displayName} provider for it, or enter a key for ${target.definition.displayName}.`;
 }
 
+/** What a person reads about a provider that its `profileOptIn` setting keeps off for the profile (PI-MODEL-096). */
+export function providerTurnedOffMessage(displayName: string): string {
+  return `${displayName} is off for this profile. Turn it on in Settings.`;
+}
+
 export interface AdmittedFailoverPlan {
   readonly kind: "admitted";
   readonly connectionId: string;
@@ -428,7 +443,9 @@ export interface AdmittedFailoverPlan {
  *  provider that offers the model, or a finished check of the account's model
  *  access. Each needs a different remedy: setting up a provider, choosing
  *  another model, or trying again in a moment. */
-export type ModelUnavailableMissing = "provider" | "offering" | "access";
+/** What keeps a model from serving: no provider is set up, none offers the model, its access is still being checked, or
+ *  only a provider that the profile keeps off offers it (`turned_off`, PI-MODEL-096). */
+export type ModelUnavailableMissing = "provider" | "offering" | "access" | "turned_off";
 
 export type FailoverPlan =
   | AdmittedFailoverPlan
@@ -540,8 +557,8 @@ function planProviderChain(model: string, connection: ProviderConnection, eligib
     || (connection.subscriptionCredentials.get(definition.id)?.length ?? 0) > 0
   );
   const missing: ModelUnavailableMissing = configured.length === 0 ? "provider" : eligibility?.accessPending(allowTrainingRoutes) === true ? "access" : "offering";
-  const unavailable = (reason: string): FailoverPlan =>
-    Object.freeze({ kind: "unavailable" as const, connectionId: connection.id, model: normalized, reason, missing });
+  const unavailable = (reason: string, cause: ModelUnavailableMissing = missing): FailoverPlan =>
+    Object.freeze({ kind: "unavailable" as const, connectionId: connection.id, model: normalized, reason, missing: cause });
   if (eligibility !== undefined) {
     const candidateAttributions = configured
       .flatMap((definition) => candidatesForProvider(definition.id, connection).map((candidate) => ({ candidate, rank: definition.rank })))
@@ -566,7 +583,12 @@ function planProviderChain(model: string, connection: ProviderConnection, eligib
       ? undefined
       : offeringTransportFamily(candidateAttributions[0].transport);
     if (family === undefined || candidateAttributions.length === 0) {
-      return unavailable(`No captured provider catalog maps "${normalized}" to a wire model id.`);
+      // Only a provider of this selection names the cause; a disabled module's provider serves nothing either way.
+      const turnedOffId = eligibility.turnedOffProvider(normalized);
+      const turnedOff = providerDefinitions().find((definition) => definition.id === turnedOffId);
+      return turnedOff === undefined
+        ? unavailable(`No captured provider catalog maps "${normalized}" to a wire model id.`)
+        : unavailable(providerTurnedOffMessage(turnedOff.displayName), "turned_off");
     }
     return Object.freeze({
       kind: "admitted" as const,

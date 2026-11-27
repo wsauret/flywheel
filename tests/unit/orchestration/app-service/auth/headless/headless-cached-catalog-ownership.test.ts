@@ -164,6 +164,7 @@ describe("headless cached catalog ownership", () => {
       profile: { id: "default", directory: profileDirectory },
       moduleSelection: testCapabilityModules,
       allowTrainingRoutes: false,
+      providerOptIns: { allowGoogleAntigravity: false },
       resolveKey: async () => undefined,
       connection,
       workflowPreparation: workflowPreparation(userDataRoot),
@@ -340,6 +341,7 @@ describe("headless cached catalog ownership", () => {
       profile: { id: "default", directory: profileDirectory },
       moduleSelection: testCapabilityModules,
       allowTrainingRoutes: false,
+      providerOptIns: { allowGoogleAntigravity: false },
       resolveKey: async () => {
         if (++keyResolutions === 2) {
           captureEntered.resolve();

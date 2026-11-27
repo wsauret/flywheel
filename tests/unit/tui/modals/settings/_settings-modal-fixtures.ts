@@ -47,7 +47,7 @@ export const settingsOperations = {
 /** The Copilot cap as the module declares it, for the rows the fixtures exercise. */
 export const COPILOT_CAP = { control: "number", key: "monthly_credit_cap", label: "Copilot monthly credit cap", description: "Monthly AI Credits cap for pooled Copilot seats. 0 means no cap.", min: 0, max: 1_000_000, off: 0, defaultValue: 3_900, group: "Model providers", providerId: "github_copilot" } as const
 export const COPILOT_CAP_ROW_ID = `provider-setting:${COPILOT_CAP.providerId}:${COPILOT_CAP.key}`
-export const profileConfig = (monthlyCreditCap = 3_900, gitAiAttribution = false, allowTrainingRoutes = false) => ({ gitAiAttribution, allowTrainingRoutes, roles: {}, providers: { github_copilot: { monthly_credit_cap: monthlyCreditCap } } })
+export const profileConfig = (monthlyCreditCap = 3_900, gitAiAttribution = false, allowTrainingRoutes = false, allowGoogleAntigravity = false) => ({ gitAiAttribution, allowTrainingRoutes, allowGoogleAntigravity, roles: {}, providers: { github_copilot: { monthly_credit_cap: monthlyCreditCap } } })
 
 
 
@@ -261,7 +261,7 @@ export function createModal(options: {
     }
     const values = config().values
     const next = command.target?.kind === "profile"
-      ? { ...values, profiles: { ...values.profiles, [command.target.profileId]: { ...profileConfig(), ...values.profiles[command.target.profileId], providers: { github_copilot: { monthly_credit_cap: command.setting.id === "provider" ? command.setting.desired : values.profiles[command.target.profileId]?.providers.github_copilot?.monthly_credit_cap ?? 3_900 } }, ...(command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes" ? { [command.setting.id]: command.setting.desired } : {}) } } }
+      ? { ...values, profiles: { ...values.profiles, [command.target.profileId]: { ...profileConfig(), ...values.profiles[command.target.profileId], providers: { github_copilot: { monthly_credit_cap: command.setting.id === "provider" ? command.setting.desired : values.profiles[command.target.profileId]?.providers.github_copilot?.monthly_credit_cap ?? 3_900 } }, ...(command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes" || command.setting.id === "allowGoogleAntigravity" ? { [command.setting.id]: command.setting.desired } : {}) } } }
       : command.setting.id === "module" ? { ...values, moduleSections: { ...values.moduleSections, [command.setting.section]: { ...values.moduleSections[command.setting.section], [command.setting.key]: command.setting.desired } } }
       : { ...values, [command.setting.id]: command.setting.desired }
     publishConfig({ revision: config().revision + 1, values: next, status: { kind: "valid" }, warnings: [], diagnostics: [] })
@@ -272,11 +272,11 @@ export function createModal(options: {
     const setting = command.setting
     if (command.target?.kind === "profile") {
       const profile = values.profiles[command.target.profileId]
-      if (setting.id === "gitAiAttribution" || setting.id === "allowTrainingRoutes") return profile?.[setting.id] === setting.desired
+      if (setting.id === "gitAiAttribution" || setting.id === "allowTrainingRoutes" || setting.id === "allowGoogleAntigravity") return profile?.[setting.id] === setting.desired
       return setting.id === "provider" && profile?.providers[setting.providerId]?.[setting.key] === setting.desired
     }
     if (setting.id === "module") return JSON.stringify(values.moduleSections[setting.section]?.[setting.key]) === JSON.stringify(setting.desired)
-    return setting.id !== "gitAiAttribution" && setting.id !== "allowTrainingRoutes" && setting.id !== "provider" && values[setting.id] === setting.desired
+    return setting.id !== "gitAiAttribution" && setting.id !== "allowTrainingRoutes" && setting.id !== "allowGoogleAntigravity" && setting.id !== "provider" && values[setting.id] === setting.desired
   }
   const settings = createSettingsStore({ view: config, settlePublication: async (command, revision) => config().revision >= revision && (command.type === "config.reset" || settled(command)) }, { dispatch: runtimeDispatch({ "config.mutate": configDispatch, "config.reset": configDispatch }) })
   const modal = useSettingsModal({

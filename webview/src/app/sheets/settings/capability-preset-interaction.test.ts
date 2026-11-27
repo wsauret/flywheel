@@ -1,6 +1,7 @@
 import type { RuntimeModulesView } from "../../../../../src/protocol/runtime/module-protocol-types.js"
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../../../src/protocol/client/providers/antigravity-warning-copy.js"
 import { fileURLToPath } from "node:url"
 import { importBuiltModule } from "../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../test-support/solid-transform.js"
@@ -243,5 +244,39 @@ test("settings states what a switch cannot show: an adjusted value and an attrib
     assert.deepEqual(mounted.problems(), ["Git AI attribution is unavailable because git-ai is not installed"])
     mounted.publishSettings({ gitAiAttribution: false })
     assert.deepEqual(mounted.problems(), [])
+  } finally { mounted.dispose() }
+})
+
+test("settings turns Google Antigravity on only after its warning is confirmed, and off at once (PI-MODEL-096)", async () => {
+  const mounted = mountCapabilityPreset("settings")
+  const write = (expected: boolean, desired: boolean) => ({
+    type: "config.mutate", target: { kind: "profile", profileId: "default" }, setting: { id: "allowGoogleAntigravity", expected: { kind: "value", value: expected }, desired },
+  })
+  try {
+    await mounted.ready()
+    mounted.toggle("Allow Google Antigravity")
+    await mounted.ready()
+    assert.equal(mounted.confirmations.length, 1)
+    assert.equal(mounted.confirmations[0]?.detail, GOOGLE_ANTIGRAVITY_WARNING)
+    assert.equal(mounted.confirmations[0]?.confirmLabel, "Turn on")
+    mounted.answer(false)
+    await mounted.ready()
+    assert.deepEqual(mounted.mutations, [])
+
+    // A profile switch while the warning is open still turns on only the profile that the warning was shown for.
+    mounted.toggle("Allow Google Antigravity")
+    await mounted.ready()
+    assert.deepEqual(mounted.mutations, [])
+    mounted.publishSettings({ profileId: "work", allowGoogleAntigravity: true })
+    mounted.answer(true)
+    await mounted.ready()
+    assert.deepEqual(mounted.mutations, [write(false, true)])
+    mounted.publishSettings({ profileId: "default", allowGoogleAntigravity: false })
+
+    mounted.publishSettings({ allowGoogleAntigravity: true })
+    mounted.toggle("Allow Google Antigravity")
+    await mounted.ready()
+    assert.equal(mounted.confirmations.length, 2)
+    assert.deepEqual(mounted.mutations, [write(false, true), write(true, false)])
   } finally { mounted.dispose() }
 })

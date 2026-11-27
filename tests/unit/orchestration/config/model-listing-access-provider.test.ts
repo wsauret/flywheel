@@ -48,4 +48,11 @@ describe("access provider family chains", () => {
       { wireModelId: "openai/gpt-5.4", transport: "chat-completions" },
     ]);
   });
+
+  it("names the turned-off provider when only it would offer the model, and only a provider of the selection (PI-MODEL-096)", () => {
+    const connection = captureProviderConnection({ authDir: AUTH_DIR, auth: AUTH_NONE });
+    const eligibility = testEligibility({ turnedOffProvider: (model) => model === "gemini-3.8-pro" ? "google_antigravity" : model === "gemini-3.8-flash" ? "no_such_provider" : undefined });
+    expect(testProviderSelection().plan("gemini-3.8-pro", connection, eligibility)).toMatchObject({ kind: "unavailable", missing: "turned_off", reason: "Google Antigravity is off for this profile. Turn it on in Settings." });
+    expect(testProviderSelection().plan("gemini-3.8-flash", connection, eligibility)).toMatchObject({ kind: "unavailable", reason: 'No captured provider catalog maps "gemini-3.8-flash" to a wire model id.' });
+  });
 });

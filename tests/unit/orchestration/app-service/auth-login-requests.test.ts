@@ -42,6 +42,78 @@ describe("auth login requests", () => {
     login.dispose();
   });
 
+  test("a provider that the profile keeps off answers its warning, starts nothing, and signs in only after turnOn", async () => {
+    const started: string[] = [];
+    const turnedOn: string[] = [];
+    const flow: ProviderOAuthLogin = {
+      flow: "browser",
+      login: async (browser) => {
+        started.push("login");
+        browser.onAuthorizeUrl?.({ url: "https://example.invalid/authorize" });
+        return testAuthContext();
+      },
+      reconnect: async () => true,
+    };
+    let on = false;
+    const login = createAuthLoginService({
+      resolveProfile: (profileId = "default") => profileId === "default" ? { id: "default", directory: "/scratch/does-not-matter" } : undefined,
+      resolveKey: async (value) => Redacted.make(value), launcher: refusingLauncher, openBrowser: async () => false,
+      admit: async (request) => ({ ok: true, grant: { ...defaultModuleState(), ...request } }),
+      providers: async () => [provider({ providerId: "google_antigravity", loginMethod: "browser-auth", displayName: "Google Antigravity" })],
+      settleCatalog: () => async () => {}, refresh: async () => {}, publishNotice: async () => {},
+      loginFlows: (providerId) => providerId === "google_antigravity" ? flow : undefined, log: silentLog,
+      optIn: (providerId, profileId) => on || providerId !== "google_antigravity" ? undefined : { warning: "WARNING", turnOn: async () => { turnedOn.push(profileId); on = true; } },
+    });
+    try {
+      expect(await login.login({ providerId: "google_antigravity" })).toEqual({ kind: "needs_opt_in", providerId: "google_antigravity", profileId: "default", displayName: "Google Antigravity", warning: "WARNING" });
+      expect(started).toEqual([]);
+      expect(turnedOn).toEqual([]);
+      expect(await login.login({ providerId: "google_antigravity", turnOn: true })).toMatchObject({ kind: "browser" });
+      expect(turnedOn).toEqual(["default"]);
+      expect(started).toEqual(["login"]);
+    } finally {
+      login.dispose();
+    }
+  });
+
+  test("turning the provider off for the profile stops its running sign-in and says why", async () => {
+    let stopped = false;
+    const flow: ProviderOAuthLogin = {
+      flow: "browser",
+      login: (browser) => new Promise((_, reject) => {
+        browser.signal?.addEventListener("abort", () => { stopped = true; reject(new Error("Login cancelled")); }, { once: true });
+        browser.onAuthorizeUrl?.({ url: "https://example.invalid/authorize" });
+      }),
+      reconnect: async () => true,
+    };
+    let on = true;
+    const changed: Array<() => void> = [];
+    const notices: AuthOperationNotice[] = [];
+    const login = createAuthLoginService({
+      resolveProfile: (profileId = "default") => profileId === "default" ? { id: "default", directory: "/scratch/does-not-matter" } : undefined,
+      resolveKey: async (value) => Redacted.make(value), launcher: refusingLauncher, openBrowser: async () => false,
+      admit: async (request) => ({ ok: true, grant: { ...defaultModuleState(), ...request } }),
+      providers: async () => [provider({ providerId: "google_antigravity", loginMethod: "browser-auth", displayName: "Google Antigravity" })],
+      settleCatalog: () => async () => {}, refresh: async () => {}, publishNotice: async (notice) => { notices.push(notice); },
+      loginFlows: (providerId) => providerId === "google_antigravity" ? flow : undefined, log: silentLog,
+      optIn: (providerId) => on || providerId !== "google_antigravity" ? undefined : { warning: "WARNING", turnOn: async () => { on = true; } },
+      watchOptIns: (listener) => { changed.push(listener); return async () => {}; },
+    });
+    try {
+      const first = await login.login({ providerId: "google_antigravity" });
+      if (first.kind !== "browser") throw new Error(`Expected a browser step, got ${first.kind}`);
+      for (const listener of changed) listener();
+      expect(stopped).toBe(false);
+      on = false;
+      for (const listener of changed) listener();
+      await Bun.sleep(0);
+      expect(stopped).toBe(true);
+      expect(notices).toContainEqual({ kind: "failed", operationId: first.operationId, providerId: "google_antigravity", message: "Google Antigravity was turned off for this profile, so its sign-in stopped." });
+    } finally {
+      login.dispose();
+    }
+  });
+
   test("the runtime opens the sign-in page only for a client at its machine", async () => {
     const opened: string[] = [];
     const ports: boolean[] = [];

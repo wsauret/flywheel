@@ -255,7 +255,7 @@ describe("held global default roles", () => {
     expect((await service.globalDefaultRoles()).chat?.model).toBe("gpt-5-mini")
     expect(reads).toBeGreaterThan(afterFirst)
 
-    config = { ...CONFIG_DEFAULTS, profiles: { default: { roles: { chat: { model: "gpt-5.5", effort: "high" } }, git_ai_attribution: false, allow_training_routes: false, providers: {} } } }
+    config = { ...CONFIG_DEFAULTS, profiles: { default: { roles: { chat: { model: "gpt-5.5", effort: "high" } }, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: {} } } }
     expect((await service.globalDefaultRoles()).chat).toMatchObject({ model: "gpt-5.5", effort: "high" })
     const afterConfigChange = reads
     expect(afterConfigChange).toBeGreaterThan(afterFirst)

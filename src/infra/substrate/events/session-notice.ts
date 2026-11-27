@@ -21,8 +21,9 @@ interface SessionNoticeRetry {
 }
 
 /** Why an agent's model cannot serve now: its usage limit is spent, it is
- *  rate limited, its providers cannot serve it, or no signed-in account or
- *  enabled provider offers it. */
+ *  rate limited, its providers cannot serve it, no signed-in account or
+ *  enabled provider offers it, or only a provider that the profile keeps off
+ *  offers it (PI-MODEL-096). */
 export type CapacityWaitReason = typeof CAPACITY_WAIT_REASONS[number];
 
 /** The words that state `reason` after a model's name, such as "its usage limit is spent". */
@@ -32,6 +33,7 @@ export function capacityWaitReasonText(reason: CapacityWaitReason): string {
     case "rate_limited": return "it is rate limited";
     case "unavailable": return "its providers cannot serve it";
     case "not_offered": return "no signed-in account or enabled provider offers it";
+    case "turned_off": return "only a provider that this profile keeps off offers it, so turn that provider on in Settings";
   }
 }
 

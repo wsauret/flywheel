@@ -17,10 +17,10 @@ import {
   providerLoginFlow,
 } from "../../orchestration/auth/auth-actions.js"
 import { AuthProfileManager, type AuthProfileResolution } from "../../orchestration/auth/auth-profile-manager.js"
-import { accessProviderRegistry } from "../../orchestration/config/models/access-provider-registry.js"
+import { accessProviderRegistry, profileProviderOptIns } from "../../orchestration/config/models/access-provider-registry.js"
 import { webAuthProviderDefinitions } from "../../orchestration/module-contract/module-composition.js"
 import type { FirstPartyModuleComposition } from "../../orchestration/module-contract/module-catalog.js"
-import { createRuntimeConfigOwner } from "../../orchestration/config/runtime-config-owner.js"
+import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../orchestration/config/runtime-config-owner.js"
 import { publishCustomProvidersFromConfig } from "../../orchestration/config/custom-providers.js"
 import { PromptCancelled, promptCancelledExitCode, type ReadlinePrompt } from "../readline-prompt.js"
 
@@ -146,7 +146,8 @@ export async function runAuth(args: string[], directories: ProjectDirectories, d
     }
     switch (command) {
       case "login": {
-        const providerId = flaggedProvider(command, args.slice(1), providers, deps)
+        const providerId = flaggedProvider(command, args.slice(1), providers, deps) ?? await selectProvider("log in with", providers, deps)
+        if (!await turnedOnForLogin(providerId, profile.id, runtimeConfig, deps)) throw new PromptCancelled("no-answer")
         const access = await manager.acquireAccess({ createDefault: true })
         try { await login(providerId, providers, profile, access, deps) } finally { access.close() }
         break
@@ -196,8 +197,23 @@ async function selectProvider(verb: string, providers: readonly CredentialProvid
   }
 }
 
-async function login(providerId: CredentialProviderId | undefined, providers: readonly CredentialProvider[], profile: Pick<AuthProfileResolution, "id" | "directory">, access: AuthProfileAccess, deps: AuthCommandDependencies): Promise<void> {
-  const selectedId = providerId ?? await selectProvider("log in with", providers, deps)
+/** Whether the login may continue: a provider that the profile keeps off (PI-MODEL-096) shows its warning first, and
+ *  only a yes turns it on. Any other answer leaves the configuration as it was, and the login contacts no one. The
+ *  setting is read from the file at this point, because the command's configuration does not watch it and a picker
+ *  can wait while another client changes it. */
+async function turnedOnForLogin(providerId: CredentialProviderId, profileId: string, runtimeConfig: RuntimeConfigOwner, deps: AuthCommandDependencies): Promise<boolean> {
+  const { config } = await runtimeConfig.refresh()
+  const optIn = accessProviderRegistry(deps.composition(config.modules)).selection.definitions.find(({ id }) => id === providerId)?.profileOptIn
+  if (optIn === undefined || profileProviderOptIns(config.profiles[profileId])[optIn.setting]) return true
+  deps.log(`${optIn.warning}\n`)
+  const answer = (await deps.prompt("Turn it on? [y/N] ")).trim().toLowerCase()
+  if (answer !== "y" && answer !== "yes") return false
+  const result = await runtimeConfig.mutateProfileBoolean(optIn.setting, profileId, false, true)
+  if (!result.ok) throw new Error(`The setting was not changed: ${result.error.message}`)
+  return true
+}
+
+async function login(selectedId: CredentialProviderId, providers: readonly CredentialProvider[], profile: Pick<AuthProfileResolution, "id" | "directory">, access: AuthProfileAccess, deps: AuthCommandDependencies): Promise<void> {
   const selected = providers.find(({ id }) => id === selectedId)
   if (selected === undefined) throw new Error(`Unknown credential provider: ${selectedId}`)
 

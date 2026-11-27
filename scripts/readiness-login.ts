@@ -245,7 +245,8 @@ export interface HomeLogin {
  *  that logs in to `engine` in that profile: `flywheel auth login`, from this checkout, which runs the engine's own
  *  login in a login folder of the profile. The live tier reads that profile and refuses a home without it. The
  *  profile is found as the live tier finds it (`liveClaudeAccounts`): by the environment selector, whose display name
- *  match ignores case, as the profile store's name conflict check does. */
+ *  match ignores case, as the profile store's name conflict check does. The Antigravity login first shows the warning
+ *  of a provider that the profile keeps off, and the person's yes turns it on for that profile (PI-MODEL-096). */
 export async function inHomeLogin(home: string, bunExecutable: string, root: string, profile: string, engine: ReleaseEngine): Promise<HomeLogin> {
   mkdirSync(home, { recursive: true });
   const userDataRoot = join(canonicalAccountHome(home), FLYWHEEL_DIR_NAME);

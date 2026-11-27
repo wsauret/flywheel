@@ -31,7 +31,7 @@ export function mountCapabilityPreset(sheet: "settings" | "capabilities") {
       workflowMode: "off", persistentProcesses: current.persistentProcesses, moduleSettings: [],
       compactionThreshold: 50_000, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt",
       showThinking: true, showBuild: false, writeSyntaxTheme: "nord", diffColors: "theme",
-      profileId: "default", providerSettings: [], gitAiAttribution: false, allowTrainingRoutes: false, problems: [],
+      profileId: "default", providerSettings: [], gitAiAttribution: false, allowTrainingRoutes: false, allowGoogleAntigravity: false, problems: [],
       profile: { displayName: "Default", count: 1 }, configProblems: [],
       seatSlot: { kind: "role", roleId: "chat" }, seatEfforts: [],
     }
@@ -62,13 +62,14 @@ export function mountCapabilityPreset(sheet: "settings" | "capabilities") {
     })
     /** The settings as the runtime holds them after every write so far, as a refresh reads them. */
     const written = (before: PanelSettings): PanelSettings => {
-      let { workflowMode, compactionThreshold, autoDeleteSessionDays } = before
+      let { workflowMode, compactionThreshold, autoDeleteSessionDays, allowGoogleAntigravity } = before
       for (const mutation of mutations) {
         if (mutation.type === "settings.set_workflow_mode") workflowMode = mutation.mode
         if (mutation.type === "config.mutate" && mutation.setting.id === "proactiveCompactionThreshold") compactionThreshold = Number(mutation.setting.desired)
         if (mutation.type === "config.mutate" && mutation.setting.id === "autoDeleteSessionDays") autoDeleteSessionDays = Number(mutation.setting.desired)
+        if (mutation.type === "config.mutate" && mutation.setting.id === "allowGoogleAntigravity") allowGoogleAntigravity = mutation.setting.desired === true
       }
-      return { ...before, workflowMode, compactionThreshold, autoDeleteSessionDays }
+      return { ...before, workflowMode, compactionThreshold, autoDeleteSessionDays, allowGoogleAntigravity }
     }
     const actions = createClientActions({
       session: fakeRuntimeSession({ get settings() { return settings }, refreshSettings: async () => { settings = written(settings) } }),

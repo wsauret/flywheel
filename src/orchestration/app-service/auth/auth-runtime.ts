@@ -56,7 +56,7 @@ import { createAuthSettlementCoordinator } from "./auth-settlement-coordinator.j
 import { resolveHeadlessAuth, type HeadlessAuthSelection } from "./headless/headless-profile-runtime.js"
 import { connectionEligibilitySources } from "./headless/snapshot-eligibility.js"
 
-import { accessProviderRegistry } from "../../config/models/access-provider-registry.js"
+import { accessProviderRegistry, onProviderOptInChange, profileTurnedOffProviders } from "../../config/models/access-provider-registry.js"
 import { capacityWaitRechecks, type CapacityWaits } from "./capacity-wait-rechecks.js"
 import type { RuntimeChatDefault } from "../../../protocol/runtime/app-service-types.js"
 import type { RuntimeModelCatalogRefreshScope } from "../../../protocol/auth/provider-model-preference-protocol-types.js"
@@ -243,7 +243,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
   }
   const prepareEligibility = options.own("auth-eligibility-preparation", createEligibilityPreparation({
     userDataRoot: options.userDataRoot, resolveKey: options.resolveKey,
-    allowTrainingRoutes: (profileId) => options.runtimeConfig.snapshot().config.profiles[profileId]?.allow_training_routes ?? false,
+    allowTrainingRoutes: (profileId) => options.runtimeConfig.snapshot().config.profiles[profileId]?.allow_training_routes ?? false, turnedOffProviders: profileTurnedOffProviders(options.moduleSelection, options.runtimeConfig),
     ...(launcher === undefined ? {} : { launcher }),
     moduleSelection: options.moduleSelection,
     prepare: providerModels.prepare,
@@ -575,6 +575,9 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
   }), (owned) => owned.dispose())
   reconcileAuthFileWatchers = authFileWatchers.reconcile
   options.own("auth-project-profile-subscription", options.runtimeConfig.subscribe("auth", () => refreshCoordinator.refresh()), (unsubscribe) => unsubscribe())
+  // A provider that a profile turns on or off changes which accounts may list and serve, so the profile refreshes as a
+  // changed login does: its eligibility, its sessions' plans, and its auth view (ARCH-PROVIDERS-088).
+  options.own("auth-provider-opt-in-subscription", onProviderOptInChange(options.runtimeConfig, options.moduleSelection, (profileId) => { void refreshCoordinator.refresh(profileId) }), (unsubscribe) => unsubscribe())
   // A module turned on may be a notification consumer that heard none of the
   // earlier statements; a module turned off changes the providers a view shows.
   options.own("auth-capability-subscription", options.capabilities.onChange(() => {

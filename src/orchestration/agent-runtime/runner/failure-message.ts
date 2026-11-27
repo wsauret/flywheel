@@ -55,6 +55,16 @@ export function describeAgentFailure(reason: AgentFailureReason): AgentFailureCo
           action: { label: "Set up providers", command: "/auth" },
         };
       }
+      if (reason.missing === "turned_off") {
+        // The message names the provider that the profile keeps off (PI-MODEL-096).
+        return {
+          presentation: "provider.unavailable",
+          title: "Provider turned off",
+          message: reason.message,
+          guidance: "Turn it on in Settings, or choose another model with /model.",
+          action: { label: "Open Settings", command: "/settings" },
+        };
+      }
       if (reason.missing === "access") {
         // A pending check ends by itself, and nothing resends the failed message.
         return {
@@ -137,7 +147,7 @@ export function formatAgentFailure(reason: AgentFailureReason): string {
     case "api_error":
       return providerErrorProse(describeAgentFailure(reason));
     case "model_unavailable":
-      return reason.missing === "offering" ? reason.message : providerErrorProse(describeAgentFailure(reason));
+      return reason.missing === "offering" || reason.missing === "turned_off" ? reason.message : providerErrorProse(describeAgentFailure(reason));
     case "transient_disconnect":
     case "stream_stalled":
     case "api_overloaded":

@@ -50,6 +50,9 @@ export type ProviderSettingsTarget =
   | { readonly kind: "provider"; readonly modelTarget: ProviderModelTarget }
   | { readonly kind: "account"; readonly account: AuthProviderAccountStatus; readonly modelTarget: ProviderModelTarget; readonly capability?: SubscriptionCapabilityAccount }
 
+/** What a login confirmation asks: to replace free-plan accounts, or to turn on a provider that the profile keeps off. */
+export type LoginConfirmationQuestion = "replace-free-plan" | "turn-on"
+
 export type AuthView =
   | { kind: "list" }
   | { kind: "login-question"; question: RuntimeAuthLoginQuestion; choice: "login" | "decline"; submitting?: true }
@@ -69,7 +72,9 @@ export type AuthView =
   /** A question the provider's login flow asks before it starts. */
   | { kind: "login-prompt"; providerId: CredentialProviderId; label: string; prompt: RuntimeAuthLoginPrompt }
   /** The runtime asks before a new paid account replaces the free-plan accounts of its provider (PI-MODEL-069). */
-  | { kind: "login-confirmation"; providerId: CredentialProviderId; label: string; message: string; choice: "replace" | "keep"; submitting?: true }
+  /** A login asks before it goes on: whether a paid account replaces the free-plan accounts of its provider, or whether
+   *  a provider that the profile keeps off turns on (PI-MODEL-096). `replace` is the choice that goes on. */
+  | { kind: "login-confirmation"; providerId: CredentialProviderId; label: string; message: string; question: LoginConfirmationQuestion; choice: "replace" | "keep"; submitting?: true }
   | { kind: "device-code"; providerId: CredentialProviderId; label: string; userCode?: string; url: string; question?: RuntimeAuthLoginQuestion }
   /** A browser login, with the field for the code or address that the provider's page shows; `submitted` once the
    *  person gave one, while the login checks it. */

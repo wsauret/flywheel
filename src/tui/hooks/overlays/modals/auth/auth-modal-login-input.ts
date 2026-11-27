@@ -1,6 +1,6 @@
 import type { RuntimeAuthLoginPrompt } from "../../../../../protocol/auth/auth-login-protocol-types.js"
 import type { CredentialProviderId } from "../../../../../infra/providers/auth/store/auth-store-types.js"
-import type { AuthView } from "../../../../modals/auth/auth-modal-options.js"
+import type { AuthView, LoginConfirmationQuestion } from "../../../../modals/auth/auth-modal-options.js"
 
 /** Owns the one outstanding login answer. Leaving its attempt aborts the
  * wait; browser codes are credentials, not settings edits. */
@@ -42,21 +42,23 @@ export function createAuthModalLoginInput(deps: {
     return awaitAnswer(signal)
   }
   let confirmation: ((replace: boolean) => void) | undefined
-  /** Shows the runtime's question before a new account replaces free-plan accounts, and resolves with the person's
-   *  choice: true to replace them. Leaving the attempt rejects. */
-  function confirm(attemptId: number, signal: AbortSignal, option: { readonly id: CredentialProviderId; readonly label: string }, message: string): Promise<boolean> {
+  /** Shows the runtime's question before a login goes on, and resolves with the person's choice: true to go on.
+   *  Leaving the attempt rejects. */
+  function confirm(attemptId: number, signal: AbortSignal, option: { readonly id: CredentialProviderId; readonly label: string }, message: string, question: LoginConfirmationQuestion): Promise<boolean> {
     if (!deps.attemptCurrent(attemptId) || signal.aborted) return Promise.reject(new Error("Login cancelled"))
     const answer = Promise.withResolvers<boolean>()
     signal.addEventListener("abort", () => { confirmation = undefined; answer.reject(new Error("Login cancelled")) }, { once: true })
     confirmation = answer.resolve
-    deps.show({ kind: "login-confirmation", providerId: option.id, label: option.label, message, choice: "replace" })
+    // A warning starts on the choice that changes nothing, so Enter alone never turns a provider on (PI-MODEL-096).
+    deps.show({ kind: "login-confirmation", providerId: option.id, label: option.label, message, question, choice: question === "turn-on" ? "keep" : "replace" })
     return answer.promise
   }
   function answerConfirmation(replace: boolean): void {
     const answer = confirmation
     const view = deps.view()
     confirmation = undefined
-    if (answer !== undefined && replace && view.kind === "login-confirmation") deps.show({ ...view, submitting: true })
+    // Only a replacement waits on its confirmation view; a turned-on provider's sign-in goes on from the provider list.
+    if (answer !== undefined && replace && view.kind === "login-confirmation" && view.question === "replace-free-plan") deps.show({ ...view, submitting: true })
     answer?.(replace)
   }
   return { submit, awaitAnswer, ask, confirm, answerConfirmation }

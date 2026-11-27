@@ -24,13 +24,13 @@ const RuntimeConfigValuesSchema = Schema.Struct({
   showThinking: Schema.Boolean, idleCompaction: Schema.Boolean, writeSyntaxTheme: WriteSyntaxThemeIdSchema, requireWorkflowConfirmation: Schema.Boolean, diffColors: Schema.Literals(["theme", "standard"]), compatibleRendering: Schema.Literals(["auto", "on", "off"]), webSearchProvider: Schema.Literals(["chatgpt", "exa"]),
   fontTipDismissed: Schema.Boolean, tabsHintDismissed: Schema.Boolean, proactiveCompactionThreshold: Schema.Int, autoDeleteSessionDays: NonNegativeInt, showBuild: Schema.Boolean, moduleSections: Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Union([Schema.Boolean, Schema.Array(Schema.Int)]))), autoInstall: Schema.Boolean, notificationsDesktop: Schema.Boolean,
   acknowledgedReleaseVersion: Schema.optionalKey(ReleaseVersionSchema),
-  profiles: Schema.Record(Schema.String, Schema.Struct({ gitAiAttribution: Schema.Boolean, allowTrainingRoutes: Schema.Boolean, roles: Schema.Record(Schema.String, TierConfigViewSchema), providers: Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Number)) })), keybindings: Schema.Record(Schema.String, Schema.String),
+  profiles: Schema.Record(Schema.String, Schema.Struct({ gitAiAttribution: Schema.Boolean, allowTrainingRoutes: Schema.Boolean, allowGoogleAntigravity: Schema.Boolean, roles: Schema.Record(Schema.String, TierConfigViewSchema), providers: Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Number)) })), keybindings: Schema.Record(Schema.String, Schema.String),
   budget: Schema.Struct({ max_invocations: NonNegativeInt, max_tokens: NonNegativeInt, max_wall_clock_minutes: NonNegativeInt }), workflow: Schema.Struct({ max_attempts: NonNegativeInt }),
 })
 const RuntimeConfigSettingIdSchema = Schema.Literals([
   "theme", "moduleSelection", "allowPersistentProcesses", "shellWriteGuard", "foregroundBashHoldSeconds", "showThinking", "idleCompaction", "writeSyntaxTheme",
   "requireWorkflowConfirmation", "diffColors", "compatibleRendering", "webSearchProvider",
-  "fontTipDismissed", "tabsHintDismissed", "acknowledgedReleaseVersion", "proactiveCompactionThreshold", "autoDeleteSessionDays", "allowTrainingRoutes",
+  "fontTipDismissed", "tabsHintDismissed", "acknowledgedReleaseVersion", "proactiveCompactionThreshold", "autoDeleteSessionDays", "allowTrainingRoutes", "allowGoogleAntigravity",
   "autoInstall", "notificationsDesktop",
 ])
 const RuntimeConfigDiagnosticSchema = Schema.Struct({
@@ -58,6 +58,7 @@ const workspaceSettingMutationSchema = Schema.Union([
 const profileSettingMutationSchema = Schema.Union([
   configSettingMutationSchema("gitAiAttribution", Schema.Boolean),
   configSettingMutationSchema("allowTrainingRoutes", Schema.Boolean),
+  configSettingMutationSchema("allowGoogleAntigravity", Schema.Boolean),
   Schema.Struct({ id: Schema.Literal("provider"), providerId: Schema.NonEmptyString, key: Schema.NonEmptyString, expected: configExpectedSchema(Schema.Number), desired: Schema.Number }),
 ])
 export const RuntimeConfigMutationSchema: Schema.Codec<RuntimeConfigMutation> = Schema.Union([

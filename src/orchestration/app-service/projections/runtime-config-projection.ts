@@ -86,6 +86,7 @@ function projectRuntimeConfig(snapshot: RuntimeConfigSnapshot, projectRoot: stri
     profiles: Object.fromEntries(Object.entries(config.profiles).map(([id, profile]) => [id, {
       gitAiAttribution: profile.git_ai_attribution,
       allowTrainingRoutes: profile.allow_training_routes,
+      allowGoogleAntigravity: profile.allow_google_antigravity,
       roles: projectRoles(profile.roles),
       providers: projectProviderSettings(profile.providers, declaredProviderSettings),
     }])),
@@ -166,7 +167,7 @@ export function createRuntimeConfigProjection(options: {
       } else if (command.setting.id === "showBuild") {
         const { expected, desired } = command.setting
         result = await options.owner.mutateProjectShowBuild(options.projectRoot, expected.kind === "absent" ? PROJECT_SHOW_BUILD_DEFAULT : expected.value, desired)
-      } else if (command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes") {
+      } else if (command.setting.id === "gitAiAttribution" || command.setting.id === "allowTrainingRoutes" || command.setting.id === "allowGoogleAntigravity") {
         if (command.target?.kind !== "profile") return { kind: "parse-or-decode-failed", message: "The configuration is invalid and was not changed." }
         const { expected, desired } = command.setting
         result = await options.owner.mutateProfileBoolean(command.setting.id, command.target.profileId, expected.kind === "absent" ? false : expected.value, desired)

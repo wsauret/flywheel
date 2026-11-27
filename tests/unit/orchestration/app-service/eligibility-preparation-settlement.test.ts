@@ -39,7 +39,7 @@ const audited = (options: AuditedOptions = {}) => {
   const modes: string[] = []
   let listed = false
   let verified = 0
-  const prepare = createEligibilityPreparation({
+  const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
     userDataRoot: DIRECTORIES.userDataRoot,
     allowTrainingRoutes: () => false,
     resolveKey: async () => undefined,
@@ -96,7 +96,7 @@ describe("eligibility preparation settlement", () => {
       persist: async () => "next",
       persistAllDeselected: async () => "next",
     })
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -130,7 +130,7 @@ describe("eligibility preparation settlement", () => {
     })
     const refresh = Promise.withResolvers<void>()
     const modes: string[] = []
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -203,7 +203,7 @@ describe("eligibility preparation settlement", () => {
     const modes: string[] = []
     let clock = 0
     let applied = 0
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -259,7 +259,7 @@ describe("eligibility preparation settlement", () => {
     const applied = Promise.withResolvers<string>()
     let listed = false
     let verified = 0
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       userDataRoot: DIRECTORIES.userDataRoot,
       allowTrainingRoutes,
       resolveKey: async () => undefined,
@@ -435,7 +435,7 @@ describe("eligibility preparation settlement", () => {
       publish: (state) => { publications.push(state) },
     })
     const refresh = Promise.withResolvers<void>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
@@ -489,7 +489,7 @@ describe("eligibility preparation settlement", () => {
       persistAllDeselected: async () => preferenceRevision,
     })
     const refresh = Promise.withResolvers<void>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,

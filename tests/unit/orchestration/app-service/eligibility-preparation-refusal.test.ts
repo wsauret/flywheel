@@ -19,7 +19,7 @@ describe("eligibility preparation after a refusal", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const modes: string[] = []
     const held = Promise.withResolvers<void>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot, resolveKey: async () => undefined,
       moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: service.prepare, publish: service.publish, current: service.state,
@@ -49,7 +49,7 @@ describe("eligibility preparation after a refusal", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const order: string[] = []
     const applied = Promise.withResolvers<string>()
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot, resolveKey: async () => undefined,
       moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: service.prepare, publish: (state) => { order.push("publish"); service.publish(state) }, current: service.state,

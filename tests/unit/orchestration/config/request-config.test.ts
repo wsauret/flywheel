@@ -56,8 +56,8 @@ describe("runtime config request capture", () => {
     source.config = {
       ...source.config,
       profiles: {
-        work: { roles: {}, git_ai_attribution: true, allow_training_routes: true, providers: { github_copilot: { monthly_credit_cap: 1200 } } },
-        personal: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: 0 } } },
+        work: { roles: {}, git_ai_attribution: true, allow_training_routes: true, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 1200 } } },
+        personal: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 0 } } },
       },
     };
 
@@ -89,7 +89,7 @@ describe("runtime config request capture", () => {
     source.config = {
       ...source.config,
       cache_retention: { anthropic_api: "1h" },
-      profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: 1200 } } } },
+      profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 1200 } } } },
     };
     const inFlight = captureRuntimeConfigRequest(source, "work", false);
     const forced = captureRuntimeConfigRequest(source, "work", true);
@@ -103,7 +103,7 @@ describe("runtime config request capture", () => {
       foreground_bash_hold_seconds: 12,
       allow_persistent_processes: true,
       skills: { ...configSection(changed.config, skillsConfigSection), notifications: "verbose", review_interval_iterations: 3 },
-      profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: 0 } } } },
+      profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, allow_google_antigravity: false, providers: { github_copilot: { monthly_credit_cap: 0 } } } },
     };
     const next = captureRuntimeConfigRequest(changed, "work", false);
     const republished = { ...changed, revision: 3, config: { ...changed.config, cache_retention: { ...changed.config.cache_retention, anthropic_api: "1h" as const }, allow_persistent_processes: false } };

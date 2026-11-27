@@ -73,7 +73,7 @@ export const RuntimeSessionModelPlanResultSchema: Schema.Codec<RuntimeSessionMod
         AccessProviderCandidateSchema.members[1].pipe(Schema.fieldsAssign({ wireModelId: Schema.String })),
       ])),
     }),
-    Schema.Struct({ kind: Schema.Literal("unavailable"), model: Schema.String, reason: Schema.String, missing: Schema.Literals(["provider", "offering", "access"]) }),
+    Schema.Struct({ kind: Schema.Literal("unavailable"), model: Schema.String, reason: Schema.String, missing: Schema.Literals(["provider", "offering", "access", "turned_off"]) }),
   ])),
 })
 

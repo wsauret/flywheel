@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot, createSignal, runWithOwner } from "solid-js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
+import { GOOGLE_ANTIGRAVITY_WARNING } from "../../../../../src/protocol/client/providers/antigravity-warning-copy.js"
 import { activate, clearMocks, createModal, flush, rowIds, rowOf, valueOf } from "./_settings-modal-fixtures.js"
 import { createAuthProfileSelection } from "../../../../../src/tui/hooks/overlays/modals/profile/auth-profile-selection.js"
 import type { RuntimeAuthProfileRenameResult } from "../../../../../src/protocol/auth/auth-profile-selection-protocol-types.js"
@@ -24,6 +25,35 @@ describe("useSettingsModal auth profiles", () => {
 
       expect(configDispatch).toHaveBeenCalledWith({ type: "config.mutate", target: { kind: "profile", profileId: "default" }, setting: { id: "allowTrainingRoutes", expected: { kind: "value", value: false }, desired: true } })
       expect(valueOf(modal, "allow-training-routes")).toBe("On · Default")
+      dispose()
+    })
+  })
+
+  it("turns Google Antigravity on only after its warning is confirmed, and off with no question (PI-MODEL-096)", async () => {
+    clearMocks()
+    await createRoot(async (dispose) => {
+      const { modal, modals, configDispatch } = createModal()
+      modal.openSettingsModal()
+      expect(valueOf(modal, "google-antigravity")).toBe("Off · Default")
+
+      activate(modal, "google-antigravity")
+      expect(modal.settingsView()).toMatchObject({ kind: "confirmation", label: "Allow Google Antigravity", message: GOOGLE_ANTIGRAVITY_WARNING, choice: "cancel" })
+      modals.input({ name: "return" })
+      await flush()
+      expect(configDispatch).not.toHaveBeenCalled()
+      expect(valueOf(modal, "google-antigravity")).toBe("Off · Default")
+
+      activate(modal, "google-antigravity")
+      modals.input({ name: "left" })
+      modals.input({ name: "return" })
+      await flush()
+      expect(configDispatch).toHaveBeenCalledWith({ type: "config.mutate", target: { kind: "profile", profileId: "default" }, setting: { id: "allowGoogleAntigravity", expected: { kind: "value", value: false }, desired: true } })
+      expect(valueOf(modal, "google-antigravity")).toBe("On · Default")
+
+      activate(modal, "google-antigravity")
+      await flush()
+      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", target: { kind: "profile", profileId: "default" }, setting: { id: "allowGoogleAntigravity", expected: { kind: "value", value: true }, desired: false } })
+      expect(valueOf(modal, "google-antigravity")).toBe("Off · Default")
       dispose()
     })
   })

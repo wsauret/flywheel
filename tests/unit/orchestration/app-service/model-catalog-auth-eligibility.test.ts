@@ -150,7 +150,7 @@ describe("catalog auth eligibility", () => {
     const modes: string[] = []
     const capturedKeys: string[] = []
     let metadataRefreshes = 0
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot, resolveKey, moduleSelection: () => modules,
       prepare: service.prepare, publish: service.publish, current: service.state,
@@ -345,7 +345,7 @@ describe("catalog auth eligibility", () => {
     const refreshedPublished = Promise.withResolvers<void>();
     let background: Promise<unknown> | undefined;
     const backgroundStarted = Promise.withResolvers<void>();
-    const prepare = createEligibilityPreparation({
+    const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
       allowTrainingRoutes: () => false,
       userDataRoot: fixture.userDataRoot,
       resolveKey: async () => undefined,
@@ -403,7 +403,7 @@ describe("catalog auth eligibility", () => {
       let refresh: Promise<unknown> | undefined;
       const refreshStarted = Promise.withResolvers<void>();
       const refreshedPublished = Promise.withResolvers<void>();
-      const prepare = createEligibilityPreparation({
+      const prepare = createEligibilityPreparation({ turnedOffProviders: () => new Set(),
         allowTrainingRoutes: () => false,
         userDataRoot: fixture.userDataRoot,
         resolveKey: async () => undefined,
