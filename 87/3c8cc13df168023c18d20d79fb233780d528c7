@@ -1,0 +1,34 @@
+src/infra/substrate/store/fact-retention-registry.ts
+  h_4b47e9e4a8b456 69-71
+src/orchestration/app-service/projections/stopped-sessions-projection.ts
+  h_4b47e9e4a8b456 1-165
+src/orchestration/chat/lifecycle/runner-lifecycle.ts
+  h_4b47e9e4a8b456 44,105-122,304,315-321,336,373,482-486
+src/orchestration/session/persistence/session-fact-registry.ts
+  h_4b47e9e4a8b456 9,20
+src/orchestration/session/persistence/session-fact-writer.ts
+  h_4b47e9e4a8b456 10,19
+src/orchestration/session/turn-stop/turn-stop-facts.ts
+  h_4b47e9e4a8b456 1-35
+src/orchestration/session/turn-stop/turn-stop.ts
+  h_4b47e9e4a8b456 1-30
+src/protocol/session/chat-settlement-protocol-types.ts
+  h_4b47e9e4a8b456 24
+tests/unit/orchestration/app-service/chat-turn-stop-fact.test.ts
+  h_4b47e9e4a8b456 1-265
+tests/unit/orchestration/app-service/projections/stopped-sessions-projection.test.ts
+  h_4b47e9e4a8b456 1-147
+tests/unit/orchestration/chat/chat-turn-stop-terminals.test.ts
+  h_4b47e9e4a8b456 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "873c8cc13df168023c18d20d79fb233780d528c7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
