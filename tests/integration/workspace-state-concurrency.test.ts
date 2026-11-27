@@ -26,6 +26,7 @@ import { EVENT_STORE_MEMBER } from "../../src/orchestration/workspace-state/work
 import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state/workspace-state-retirement.js";
 import type { RetirementCheckpoint } from "../helpers/retirement-checkpoints.js";
 import { interruptRetirementAt, requireRetiredWorkspace } from "../fixtures/create-retired-workspace.js";
+import { LOAD_SHIPPED_CATALOG } from "../helpers/child-module-catalog.js";
 import { testDirectories } from "../helpers/directories.js";
 import { WORKSPACE_DATABASE_MEMBERS } from "../helpers/workspace-retirement.js";
 
@@ -37,6 +38,7 @@ const REFUSAL = "cannot be replaced while another owner holds this project's sta
 /** Owns the generation the way a normal Flywheel start does, reports that it
  *  holds it, and keeps holding it until it is told to stop. */
 const HOLDER = `
+${LOAD_SHIPPED_CATALOG}
 import { existsSync } from "node:fs";
 import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state/workspace-state.js")).href)};
 
@@ -51,6 +53,7 @@ prepared.generation.release();
  *  whether it was the start that retired the old generation, which it reads from
  *  the retirement sequence's own checkpoints: no start returns that. */
 const STARTER = `
+${LOAD_SHIPPED_CATALOG}
 import { existsSync } from "node:fs";
 import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state/workspace-state.js")).href)};
 import { observeRetirementCheckpoints } from ${JSON.stringify(pathToFileURL(join(REPO, "tests/helpers/retirement-checkpoints.ts")).href)};

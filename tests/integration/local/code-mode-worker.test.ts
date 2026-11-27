@@ -317,7 +317,8 @@ describe("Code Mode invocation Worker", () => {
     });
     const fixture = await liveFixture({ limits: { maxHeapDeltaBytes: TEST_HEAP_BUDGET_BYTES }, hostTools: [hold, outlast] });
     const [allocating, sibling] = await Promise.all([
-      fixture.code.execute({ source: `const big = new Array(${TEST_HEAP_BUDGET_BYTES / 2}).fill(1.5); await tools.hold({}); return big.length` }, fixture.context("allocating"))
+      // The guest engine refuses one array of all these elements, so they arrive in four arrays.
+      fixture.code.execute({ source: `const big = []; for (let chunk = 0; chunk < 4; chunk++) big.push(new Array(${TEST_HEAP_BUDGET_BYTES / 8}).fill(1.5)); await tools.hold({}); return big.length` }, fixture.context("allocating"))
         .finally(() => allocatingSettled.resolve()),
       fixture.code.execute({ source: "const held = await tools.outlast({}); return held.content" }, fixture.context("sibling")),
     ]);

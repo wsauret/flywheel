@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
+import { LOAD_SHIPPED_CATALOG } from "../../helpers/child-module-catalog.js"
 
 let root = ""
 let configPath = ""
@@ -17,6 +18,7 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
 const ownerModule = pathToFileURL(join(process.cwd(), "src/orchestration/config/runtime-config-owner.ts")).href
 const childScript = `
+  ${LOAD_SHIPPED_CATALOG}
   import { createRuntimeConfigOwner } from ${JSON.stringify(ownerModule)};
   const owner = await createRuntimeConfigOwner({ configPath: process.env.CONFIG_PATH, watch: false });
   const expected = JSON.parse(process.env.EXPECTED);

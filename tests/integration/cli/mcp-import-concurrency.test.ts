@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
+import { LOAD_SHIPPED_CATALOG } from "../../helpers/child-module-catalog.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()
@@ -17,6 +18,7 @@ test("serializes MCP import with a settings mutation without losing either updat
   const writerUrl = new URL("../../../src/orchestration/config/writer.ts", import.meta.url).href
   const mcpUrl = new URL("../../../src/orchestration/modules/mcp/cli/mcp.ts", import.meta.url).href
   const script = `
+    ${LOAD_SHIPPED_CATALOG}
     const writer = await import(process.env.WRITER_URL)
     await Bun.stdin.text()
     const result = process.env.OP === "import"

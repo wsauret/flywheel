@@ -20,6 +20,7 @@ import { pathToFileURL } from "node:url";
 
 import type { ContainedDirectory } from "../../../src/infra/platform/files/descriptor-directory/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../helpers/contained-directory-spies.js";
+import { LOAD_SHIPPED_CATALOG } from "../../helpers/child-module-catalog.js";
 import { moduleProtocolRows, type ModuleId, effectiveModuleIds } from "../../../src/orchestration/module-contract/module-catalog.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/module-contract/module-composition.js";
 import { SHIPPED_MODULES } from "../../../scripts/shipped-modules.js";
@@ -543,6 +544,8 @@ describe("one runtime's optional capability surfaces", () => {
     const barrier = join(harness.skillRoot, "..", "go");
     const script = join(harness.skillRoot, "..", "capability-worker.ts");
     writeFileSync(script, `
+${LOAD_SHIPPED_CATALOG}
+import { existsSync } from "node:fs";
 import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/policy/module-selection-writer.js")).href)};
 
 const feature = process.argv[2];
@@ -584,6 +587,8 @@ if (!result.ok) {
     const barrier = join(harness.skillRoot, "..", "same-member-go");
     const script = join(harness.skillRoot, "..", "same-member-worker.ts");
     writeFileSync(script, `
+${LOAD_SHIPPED_CATALOG}
+import { existsSync } from "node:fs";
 import { ConfigStaleWriteError } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/writer.js")).href)};
 import { updateModuleMember } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/config/policy/module-selection-writer.js")).href)};
 

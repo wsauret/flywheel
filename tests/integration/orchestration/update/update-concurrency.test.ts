@@ -21,6 +21,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { updateAuthorityDbFile } from "../../../../src/infra/platform/files/paths.js";
 import { storedAuthorityState } from "../../../helpers/update-authority-state.js";
+import { LOAD_SHIPPED_CATALOG } from "../../../helpers/child-module-catalog.js";
 import { BUILD_METADATA_FILE, computeBuildId } from "../../../../src/infra/update/build-identity.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION, type UpdateAuthority } from "../../../../src/infra/update/update-authority.js";
 import { installBuild, InstallRevokedError } from "../../../../src/orchestration/update/install-engine.js";
@@ -179,7 +180,7 @@ unixClaimants("two claimants of one account", () => {
   test("a durable disable in another process revokes the held fence", async () => {
     const source = await payload("1.4.0");
     const writerUrl = new URL("../../../../src/orchestration/config/writer.ts", import.meta.url).href;
-    const child = Bun.spawnSync(["bun", "-e", `const { updateDefinedSetting } = await import(${JSON.stringify(writerUrl)}); const result = updateDefinedSetting("autoInstall", false, { userDataRoot: process.env.TEST_USER_DATA_ROOT }); if (!result.ok) throw result.error;`], {
+    const child = Bun.spawnSync(["bun", "-e", `${LOAD_SHIPPED_CATALOG} const { updateDefinedSetting } = await import(${JSON.stringify(writerUrl)}); const result = updateDefinedSetting("autoInstall", false, { userDataRoot: process.env.TEST_USER_DATA_ROOT }); if (!result.ok) throw result.error;`], {
       env: { ...process.env, TEST_USER_DATA_ROOT: userDataRoot },
       stdout: "pipe",
       stderr: "pipe",
@@ -310,6 +311,7 @@ unixClaimants("what the activation order guarantees", () => {
     const pathsUrl = new URL("../../../../src/infra/platform/files/paths.ts", import.meta.url).href;
     const placedBuildUrl = new URL("../../../helpers/placed-build.ts", import.meta.url).href;
     const script = `
+      ${LOAD_SHIPPED_CATALOG}
       const { installBuild } = await import(${JSON.stringify(engineUrl)});
       const { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } = await import(${JSON.stringify(authorityUrl)});
       const { updateAuthorityDbFile } = await import(${JSON.stringify(pathsUrl)});
