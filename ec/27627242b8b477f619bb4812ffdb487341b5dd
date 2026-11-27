@@ -1,0 +1,14 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 373-374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ec27627242b8b477f619bb4812ffdb487341b5dd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
