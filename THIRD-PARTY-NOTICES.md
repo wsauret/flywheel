@@ -113,6 +113,9 @@ Some benchmark tasks copy material from external datasets and projects, and the 
 | Redis | https://github.com/redis/redis | BSD-3-Clause | `bench/tasks/implement/redis__redis-10068/` |
 | Deep SWE (Datacurve) | https://github.com/datacurve-ai/deep-swe | Apache-2.0, for Datacurve's own contributions only | `bench/tasks/implement/httpx-streaming-json-iteration/` |
 | HTTPX | https://github.com/encode/httpx | BSD-3-Clause | `bench/tasks/implement/httpx-streaming-json-iteration/` |
+| SWE-bench Pro (Scale AI) | https://github.com/scaleapi/SWE-bench_Pro-os | MIT | `bench/tasks/implement/ansible__ansible-40ade1f8/`, `bench/tasks/implement/navidrome__navidrome-69e0a266/` |
+| Navidrome | https://github.com/navidrome/navidrome | GPL-3.0 | `bench/tasks/implement/navidrome__navidrome-69e0a266/` |
+| Ansible | https://github.com/ansible/ansible | GPL-3.0 | `bench/tasks/implement/ansible__ansible-40ade1f8/` |
 | SWE-gen-JS | https://github.com/abundant-ai/SWE-gen-JS | Apache-2.0 | `bench/tasks/implement/jquense__yup-2305/` |
 | yup | https://github.com/jquense/yup | MIT | `bench/tasks/implement/jquense__yup-2305/` |
 | Terminal-Bench 2.1 | https://github.com/harbor-framework/terminal-bench-2-1 | Apache-2.0 | `bench/tasks/implement/regex-chess/`, `bench/tasks/implement/scheme-metacircular/` |

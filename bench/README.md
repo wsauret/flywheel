@@ -33,6 +33,8 @@ New persona campaigns default to `claude-sonnet-5-5:medium` on the auth profile 
 | [Astropy FITS #14598](tasks/implement/astropy__astropy-14598/) | Preserve quoted string values through FITS card round trips | Runnable native development fixture (macOS arm64); [evidence](tasks/implement/astropy__astropy-14598/calibration.json) | 2.1–4.0 min | $0.157–0.226 | 0/2 |
 | [Yup #2305](tasks/implement/jquense__yup-2305/) | Preserve nested array and tuple casting context | Runnable native development fixture (macOS arm64); [evidence](tasks/implement/jquense__yup-2305/calibration.json) | 3.3–3.9 min | $0.209–0.238 | 2/2 |
 | [Redis #10068](tasks/implement/redis__redis-10068/) | Preserve stream entries above the trimming threshold | Runnable native development fixture (macOS arm64); [evidence](tasks/implement/redis__redis-10068/calibration.json) | 4.5–4.7 min | $0.273–0.279 | 2/2 |
+| [Navidrome 69e0a266](tasks/implement/navidrome__navidrome-69e0a266/) | Serve resized artwork through reversible public artwork IDs | Runnable native development fixture (macOS arm64); [evidence](tasks/implement/navidrome__navidrome-69e0a266/calibration.json) | Not measured | Not measured | Not measured |
+| [Ansible 40ade1f8](tasks/implement/ansible__ansible-40ade1f8/) | Add a mount_facts module with timeout handling | Runnable native development fixture (macOS arm64); [evidence](tasks/implement/ansible__ansible-40ade1f8/calibration.json) | Not measured | Not measured | Not measured |
 
 All external native tasks in this menu are registered in the shared runnable corpus. Their linked calibration records distinguish historical model observations from tasks not yet measured; native qualification does not represent a new model run.
 

