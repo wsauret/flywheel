@@ -45,7 +45,7 @@ function build(options: { readonly launcher?: LauncherScope; readonly lifetime?:
     model: metadata.id, wireModelId: metadata.id, family: "anthropic",
     modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
     connection: {
-      id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",
+      id: "connection", profileId: "default", authDir: "/scratch/auth", oauthPersistence: "memory-only",
       auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [] },
       subscriptionCredentials: new Map([[candidate.providerId, [{ instanceId: candidate.instanceId, identity: "person@example.com", lineageId: candidate.instanceId, credential }]]]),
     },

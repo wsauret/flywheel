@@ -54,7 +54,7 @@ export function createSubscriptionUsageNotificationMaterializer(deps: Subscripti
     if (claim.kind === "lost") return false;
     const alert = claim.alert;
     const providerName = deps.providerName(alert.providerId);
-    await deps.notify({ type: "raise", occurrence: {
+    await deps.notify({ type: "raise", profileId: usageStore.profileId, occurrence: {
       sourceId: notificationSourceId(usageStore.profileId, alert.id),
       title: `${providerName} usage`,
       message: notificationCopy(alert, providerName, now()),

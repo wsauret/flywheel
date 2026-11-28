@@ -198,7 +198,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     }
     return load
   }
-  const authAttention = options.own("auth-attention-publisher", createAuthAttentionPublisher({ deliver: options.settledNotify }), (publisher) => publisher.dispose())
+  const authAttention = options.own("auth-attention-publisher", createAuthAttentionPublisher({ deliver: options.settledNotify, eligibilityKnown: (profileId) => providerModels.state(profileId) !== undefined }), (publisher) => publisher.dispose())
   const authStatusProjection = createAuthStatusProjection({
     initialProfile,
     moduleSelection: options.moduleSelection,
@@ -263,8 +263,8 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     // A snapshot's connection serves in place of the profile's auth files,
     // which this run neither reads nor normalizes.
     ...(snapshot ? connectionEligibilitySources(snapshot.connection, initialProfile.directory, options.moduleSelection, getSharedModelsClient(options.userDataRoot)) : {
-      normalizeProfile: async (profile: { readonly directory: string }) => {
-        if (await normalizeAuthProfile(profile.directory, installedCredentialSlotClassifier(), installedCredentialProviderIds(), installedAccessProviderDefinitions(), (occurrence) => { options.notify({ type: "raise", occurrence }) }) === "read-only") authConditions.observeNormalizationRefusal(profile.directory)
+      normalizeProfile: async (profile: { readonly id: string; readonly directory: string }) => {
+        if (await normalizeAuthProfile(profile.directory, installedCredentialSlotClassifier(), installedCredentialProviderIds(), installedAccessProviderDefinitions(), (occurrence) => { options.notify({ type: "raise", profileId: profile.id, occurrence }) }) === "read-only") authConditions.observeNormalizationRefusal(profile.directory)
       },
     }),
     refreshMetadata: (signal) => getSharedModelsClient(options.userDataRoot).refresh(signal),
@@ -354,7 +354,6 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     return operation
   }
   await refreshConsentView(initialProfile.id, initialProfile.directory)
-  authAttention.state(await authStatusProjection.snapshot())
   const profileRequests = createProfileRequestService({
     userDataRoot: options.userDataRoot,
     workflowPreparation: snapshot ? { ...options.workflowPreparation, overrides: { connection: snapshot.connection } } : options.workflowPreparation,

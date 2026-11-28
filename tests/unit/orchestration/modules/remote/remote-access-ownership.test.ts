@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
+import { refusingProfileStore } from "../../../../helpers/module-kernel.js"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -65,7 +66,7 @@ async function fixture(identityRead: () => Promise<identities.RemoteIdentity> = 
   const sockets: RemoteSocket[] = []
   const publications: RuntimeUiPatchInput[] = []
   const remote = createRemoteAccess({
-    projectRegistry: { list: async () => [], record: async (input) => ({ id: "project", lastAttachedAt: 0, ...input }), forget: async () => {}, watch: () => () => {} },
+    projectRegistry: { list: async () => [], record: async (input) => ({ id: "project", lastAttachedAt: 0, ...input }), forget: async () => {}, watch: () => () => {}, profileStore: refusingProfileStore() },
     userDataRoot, lane: "installed", accountHome: "/account", projectRoot: "/project", version: "test",
     relayUrl: "wss://relay.invalid", random: () => 0,
     ...(options.installation ? { installation: options.installation } : {}),

@@ -87,7 +87,7 @@ describe("Claude framing", () => {
       model: metadata.id, wireModelId: `openai/${metadata.id}`, family: "chat-completions",
       modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
       connection: {
-        id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",
+        id: "connection", profileId: "default", authDir: "/scratch/auth", oauthPersistence: "memory-only",
         auth: { providers: new Map([["openrouter", { kind: "api_key", key: Redacted.make("sk-or-test") }]]), credentialLineages: {}, droppedCredentials: [] },
         subscriptionCredentials: new Map(),
       },

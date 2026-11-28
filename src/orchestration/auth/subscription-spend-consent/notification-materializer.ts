@@ -3,6 +3,7 @@ import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../
 import { createOrderedLane } from "../../../infra/async/ordered-lane.js"
 import type { FrontendEvent } from "../../../protocol/runtime/app-service-types.js"
 import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
+import type { SubscriptionUsageSpendSource } from "../../../infra/providers/llm/usage/subscription-usage.js"
 import { paidModeAwaitsAnswer, type SubscriptionSpendConsentView } from "../../../protocol/auth/subscription-spend-consent-protocol-types.js"
 type AvailableConsentView = Extract<SubscriptionSpendConsentView, { kind: "available" }>
 
@@ -46,7 +47,11 @@ function notificationSourceId(profileId: string, authorityIncarnation: string, a
 
 const NOTIFICATION_SOURCE_PREFIX = "subscription-spend-consent:"
 
-/** Materializes transient consent views into project-local durable notification episodes through the notify seam. */
+function evidenceUnknown(evidence: SubscriptionUsageSpendSource): boolean {
+  return evidence.kind === "prepaid" ? evidence.availability === "unknown" : evidence.enablement === "unknown"
+}
+
+/** Materializes transient consent views into durable profile notification episodes through the notify seam. */
 export function createSubscriptionSpendConsentNotificationMaterializer(
   deps: SubscriptionSpendConsentNotificationMaterializerDeps,
 ): SubscriptionSpendConsentNotificationMaterializer {
@@ -108,34 +113,34 @@ export function createSubscriptionSpendConsentNotificationMaterializer(
     }]
   })
 
-  /** One publication states the episodes active for the current profile. With
-   *  the catalog known it also retires every profile the catalog no longer
-   *  lists: the other listed profiles are kept because their views were not
-   *  read. Publications queue in order, and one a newer view overtook says
+  /** The source of each mode that may still await an answer but whose
+   *  evidence the usage service has not read yet, as at an executor start.
+   *  Its episode stays as it is: only evidence that the review no longer
+   *  applies resolves it (PI-INTERACTION-072). */
+  const unknownEvidenceSources = (consent: AvailableConsentView): readonly string[] => consent.accounts.flatMap((account) =>
+    account.modes.flatMap((mode) => mode.decision === "unreviewed" && evidenceUnknown(mode.evidence)
+      ? [notificationSourceId(consent.profileId, consent.authorityIncarnation, account.accountCorrelationId, mode.envelopeId)]
+      : []))
+
+  /** One publication states the episodes active for one profile, in that
+   *  profile's journal, so every project that uses the profile shows them.
+   *  Publications queue in order, and one a newer view overtook says
    *  nothing, so a stale view never raises an episode the newer one retires. */
-  const enqueuePublication = (consent: AvailableConsentView | undefined, catalogProfileIds?: readonly string[]): Promise<void> =>
+  const enqueuePublication = (consent: AvailableConsentView): Promise<void> =>
     lane.run(async () => {
-      if (consent !== undefined && !remainsCurrent(consent)) return
-      if (consent !== undefined) {
-        await deps.notify({ type: "reconcile", prefix: notificationProfileSourcePrefix(consent.profileId), desired: desiredEpisodes(consent) })
-      }
-      if (catalogProfileIds === undefined) return
-      const keep = catalogProfileIds.filter((profileId) => profileId !== consent?.profileId).map(notificationProfileSourcePrefix)
-      await deps.notify({ type: "reconcile", prefix: NOTIFICATION_SOURCE_PREFIX, desired: consent === undefined ? [] : desiredEpisodes(consent), keep })
+      if (!remainsCurrent(consent)) return
+      const { profileId } = consent
+      await deps.notify({ type: "reconcile", profileId, prefix: notificationProfileSourcePrefix(profileId), desired: desiredEpisodes(consent), keep: unknownEvidenceSources(consent) })
     })
 
+  // An unavailable view proves nothing about a review, so it states nothing.
   const materialize = (consent: SubscriptionSpendConsentView): Promise<void> => {
     if (!accepting || consent.kind !== "available") return Promise.resolve()
     if (!acceptCurrentView(consent)) return Promise.resolve()
     return enqueuePublication(consent)
   }
 
-  const materializeAuth = (auth: RuntimeAuthView): Promise<void> => {
-    if (!accepting) return Promise.resolve()
-    const consent = auth.subscriptionSpendConsent.kind === "available" ? auth.subscriptionSpendConsent : undefined
-    if (consent !== undefined && !acceptCurrentView(consent)) return Promise.resolve()
-    return enqueuePublication(consent, [auth.profile.id, ...auth.profile.availableProfiles.map((profile) => profile.id)])
-  }
+  const materializeAuth = (auth: RuntimeAuthView): Promise<void> => materialize(auth.subscriptionSpendConsent)
 
   // After admission closes nothing joins the lane, so its settlement covers
   // every admitted publication.

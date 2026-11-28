@@ -19,7 +19,7 @@ function build(id: string, contextLimit: number, outputLimit = 32_000): AccessPr
     model: metadata.id, wireModelId: metadata.id, family: "anthropic",
     modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
     connection: {
-      id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",
+      id: "connection", profileId: "default", authDir: "/scratch/auth", oauthPersistence: "memory-only",
       auth: { providers: new Map([["anthropic_api", { kind: "api_key", key: Redacted.make("sk-ant-test") }]]), credentialLineages: {}, droppedCredentials: [] },
       subscriptionCredentials: new Map(),
     },

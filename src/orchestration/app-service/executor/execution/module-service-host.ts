@@ -3,7 +3,7 @@ import type { FrontendEvent } from "../../../../protocol/runtime/app-service-typ
 import type { AuthRuntime } from "../../auth/auth-runtime.js"
 import type { RuntimeConfigProjection } from "../../projections/runtime-config-projection.js"
 import type { StartupDirectories } from "../../../../infra/platform/files/directory-authorities.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
+import type { AsyncEventAppender, AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, StoredFact } from "../../../../infra/substrate/store/event-store-types.js"
 import { composeModuleServices, type ModuleServices } from "../../../../infra/definitions/modules/module-service.js"
 import type { NotificationEpisodeInput } from "../../../../infra/substrate/events/notification-episode.js"
 import { Log } from "../../../../infra/diagnostics/log.js"
@@ -27,6 +27,21 @@ interface ModuleExecutionEnvironment {
   readonly recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
   readonly attachProjection: AttachChildSessionProjection
   readonly deliverNotification: ParentNotificationDelivery
+}
+
+/** The store that keeps the state of auth profiles, which every project of
+ *  one serving host shares (ARCH-RUNTIME-052): the account store in the
+ *  account service, and the project's own store in a standalone host. Every
+ *  project of one host receives the same `reader` object, so a module keys
+ *  what it shares across the host's projects by it. `dbFile` names the
+ *  store's database for a recovery on its own short-lived connection; a
+ *  standalone host omits it, because the project's startup recovery already
+ *  covers its own store. */
+export interface ProfileStateStore {
+  readonly dbFile?: string
+  readonly reader: AsyncEventReadSurface
+  readonly writer: AsyncEventAppender
+  readonly onStored: (listener: (facts: readonly StoredFact[]) => void) => () => void
 }
 
 /** What the runtime hands a module that declares a process-scoped service:
@@ -53,6 +68,11 @@ export interface ModuleProcessServices {
   readonly eventWriter: AsyncEventWriter
   /** The store's post-commit broadcast. */
   readonly onStored: (listener: (facts: readonly StoredFact[]) => void) => () => void
+  readonly profileStore: ProfileStateStore
+  /** The auth profile the project uses when a request names none. Read only
+   *  from a request or a later hook, after auth composition; its later
+   *  changes reach clients as the workspace auth view. */
+  readonly authProfileId: () => string
   readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch | undefined
   readonly snapshotPosition: RuntimeUiPatchSequencer["snapshotPosition"]
   readonly sessionManager: SessionManager

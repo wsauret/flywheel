@@ -171,7 +171,7 @@ describe("the Google Antigravity provider module", () => {
         model, wireModelId: model, family: "google",
         modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
         connection: {
-          id: "connection", authDir, oauthPersistence: "memory-only",
+          id: "connection", profileId: "default", authDir, oauthPersistence: "memory-only",
           auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [] },
           subscriptionCredentials: new Map([[PROVIDER, [{ instanceId: account.accountId, identity: account.identity, lineageId: account.accountId, credential: { type: "external", configDir: account.configDir } }]]]),
         },

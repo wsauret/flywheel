@@ -1,14 +1,14 @@
 import { describe, expect, it } from "bun:test"
 import type { ProjectNotificationEpisode, ProjectNotificationProjection } from "../../../../../src/protocol/modules/project-notifications.js"
 import type { RuntimeAuthView } from "../../../../../src/protocol/auth/auth-status-protocol-types.js"
-import type { SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
+import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE, type SubscriptionSpendConsentView } from "../../../../../src/protocol/auth/subscription-spend-consent-protocol-types.js"
 import { createProjectNotificationSink } from "../../../../../src/orchestration/modules/project-notifications/sink.js"
 import { createSubscriptionSpendConsentNotificationMaterializer, materializeSubscriptionSpendConsentAuthChange } from "../../../../../src/orchestration/auth/subscription-spend-consent/notification-materializer.js"
 
 type AccountInput = {
   accountCorrelationId: string
   providerId?: string
-  modes: ReadonlyArray<{ envelopeId: string; decision: "unreviewed" | "accepted" | "declined"; positiveEvidence?: boolean }>
+  modes: ReadonlyArray<{ envelopeId: string; decision: "unreviewed" | "accepted" | "declined"; positiveEvidence?: boolean | "unknown" }>
 }
 
 function view(profileId: string, authorityIncarnation: string, accounts: readonly AccountInput[], authorityRevision = 1, usageGeneration = 1): SubscriptionSpendConsentView {
@@ -26,7 +26,7 @@ function view(profileId: string, authorityIncarnation: string, accounts: readonl
       modes: account.modes.map((mode) => ({
         mode: "automatic",
         envelopeId: mode.envelopeId,
-        evidence: { kind: "automatic-billing", enablement: mode.positiveEvidence === false ? "disabled" : "enabled" },
+        evidence: { kind: "automatic-billing", enablement: mode.positiveEvidence === "unknown" ? "unknown" : mode.positiveEvidence === false ? "disabled" : "enabled" },
         decision: mode.decision,
       })),
     })),
@@ -60,6 +60,7 @@ function journal() {
       episodes.set(episode.id, { ...episode, resolvedAt: ++sequence })
       this.resolved.push(sourceId)
     },
+    async dismiss() {},
     activeEpisode(sourceId: string) {
       return [...episodes.values()].find((episode) => episode.sourceId === sourceId && episode.resolvedAt === undefined)
     },
@@ -74,9 +75,10 @@ function journal() {
 
 }
 /** The materializer over the notify seam, with the module's sink applying each input to the journal double
- *  in order; every call settles once the sink has applied what the call stated. */
+ *  in order; every call settles once the sink has applied what the call stated. Every input names its
+ *  profile, so the project's own journal stays empty. */
 function materializerOver(notifications: ReturnType<typeof journal>) {
-  const sink = createProjectNotificationSink({ journal: notifications })
+  const sink = createProjectNotificationSink({ journal: journal(), profileJournal: () => notifications, retireProjectCopies: async () => {} })
   const real = createSubscriptionSpendConsentNotificationMaterializer({ notify: (episode) => sink.apply(episode) })
   return {
     materialize: (consent: SubscriptionSpendConsentView) => real.materialize(consent),
@@ -155,19 +157,6 @@ describe("subscription spend consent notification materializer", () => {
     expect(notifications.projection().visible).toHaveLength(1)
   })
 
-  it("resolves a deleted profile episode from the catalog after restart", async () => {
-    const notifications = journal()
-    const deleted = view("profile-deleted", "incarnation-a", [{ accountCorrelationId: "deleted-account", modes: [{ envelopeId: "old", decision: "unreviewed" }] }])
-    await materializerOver(notifications).materializeAuth(auth(deleted, ["profile-deleted"]))
-
-    const restarted = materializerOver(notifications)
-    const current = view("profile-current", "incarnation-b", [])
-    await restarted.materializeAuth(auth(current, ["profile-current"]))
-
-    expect(notifications.resolved).toHaveLength(1)
-    expect(notifications.projection().visible).toHaveLength(0)
-  })
-
   for (const hiddenState of ["dismissed", "expired"] as const) {
     it(`resolves ${hiddenState} obsolete authority episodes after restart`, async () => {
       const notifications = journal()
@@ -183,21 +172,26 @@ describe("subscription spend consent notification materializer", () => {
 
       expect(notifications.resolved).toEqual([sourceId])
     })
-
-    it(`resolves ${hiddenState} deleted-profile episodes after restart`, async () => {
-      const notifications = journal()
-      const deleted = view("profile-deleted", "incarnation-a", [{ accountCorrelationId: "deleted-account", modes: [{ envelopeId: "old", decision: "unreviewed" }] }])
-      await materializerOver(notifications).materializeAuth(auth(deleted, ["profile-deleted"]))
-      const sourceId = notifications.raised[0]
-      if (sourceId === undefined) throw new Error("expected raised source")
-      notifications.hide(sourceId, hiddenState)
-
-      const current = view("profile-current", "incarnation-b", [])
-      await materializerOver(notifications).materializeAuth(auth(current, ["profile-current"]))
-
-      expect(notifications.resolved).toEqual([sourceId])
-    })
   }
+
+  // An executor start reads the consent view before the usage service has
+  // read any evidence. That view proves nothing about a review, so the
+  // dismissed episode of the profile stays the same one.
+  it("keeps the episode while the view is unavailable or its evidence is unknown", async () => {
+    const notifications = journal()
+    const materializer = materializerOver(notifications)
+    const needsReview = view("profile-a", "incarnation-a", [{ accountCorrelationId: "account", modes: [{ envelopeId: "envelope", decision: "unreviewed" }] }])
+    await materializer.materializeAuth(auth(needsReview, ["profile-a"]))
+
+    await materializer.materializeAuth(auth({ kind: "unavailable", profileId: "profile-a", message: SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE }, ["profile-a"]))
+    await materializer.materialize(view("profile-a", "incarnation-a", [{ accountCorrelationId: "account", modes: [{ envelopeId: "envelope", decision: "unreviewed", positiveEvidence: "unknown" }] }], 1, 2))
+    expect(notifications.resolved).toEqual([])
+    expect(notifications.projection().visible).toHaveLength(1)
+
+    await materializer.materialize(view("profile-a", "incarnation-a", [{ accountCorrelationId: "account", modes: [{ envelopeId: "envelope", decision: "unreviewed", positiveEvidence: false }] }], 1, 3))
+    expect(notifications.resolved).toHaveLength(1)
+    expect(notifications.raised).toHaveLength(1)
+  })
 
   it("keeps the newest revision for both completion orders", async () => {
     const olderLastJournal = journal()
@@ -258,19 +252,6 @@ describe("subscription spend consent notification materializer", () => {
     expect(notifications.projection().visible[0]?.action).toEqual({ kind: "open-auth", providerId: "provider", accountCorrelationId: "account", envelopeId: "third" })
   })
 
-  it("keeps separate project journals independent", async () => {
-    const firstJournal = journal()
-    const secondJournal = journal()
-    const consent = view("profile-a", "incarnation-a", [{ accountCorrelationId: "opaque-account", modes: [{ envelopeId: "opaque-envelope", decision: "unreviewed" }] }])
-
-    await materializerOver(firstJournal).materialize(consent)
-    await materializerOver(secondJournal).materialize(consent)
-
-    expect(firstJournal.raised).toEqual(secondJournal.raised)
-    expect(firstJournal.raised).toHaveLength(1)
-    expect(firstJournal.projection().visible).toHaveLength(1)
-    expect(secondJournal.projection().visible).toHaveLength(1)
-  })
   it("reconciles one auth publication once and materializes one episode per account", async () => {
     const notifications = journal()
     const materializer = materializerOver(notifications)

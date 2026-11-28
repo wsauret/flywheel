@@ -12,16 +12,18 @@ export function createProjectNotificationsProtocol(services: AccountModuleProtoc
   return {
     serve: {
       projectNotificationSnapshot: async () => {
+        const anchor = () => services.snapshotPosition({ kind: "cursor", cursor: projectNotificationsCursor() })
         const current = service()
-        await current?.publisher.reconcile()
-        return { notifications: current?.journal.projection().visible ?? [], snapshotPosition: services.snapshotPosition({ kind: "cursor", cursor: projectNotificationsCursor() }) }
+        if (!current) return { notifications: [], snapshotPosition: anchor() }
+        const { notifications, anchor: snapshotPosition } = await current.snapshot(anchor)
+        return { notifications, snapshotPosition }
       },
     },
     mutate: {
       "project_notifications.dismiss": async (mutation) => {
         const current = service()
         if (!current) return { ok: false, error: "Project notifications are off" }
-        await current.journal.dismiss(mutation.sourceId, mutation.episodeId)
+        await current.dismiss(mutation.sourceId, mutation.episodeId)
         return { ok: true }
       },
     },

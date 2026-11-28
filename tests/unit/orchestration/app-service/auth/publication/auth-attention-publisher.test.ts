@@ -19,8 +19,8 @@ const view = (fileAttention?: AuthFileAttention): RuntimeAuthView => ({
 })
 const clear = view()
 const malformed = view({ kind: "malformed", path: "/scratch/auth.json", message: "The authentication file is malformed." })
-const resolveLegacy: NotificationEpisodeInput = { type: "resolve", sourceId: "runtime:auth-status-warning:default" }
-const statementOf = (desired: readonly NotificationOccurrence[]): NotificationEpisodeInput[] => [{ type: "reconcile", prefix: "runtime:auth-attention:default:", desired }, resolveLegacy]
+const resolveLegacy: NotificationEpisodeInput = { type: "resolve", profileId: "default", sourceId: "runtime:auth-status-warning:default" }
+const statementOf = (desired: readonly NotificationOccurrence[]): NotificationEpisodeInput[] => [{ type: "reconcile", profileId: "default", prefix: "runtime:auth-attention:default:", desired }, resolveLegacy]
 const fileEpisode: NotificationOccurrence = { sourceId: "runtime:auth-attention:default:file", title: "Authentication file needs attention", message: "Repair the authentication file at /scratch/auth.json.", severity: "warning", action: { kind: "open-auth" } }
 // Every delivery of these fakes settles within microtasks, which all run before the next macrotask.
 const flush = () => new Promise<void>((resolve) => { setImmediate(resolve) })
@@ -29,7 +29,7 @@ const wait = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve
 describe("auth attention publisher", () => {
   test("states a profile's attention once, and again only when it changes", async () => {
     const delivered: NotificationEpisodeInput[] = []
-    const publisher = createAuthAttentionPublisher({ deliver: async (episode) => { delivered.push(episode) } })
+    const publisher = createAuthAttentionPublisher({ eligibilityKnown: () => true, deliver: async (episode) => { delivered.push(episode) } })
 
     for (let offer = 0; offer < 5; offer += 1) publisher.state(malformed)
     await flush()
@@ -47,12 +47,32 @@ describe("auth attention publisher", () => {
     expect(delivered.slice(4)).toEqual([...statementOf([fileEpisode]), ...statementOf([])])
   })
 
+  // An executor start publishes the auth view before the profile's first
+  // eligibility result, and only that result shows a provider turned off.
+  // Stating the earlier view would resolve the attention at every start and
+  // raise a new episode, which no earlier dismissal covers, moments later.
+  test("states nothing for a view read before the profile's first eligibility result", async () => {
+    const delivered: NotificationEpisodeInput[] = []
+    let eligibilityKnown = false
+    const publisher = createAuthAttentionPublisher({ eligibilityKnown: () => eligibilityKnown, deliver: async (episode) => { delivered.push(episode) } })
+
+    publisher.state(clear)
+    await flush()
+    expect(delivered).toEqual([])
+
+    eligibilityKnown = true
+    publisher.state(malformed)
+    await publisher.dispose()
+    expect(delivered).toEqual(statementOf([fileEpisode]))
+  })
+
   test("offers made while a delivery is unanswered coalesce into one follow-up with the latest attention", async () => {
     const delivered: NotificationEpisodeInput[] = []
     let pending = 0
     let mostPending = 0
     const answers: (() => void)[] = []
     const publisher = createAuthAttentionPublisher({
+      eligibilityKnown: () => true,
       deliver: (episode) => {
         delivered.push(episode)
         mostPending = Math.max(mostPending, ++pending)
@@ -91,6 +111,7 @@ describe("auth attention publisher", () => {
     const seam = createNotifySeam(() => composeRealmModuleSnapshot({ moduleIds: composition.enabledModuleIds }, modules), () => services.services)
     const backoffs: number[] = []
     const publisher = createAuthAttentionPublisher({
+      eligibilityKnown: () => true,
       deliver: async (episode) => {
         try { await seam(episode) } catch (error) { refusals -= 1; throw error }
       },
@@ -112,6 +133,7 @@ describe("auth attention publisher", () => {
   test("an offer of the same attention waits out the backoff, and shutdown cancels the retry", async () => {
     let attempts = 0
     const publisher = createAuthAttentionPublisher({
+      eligibilityKnown: () => true,
       deliver: async () => { attempts += 1; throw new Error("Notification capacity exceeded") },
       retryDelayMs: () => 10,
     })
@@ -130,6 +152,7 @@ describe("auth attention publisher", () => {
     let heldAttempts = 0
     const held = Promise.withResolvers<void>()
     const draining = createAuthAttentionPublisher({
+      eligibilityKnown: () => true,
       deliver: async () => {
         heldAttempts += 1
         if (heldAttempts === 1) await held.promise
@@ -148,7 +171,7 @@ describe("auth attention publisher", () => {
 
   test("a notification consumer turned on hears the unchanged attention again", async () => {
     const delivered: NotificationEpisodeInput[] = []
-    const publisher = createAuthAttentionPublisher({ deliver: async (episode) => { delivered.push(episode) } })
+    const publisher = createAuthAttentionPublisher({ eligibilityKnown: () => true, deliver: async (episode) => { delivered.push(episode) } })
 
     publisher.state(malformed)
     await flush()

@@ -25,13 +25,18 @@ import { openExistingContainedDirectory } from "../../../../../src/infra/platfor
 import { authDir } from "../../../../../src/infra/platform/files/paths.js"
 import { capturedIntervals, HOLDS_DIRECTORY_VALUES } from "../../../../helpers/held-directory-values.js"
 import { unusedProviderModelWrites } from "../../../../helpers/provider-model-writes.js"
+import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { providerTurnedOffMessage } from "../../../../../src/infra/providers/llm/access/access-provider.js"
+import { createProjectNotificationsService } from "../../../../../src/orchestration/modules/project-notifications/service.js"
+import { projectProjectNotifications } from "../../../../../src/orchestration/modules/project-notifications/projection.js"
 
 const completeModuleSelection = () => composeFirstPartyModules()
 const emptyConsent = (profileId: string) => ({ kind: "available", profileId, authorityIncarnation: "test-authority", authorityRevision: 0, usageGeneration: 0, accounts: [] }) as const
 /** The notification episodes a publication of `view` states. */
 const attentionOf = async (view: RuntimeAuthView): Promise<NotificationEpisodeInput[]> => {
   const episodes: NotificationEpisodeInput[] = []
-  const publisher = createAuthAttentionPublisher({ deliver: async (episode) => { episodes.push(episode) } })
+  const publisher = createAuthAttentionPublisher({ eligibilityKnown: () => true, deliver: async (episode) => { episodes.push(episode) } })
   publisher.state(view)
   await publisher.dispose()
   return episodes
@@ -204,7 +209,7 @@ describe("auth status projection", () => {
       subscriptionSpendConsent: emptyConsent,
     })
     const notifications: NotificationEpisodeInput[] = []
-    const attention = createAuthAttentionPublisher({ deliver: async (episode) => { notifications.push(episode) } })
+    const attention = createAuthAttentionPublisher({ eligibilityKnown: () => true, deliver: async (episode) => { notifications.push(episode) } })
     const publish = async (view: RuntimeAuthView) => {
       attention.state(view)
       await new Promise<void>((resolve) => { setImmediate(resolve) })
@@ -233,11 +238,11 @@ describe("auth status projection", () => {
     // observer raises what is new and resolves what cleared. The legacy
     // diagnostics source is stated beside it.
     const providerAttention: NotificationOccurrence = { sourceId: "runtime:auth-attention:default:provider:openai_api", title: "OpenAI API Key needs attention", message: "Reconnect OpenAI API Key.", severity: "warning", action: { kind: "open-auth-provider", providerId: "openai_api" } }
-    const legacy: NotificationEpisodeInput = { type: "resolve", sourceId: "runtime:auth-status-warning:default" }
+    const legacy: NotificationEpisodeInput = { type: "resolve", profileId: "default", sourceId: "runtime:auth-status-warning:default" }
     expect(notifications).toEqual([
-      { type: "reconcile", prefix: "runtime:auth-attention:default:", desired: [providerAttention] }, legacy,
-      { type: "reconcile", prefix: "runtime:auth-attention:default:", desired: [] }, legacy,
-      { type: "reconcile", prefix: "runtime:auth-attention:default:", desired: [providerAttention] }, legacy,
+      { type: "reconcile", profileId: "default", prefix: "runtime:auth-attention:default:", desired: [providerAttention] }, legacy,
+      { type: "reconcile", profileId: "default", prefix: "runtime:auth-attention:default:", desired: [] }, legacy,
+      { type: "reconcile", profileId: "default", prefix: "runtime:auth-attention:default:", desired: [providerAttention] }, legacy,
     ])
     expect(JSON.stringify(notifications)).not.toContain("revision")
   })
@@ -322,6 +327,78 @@ describe("auth status projection", () => {
     await service.dispose()
   })
 
+  // Each executor start publishes the auth view before the profile's first
+  // eligibility result, which alone marks a provider turned off. A restart
+  // with the provider still off keeps the episode the person dismissed.
+  test("a dismissed turned-off provider notice stays the same dismissed episode across a restart (PI-INTERACTION-072)", async () => {
+    const root = temporaryDirectory("fw-auth-turned-off-")
+    const directory = join(root, "auth")
+    mkdirSync(directory)
+    const credential = { type: "oauth" as const, access: "at", refresh: "rt", expires: Date.now() + 60_000 }
+    const instanceId = "11111111-0000-4000-8000-00000000000c"
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: instanceId, identity: "paid@example.com", credential }, directory, installedCredentialSlotClassifier())
+    const candidate = { kind: "subscription", providerId: "chatgpt", instanceId, spendMode: "included" } as const
+    const profile = { id: "default", displayName: "Default", source: "default" as const, directory, availableProfiles: [{ id: "default", displayName: "Default" }], persistedId: "default", projectBinding: undefined, retirements: {} }
+    const projectStore = createSqliteEventStore(join(root, "project.sqlite"))
+    const accountStore = createSqliteEventStore(join(root, "account.sqlite"))
+    const profileStore = { reader: asAsyncEventReadSurface(accountStore), writer: asAsyncEventWriter(accountStore), onStored: accountStore.onStored }
+
+    /** One executor start: the eligibility of the profile is unknown until `prepare` runs, as in the auth runtime. */
+    const start = () => {
+      const models = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+      const notifications = createProjectNotificationsService({
+        projectionReader: asAsyncEventReadSurface(projectStore), eventWriter: asAsyncEventWriter(projectStore), onStored: projectStore.onStored,
+        publish: () => undefined, notify: async () => {}, profileStore, authProfileId: () => "default", onFrontendEvent: () => () => {},
+      })
+      const projection = createAuthStatusProjection({ initialProfile: profile, moduleSelection: completeModuleSelection, subscriptionSpendConsent: emptyConsent, eligibilityState: (profileId) => models.state(profileId) })
+      const deliveries: Promise<void>[] = []
+      const deliver = (episode: NotificationEpisodeInput) => { const delivery = notifications.sink.apply(episode); deliveries.push(delivery); return delivery }
+      const publisher = createAuthAttentionPublisher({ eligibilityKnown: (profileId) => models.state(profileId) !== undefined, deliver })
+      return {
+        notifications,
+        /** Offers the current view and waits until every delivery it caused landed. */
+        publish: async () => {
+          publisher.state(await projection.snapshot())
+          for (let settled = -1; settled !== deliveries.length;) {
+            settled = deliveries.length
+            await Promise.all(deliveries)
+            await new Promise<void>((resolve) => { setImmediate(resolve) })
+          }
+        },
+        prepare: () => models.publish(models.prepare({
+          profileId: "default", autoEnableNewModels: true, inputRevision: { auth: "a", preferences: "p" }, catalogs: new Map(), releaseDates: new Map(),
+          accountCatalogs: new Map([[accessProviderAccountKey(candidate), { catalog: new Set<string>(), curatedDefault: new Set<string>(), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set<string>() }]]),
+          inventoryCandidates: new Map([[accessProviderAccountKey(candidate), { candidate, configured: true, currentConnection: true, enabledOfferings: new Map(), inventoryOfferings: new Map(), catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" }, turnedOff: true }]]),
+        })),
+        stop: async () => { await publisher.dispose(); await notifications.dispose(); await models.dispose() },
+      }
+    }
+    const episodes = async (executor: ReturnType<typeof start>) => (await executor.notifications.snapshot(() => 0)).notifications
+    try {
+      const first = start()
+      await first.publish()
+      expect(await episodes(first)).toEqual([])
+      first.prepare()
+      await first.publish()
+      const [notice] = await episodes(first)
+      if (!notice) throw new Error("expected the turned-off notice")
+      expect(notice.message).toBe(providerTurnedOffMessage("ChatGPT Subscription"))
+      await first.notifications.dismiss(notice.sourceId, notice.id)
+      await first.stop()
+
+      const second = start()
+      await second.publish()
+      second.prepare()
+      await second.publish()
+      await second.stop()
+      const history = projectProjectNotifications(accountStore.read({ aggregateId: "profile:default:notifications" }), Date.now(), "profile:default:notifications")
+      expect(history.episodes.map(({ id, dismissedAt, resolvedAt }) => ({ id, dismissed: dismissedAt !== undefined, resolvedAt }))).toEqual([{ id: notice.id, dismissed: true, resolvedAt: undefined }])
+    } finally {
+      projectStore.close()
+      accountStore.close()
+    }
+  })
+
   test("projects one curated root file attention without condition internals", async () => {
     const directory = temporaryDirectory("fw-auth-file-attention-")
     const path = join(directory, "auth.json")
@@ -351,14 +428,14 @@ describe("auth status projection", () => {
     expect(JSON.stringify(view.fileAttention)).not.toContain("revision")
     expect(view.providers.every((provider) => provider.attention === undefined)).toBe(true)
     expect(await attentionOf(view)).toEqual([
-      { type: "reconcile", prefix: "runtime:auth-attention:default:", desired: [{
+      { type: "reconcile", profileId: "default", prefix: "runtime:auth-attention:default:", desired: [{
         sourceId: "runtime:auth-attention:default:file",
         title: "Authentication file needs attention",
         message: `Repair the authentication file at ${path}.`,
         severity: "warning",
         action: { kind: "open-auth" },
       }] },
-      { type: "resolve", sourceId: "runtime:auth-status-warning:default" },
+      { type: "resolve", profileId: "default", sourceId: "runtime:auth-status-warning:default" },
     ])
   })
 
@@ -371,9 +448,10 @@ describe("auth status projection", () => {
       subscriptionSpendConsent: emptyConsent,
     }).snapshot()
     expect(await attentionOf(view)).toEqual([
-      { type: "reconcile", prefix: "runtime:auth-attention:default:", desired: [] },
+      { type: "reconcile", profileId: "default", prefix: "runtime:auth-attention:default:", desired: [] },
       {
         type: "raise",
+        profileId: "default",
         occurrence: {
           sourceId: "runtime:auth-status-warning:default",
           title: "Authentication needs attention",
@@ -394,8 +472,8 @@ describe("auth status projection", () => {
       subscriptionSpendConsent: emptyConsent,
     }).snapshot()
     expect(await attentionOf(view)).toEqual([
-      expect.objectContaining({ type: "reconcile", desired: [expect.objectContaining({ sourceId: "runtime:auth-attention:default:provider:chatgpt" })] }),
-      { type: "resolve", sourceId: "runtime:auth-status-warning:default" },
+      expect.objectContaining({ type: "reconcile", profileId: "default", desired: [expect.objectContaining({ sourceId: "runtime:auth-attention:default:provider:chatgpt" })] }),
+      { type: "resolve", profileId: "default", sourceId: "runtime:auth-status-warning:default" },
     ])
   })
 

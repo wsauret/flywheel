@@ -139,7 +139,7 @@ function clientBuild(authDir: string, lineageId: string): AccessProviderBuild {
     model: metadata.id, wireModelId: metadata.id, family: "google",
     modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
     connection: {
-      id: "connection", authDir, oauthPersistence: "profile",
+      id: "connection", profileId: "default", authDir, oauthPersistence: "profile",
       auth: { providers: new Map([["google_vertex", { kind: "api_key", key: Redacted.make("AQ.saved") }]]), credentialLineages: { google_vertex: lineageId }, droppedCredentials: [] },
       subscriptionCredentials: new Map(),
     },

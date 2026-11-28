@@ -59,7 +59,8 @@ export interface AccessProviderBuild {
   readonly wireModelId: string;
   readonly family: ModelFamily;
   readonly modelsClient: ModelsClient;
-  readonly connection: ProviderConnection;
+  /** The captured connection, with the auth profile whose credentials it holds. */
+  readonly connection: EffectiveProviderConnection;
   readonly classifySlot: CredentialSlotClassifier;
   readonly availability: ProviderAvailability;
   readonly projectRoot: string;

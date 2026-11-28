@@ -82,6 +82,7 @@ describe("project notification journal", () => {
       payload: { ...warning, createdAt: 1_000, expiresAt: 1_000 + 48 * 60 * 60 * 1_000 },
     }
     const journal = createProjectNotificationJournal({
+      aggregateId: AGGREGATE_ID,
       reader: asAsyncEventReadSurface({ ...createStore(), currentPosition: () => 1, read: () => [gap] }),
       writer: {
         append: async () => {
@@ -108,8 +109,8 @@ describe("project notification journal", () => {
   it("commits one episode when independent journals concurrently raise the same source", async () => {
     const store = createStore()
     const reader = asAsyncEventReadSurface(store)
-    const firstJournal = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-1", now: () => 1_000 })
-    const secondJournal = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-2", now: () => 2_000 })
+    const firstJournal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-1", now: () => 1_000 })
+    const secondJournal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-2", now: () => 2_000 })
 
     const [first, duplicate] = await Promise.all([firstJournal.raise(warning), secondJournal.raise(warning)])
 
@@ -124,8 +125,8 @@ describe("project notification journal", () => {
   it("reconciles a conflicting different source from the suffix before retrying", async () => {
     const store = createStore()
     const reader = asAsyncEventReadSurface(store)
-    const firstJournal = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-1", now: () => 1_000 })
-    const secondJournal = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-2", now: () => 2_000 })
+    const firstJournal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-1", now: () => 1_000 })
+    const secondJournal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-2", now: () => 2_000 })
     const alert = { ...warning, sourceId: "usage:episode-1", severity: "alert" as const, action: { kind: "open-usage" } as const }
 
     const [first, second] = await Promise.all([firstJournal.raise(warning), secondJournal.raise(alert)])
@@ -142,8 +143,8 @@ describe("project notification journal", () => {
   it("reopens from durable facts and deduplicates without replacing identity or timestamps", async () => {
     const store = createStore()
     const reader = asAsyncEventReadSurface(store)
-    const original = await createProjectNotificationJournal({ reader, writer: store, sessionId: "session-1", now: () => 1_000 }).raise(warning)
-    const reopened = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-2", now: () => 9_000 })
+    const original = await createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-1", now: () => 1_000 }).raise(warning)
+    const reopened = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-2", now: () => 9_000 })
 
     expect(await reopened.raise(warning)).toEqual(original)
     expect(reopened.projection().episodes).toEqual([original])
@@ -154,7 +155,7 @@ describe("project notification journal", () => {
   it("starts a new occurrence only after authoritative resolution, including after restart", async () => {
     const store = createStore()
     let currentTime = 1_000
-    const journal = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(store), writer: store, sessionId: "session-1", now: () => currentTime })
+    const journal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader: asAsyncEventReadSurface(store), writer: store, sessionId: "session-1", now: () => currentTime })
     const first = await journal.raise(warning)
 
     currentTime = 2_000
@@ -165,7 +166,7 @@ describe("project notification journal", () => {
     currentTime = 3_000
     await journal.resolve(warning.sourceId)
     currentTime = 4_000
-    const reopened = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(store), writer: store, sessionId: "session-2", now: () => currentTime })
+    const reopened = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader: asAsyncEventReadSurface(store), writer: store, sessionId: "session-2", now: () => currentTime })
     const recurring = await reopened.raise(warning)
 
     expect(recurring.id).not.toBe(first.id)
@@ -178,10 +179,10 @@ describe("project notification journal", () => {
   it("keeps an immediately resolved notification visible across restart until dismissed", async () => {
     const store = createStore()
     const reader = asAsyncEventReadSurface(store)
-    const journal = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-1", now: () => 1_000 })
+    const journal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-1", now: () => 1_000 })
     const raised = await journal.raise(warning)
     await journal.resolve(warning.sourceId)
-    const reopened = createProjectNotificationJournal({ reader, writer: store, sessionId: "session-2", now: () => 2_000 })
+    const reopened = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader, writer: store, sessionId: "session-2", now: () => 2_000 })
     await reopened.reconcile()
     expect(reopened.projection().visible).toEqual([{ ...raised, resolvedAt: 1_000 }])
     await reopened.dismiss(raised.sourceId, raised.id)
@@ -190,7 +191,7 @@ describe("project notification journal", () => {
 
   it("appends independent resolution and dismissal facts and rejects wrong targets", async () => {
     const store = createStore()
-    const journal = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(store), writer: store, sessionId: "session-1", now: () => 1_000 })
+    const journal = createProjectNotificationJournal({ aggregateId: AGGREGATE_ID, reader: asAsyncEventReadSurface(store), writer: store, sessionId: "session-1", now: () => 1_000 })
     await journal.raise(warning)
 
     await journal.resolve(warning.sourceId)

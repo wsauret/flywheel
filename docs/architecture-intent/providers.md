@@ -406,7 +406,7 @@ Because: Without the throttle, an account whose reads fail costs one provider re
 
 ## ARCH-PROVIDERS-061: Threshold alerts are observation state delivered once
 
-Threshold crossings are provider-observation state in the profile usage authority. Alert delivery claims a pending alert, states the project notification through the composition's notify seam, and then completes the claim, so a crossing is delivered once across processes.
+Threshold crossings are provider-observation state in the profile usage authority. Alert delivery claims a pending alert, states the profile notification through the composition's notify seam, and then completes the claim, so a crossing is delivered once across processes.
 
 ## ARCH-PROVIDERS-062: Reset credits stay inside the provider and Usage boundary
 

@@ -4,10 +4,14 @@ import { createProjectNotificationSink } from "../../../../../src/orchestration/
 
 const occurrence = (sourceId: string) => ({ sourceId, title: sourceId, message: sourceId, severity: "warning" as const, action: { kind: "open-settings" as const } })
 
+const refuseProfile = (): never => { throw new Error("this input names no profile") }
+
 describe("project notification sink", () => {
   test("treats resolution without an active notification as a no-op", async () => {
     const resolved: string[] = []
     const sink = createProjectNotificationSink({
+      profileJournal: refuseProfile,
+      retireProjectCopies: async () => {},
       journal: {
         raise: async (input) => ({ id: "raised", ...input, createdAt: 1, expiresAt: 2 }),
         resolve: async (sourceId) => { resolved.push(sourceId) },
@@ -27,6 +31,8 @@ describe("project notification sink", () => {
     let releaseRaise = (): void => {}
     const raiseBlocked = new Promise<void>((resolve) => { releaseRaise = resolve })
     const sink = createProjectNotificationSink({
+      profileJournal: refuseProfile,
+      retireProjectCopies: async () => {},
       journal: {
         raise: async (input) => {
           operations.push(`raise:${input.sourceId}`)
@@ -63,6 +69,8 @@ describe("project notification sink", () => {
       "runtime:auth-status-warning:profile-b",
     ])
     const sink = createProjectNotificationSink({
+      profileJournal: refuseProfile,
+      retireProjectCopies: async () => {},
       journal: {
         raise: async (input) => {
           operations.push(`raise:${input.sourceId}`)
@@ -88,6 +96,8 @@ describe("project notification sink", () => {
 
   test("rejects inputs after admission closes", async () => {
     const sink = createProjectNotificationSink({
+      profileJournal: refuseProfile,
+      retireProjectCopies: async () => {},
       journal: {
         raise: async () => { throw new Error("raise is not used") },
         resolve: async () => {},

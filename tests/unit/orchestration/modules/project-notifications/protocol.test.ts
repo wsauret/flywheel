@@ -66,33 +66,24 @@ function serviceOver(modules: ModuleServices, calls: string[], enabledModuleIds:
 
 function notificationsService(calls: string[]): ProjectNotificationsService {
   return {
-    journal: {
-      raise: async () => episode,
-      activeEpisode: async (sourceId) => sourceId === episode.sourceId ? episode : undefined,
-      activeSourceIds: async () => new Set([episode.sourceId]),
-      resolve: async () => {},
-      dismiss: async (sourceId, episodeId) => { calls.push(`dismiss:${sourceId}:${episodeId}`) },
-      reconcile: async () => [],
-      observe: async () => [],
-      projection: () => {
-        calls.push("projection")
-        return { episodes: [episode], visible: [episode], lastSeq: 0 }
-      },
+    snapshot: async (anchor) => {
+      calls.push("visible")
+      return { notifications: [episode], anchor: anchor() }
     },
+    dismiss: async (sourceId, episodeId) => { calls.push(`dismiss:${sourceId}:${episodeId}`) },
     sink: { apply: async () => {}, closeAdmission: () => {}, settled: async () => {} },
-    publisher: { reconcile: async () => { calls.push("reconcile") }, closeAdmission: () => {}, settled: async () => {} },
     dispose: () => {},
   }
 }
 
-test("the snapshot reconciles before anchoring and dismiss routes to the module by registry lookup", async () => {
+test("the snapshot reads the shown episodes before anchoring and dismiss routes to the module by registry lookup", async () => {
   const calls: string[] = []
   const modules = composeModuleServices([[projectNotificationsModule.id, notificationsService(calls)]])
   const { service, bus } = serviceOver(modules, calls)
   expect(await service.query({ type: "projectNotificationSnapshot" })).toEqual({ notifications: [episode], snapshotPosition: 37 })
-  expect(calls).toEqual(["reconcile", "projection", "anchor"])
+  expect(calls).toEqual(["visible", "anchor"])
   expect(await service.dispatch({ type: "project_notifications.dismiss", sourceId: episode.sourceId, episodeId: episode.id })).toEqual({ ok: true })
-  expect(calls).toEqual(["reconcile", "projection", "anchor", `dismiss:${episode.sourceId}:${episode.id}`])
+  expect(calls).toEqual(["visible", "anchor", `dismiss:${episode.sourceId}:${episode.id}`])
   await bus.clear()
 })
 

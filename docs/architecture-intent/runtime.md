@@ -281,7 +281,7 @@ An account-lifetime service declares the configuration inputs its constructor re
 
 ## ARCH-RUNTIME-052: One notification service per serving host
 
-The account composition of an interactive project owns the one notification service, and an executor forwards the notify seam to it; a standalone execution host owns the same service over its local store. Shutdown stops producers first, then settles the notification sink and publisher before the store writer closes, and a notification durability failure blocks a successful shutdown result.
+The account service owns the one notification service, with the journal of each interactive project and the journal of each auth profile. An executor forwards the notify seam to it, and a standalone execution host owns the same service and keeps both scopes in its local store. Shutdown stops producers first, then settles the notification sink and publisher before the store writer closes, and a notification durability failure blocks a successful shutdown result.
 
 Not: A second notification service inside each executor.
 
