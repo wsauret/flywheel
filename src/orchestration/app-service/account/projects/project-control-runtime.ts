@@ -378,6 +378,8 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       // loop inside a call, so it counts as an admitted call.
       return (await generations.current.owner.blockers()) ?? [projectBlocker("call")]
     }
+    // The project's profile when a request names none, as its executor resolves it.
+    const authProfiles = new AuthProfileManager({ ...directories, config: () => config.snapshot().config })
     const services = scope.own("modules", composeAccountProjectModuleServices(installedModules(), enabled, {
       storage, config,
       directories, launcher: options.launcher.scope, projectRegistry: options.registry,
@@ -385,6 +387,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       ...(options.webClient === undefined ? {} : { webClient: options.webClient }),
       ...(options.accountModuleFaults === undefined ? {} : { accountModuleFaults: options.accountModuleFaults }),
       transports, eventStore: state, projectionReader: state, eventWriter: state.writer, onStored: state.onStored,
+      profileStore: options.registry.profileStore, authProfileId: () => authProfiles.inspect().id,
       publish: bus.publish, snapshotPosition: bus.snapshotPosition, notify: accountNotify.notify,
       onFrontendEvent(listener) { bus.addListener(listener); return () => bus.removeListener(listener) },
       // Module services start with the project's deferred work, after the client exists.
@@ -487,7 +490,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
         return () => { if (resetExecution === listener) resetExecution = undefined }
       },
       executionCwd: directories.executionCwd, runtimeVersion: options.version, runtimeBuildId: runningDisplayBuildId(),
-      authProfiles: new AuthProfileManager({ ...directories, config: () => config.snapshot().config }),
+      authProfiles,
       chatDefault: () => chatDefault,
       setChatDefault: (value) => { chatDefault = value },
       onPublicSubscriptionChange(active) {

@@ -29,15 +29,26 @@ export interface NotificationOccurrence {
   readonly sourceSessionId?: string
 }
 
+/** The scope a producer declares for its condition (ARCH-SUBSTRATE-041). A
+ *  condition of a provider account or an auth profile names that profile, and
+ *  its episodes are kept once for the profile and shown in every project that
+ *  uses it (PI-INTERACTION-072). Without `profileId` the condition belongs to
+ *  the project that stated it. */
+interface NotificationScope {
+  readonly profileId?: string
+}
+
 /** What a producer hands the seam. `raise` and `resolve` name one source.
  *  `reconcile` states every occurrence that is active under a source prefix:
  *  the observer raises the missing ones and resolves every other active source
  *  under the prefix, except sources under a `keep` prefix, which belong to a
- *  scope the producer did not read. */
-export type NotificationEpisodeInput =
+ *  scope the producer did not read. Each input acts only on the episodes of
+ *  its own scope. */
+export type NotificationEpisodeInput = NotificationScope & (
   | { readonly type: "raise"; readonly occurrence: NotificationOccurrence }
   | { readonly type: "resolve"; readonly sourceId: string }
   | { readonly type: "reconcile"; readonly prefix: string; readonly desired: readonly NotificationOccurrence[]; readonly keep?: readonly string[] }
+)
 
 export const NotificationActionSchema: Schema.Codec<NotificationAction> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("open-auth-provider"), providerId: Schema.NonEmptyString }),
@@ -52,7 +63,7 @@ const OccurrenceSchema = Schema.Struct({
   sourceSessionId: Schema.optionalKey(Schema.NonEmptyString),
 })
 export const NotificationEpisodeInputSchema: Schema.Codec<NotificationEpisodeInput> = Schema.Union([
-  Schema.Struct({ type: Schema.Literal("raise"), occurrence: OccurrenceSchema }),
-  Schema.Struct({ type: Schema.Literal("resolve"), sourceId: Schema.NonEmptyString }),
-  Schema.Struct({ type: Schema.Literal("reconcile"), prefix: Schema.NonEmptyString, desired: Schema.Array(OccurrenceSchema), keep: Schema.optionalKey(Schema.Array(Schema.String)) }),
+  Schema.Struct({ type: Schema.Literal("raise"), profileId: Schema.optionalKey(Schema.NonEmptyString), occurrence: OccurrenceSchema }),
+  Schema.Struct({ type: Schema.Literal("resolve"), profileId: Schema.optionalKey(Schema.NonEmptyString), sourceId: Schema.NonEmptyString }),
+  Schema.Struct({ type: Schema.Literal("reconcile"), profileId: Schema.optionalKey(Schema.NonEmptyString), prefix: Schema.NonEmptyString, desired: Schema.Array(OccurrenceSchema), keep: Schema.optionalKey(Schema.Array(Schema.String)) }),
 ])

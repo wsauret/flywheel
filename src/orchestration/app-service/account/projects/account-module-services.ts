@@ -18,7 +18,7 @@ import type { SettledControlUiAssetState } from "../web-serving/control-ui-asset
  * no session store, runner, auth runtime, or writable database is available. */
 export type AccountProjectModuleServices = Pick<ModuleProcessServices,
   "transports" | "onFrontendEvent" | "onSelectionChanged" | "notify" |
-  "directories" | "publish" | "snapshotPosition" | "launcher" | "modules" | "enabled" | "eventWriter" | "onStored" | "projectionReader"> & {
+  "directories" | "publish" | "snapshotPosition" | "launcher" | "modules" | "enabled" | "eventWriter" | "onStored" | "projectionReader" | "profileStore" | "authProfileId"> & {
     /** The account's configuration authority, with the use-time read that a decision made as it acts needs. */
     readonly config: Pick<RuntimeConfigOwner, "snapshot" | "subscribe" | "mutateSection" | "useTimeObserver">
     readonly eventStore: AsyncEventStateReadSurface
@@ -154,7 +154,7 @@ export function createAccountModuleServiceOwner<Runtime extends { dispose(): Pro
 /** State-backed control services run in the account when attached, or in
  *  the standalone host, such as a headless run, where the account's ports,
  *  such as `storage`, are absent. */
-export type ControlModuleServices = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "notify"> & Partial<Pick<AccountProjectModuleServices, "storage">>
+export type ControlModuleServices = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "notify" | "profileStore" | "authProfileId" | "onFrontendEvent"> & Partial<Pick<AccountProjectModuleServices, "storage">>
 
 /** Constructs only account-placed services from the installed module catalog. */
 export function composeAccountProjectModuleServices(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], kernel: Omit<AccountProjectModuleServices, "modules" | "enabled">): ComposedModuleServices {

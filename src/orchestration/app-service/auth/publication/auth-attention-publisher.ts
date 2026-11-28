@@ -16,9 +16,15 @@ const LAST_RETRY_MS = 60_000
  *  A profile has at most one delivery in flight, and offers made during it
  *  coalesce into one follow-up with the latest statement. A failed delivery
  *  is sent again after a backoff, because an unchanged auth state publishes
- *  nothing that would send it again. */
+ *  nothing that would send it again. Each episode names its profile, whose
+ *  journal keeps it for every project that uses the profile. */
 export interface AuthAttentionPublisher {
-  /** Offers the attention that `view` shows for its profile. */
+  /** Offers the attention that `view` shows for its profile. A view read
+   *  before the profile's first eligibility result states nothing: it cannot
+   *  show the attention that eligibility decides, such as a provider turned
+   *  off, and a statement without it would resolve that attention at every
+   *  start and raise it again moments later (PI-INTERACTION-072). The
+   *  publication of that result offers the whole view again. */
   state(view: RuntimeAuthView): void
   /** Retires every attention episode of a removed profile, in order behind
    *  any statement still in flight for it. */
@@ -56,6 +62,8 @@ interface ProfileAttention {
  *  doubles from one second to one minute. */
 export function createAuthAttentionPublisher(deps: {
   readonly deliver: (episode: NotificationEpisodeInput) => Promise<void>
+  /** Whether the profile has a finished eligibility result. */
+  readonly eligibilityKnown: (profileId: string) => boolean
   readonly retryDelayMs?: (failedTries: number) => number
 }): AuthAttentionPublisher {
   const retryDelayMs = deps.retryDelayMs ?? ((failedTries: number) => Math.min(FIRST_RETRY_MS * 2 ** (failedTries - 1), LAST_RETRY_MS))
@@ -122,10 +130,10 @@ export function createAuthAttentionPublisher(deps: {
   }
 
   return {
-    state: (view) => { offer(view.profile.id, attentionStatement(view)) },
+    state: (view) => { if (deps.eligibilityKnown(view.profile.id)) offer(view.profile.id, attentionStatement(view)) },
     retire: (profileId) => { offer(profileId, statementOf([
-      { type: "reconcile", prefix: authAttentionSourcePrefix(profileId), desired: [] },
-      { type: "resolve", sourceId: legacyAuthWarningSource(profileId) },
+      { type: "reconcile", profileId, prefix: authAttentionSourcePrefix(profileId), desired: [] },
+      { type: "resolve", profileId, sourceId: legacyAuthWarningSource(profileId) },
     ])) },
     reconcile() {
       if (!accepting) return
@@ -191,8 +199,8 @@ function attentionStatement(view: RuntimeAuthView): Statement {
   // raise under the profile's one legacy source.
   const legacySourceId = legacyAuthWarningSource(profileId)
   return statementOf([
-    { type: "reconcile", prefix, desired: attention },
-    view.warnings.length === 0 ? { type: "resolve", sourceId: legacySourceId } : { type: "raise", occurrence: {
+    { type: "reconcile", profileId, prefix, desired: attention },
+    view.warnings.length === 0 ? { type: "resolve", profileId, sourceId: legacySourceId } : { type: "raise", profileId, occurrence: {
       sourceId: legacySourceId,
       title: "Authentication needs attention",
       message: "The authentication file names a provider that Flywheel does not recognize.",

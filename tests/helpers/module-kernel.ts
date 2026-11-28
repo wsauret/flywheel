@@ -1,6 +1,6 @@
 import { asAsyncEventReadSurface } from "../../src/infra/substrate/store/event-store-types.js"
 import { NO_MODULE_SERVICES } from "../../src/infra/definitions/modules/module-service.js"
-import type { ModuleProcessServices } from "../../src/orchestration/app-service/executor/execution/module-service-host.js"
+import type { ModuleProcessServices, ProfileStateStore } from "../../src/orchestration/app-service/executor/execution/module-service-host.js"
 import { composeFirstPartyModules } from "../../src/orchestration/module-contract/module-composition.js"
 import type { SessionManager } from "../../src/orchestration/session/manager.js"
 import type { SessionStore } from "../../src/orchestration/session-store/types.js"
@@ -15,6 +15,11 @@ type KernelPorts = Omit<ModuleProcessServices, "modules" | "enabled">
 
 const refuse = (port: string) => (): never => {
   throw new Error(`this test provides no ${port}`)
+}
+
+/** A profile state store that holds nothing and refuses every write and listener. */
+export function refusingProfileStore(): ProfileStateStore {
+  return { dbFile: "/scratch/profile-state.sqlite", reader: asAsyncEventReadSurface(inMemoryEventReader([])), writer: refusingEventWriter(), onStored: refuse("profileStore.onStored") }
 }
 
 /** A session manager that refuses every call, for a kernel whose services never touch sessions. */
@@ -98,6 +103,8 @@ export function kernelPorts(provided: Partial<KernelPorts> = {}): KernelPorts {
     projectionReader: empty,
     eventWriter: refusingEventWriter(),
     onStored: refuse("onStored"),
+    profileStore: refusingProfileStore(),
+    authProfileId: refuse("authProfileId"),
     publish: refuse("publish"),
     snapshotPosition: refuse("snapshotPosition"),
     sessionManager: refusingSessionManager,

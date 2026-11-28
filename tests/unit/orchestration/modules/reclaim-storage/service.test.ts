@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { refusingProfileStore } from "../../../../helpers/module-kernel.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { AccountService } from "../../../../../src/orchestration/app-service/account/account-service.js"
 import { AUTOMATIC_CONVERSION_MAX_STORE_BYTES, createProjectStorage, createStorageReclaims, type StorageReclaimHost } from "../../../../../src/orchestration/app-service/account/projects/project-storage.js"
@@ -27,6 +28,9 @@ function service(storage: ReturnType<typeof createProjectStorage> | undefined) {
     projectionReader: asAsyncEventReadSurface(inMemoryEventReader([])),
     eventWriter: refusingEventWriter({}),
     onStored: () => () => {},
+    onFrontendEvent: () => () => {},
+    profileStore: refusingProfileStore(),
+    authProfileId: () => { throw new Error("the storage service reads no auth profile") },
     publish: (input) => { published.push(input); return undefined },
     ...(storage === undefined ? {} : { storage }),
   })

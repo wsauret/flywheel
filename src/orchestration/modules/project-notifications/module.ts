@@ -3,7 +3,7 @@ import { moduleProtocol } from "../../app-service/module-protocol-host.js"
 import type { FirstPartyModule } from "../../module-contract/module-catalog.js"
 import { createProjectNotificationsProtocol } from "./protocol.js"
 import { createProjectNotificationsService, projectNotificationsService } from "./service.js"
-import { recoverProjectNotificationHistory } from "./recovery.js"
+import { recoverNotificationStore } from "./recovery.js"
 
 /** Durable project notifications (ARCH-SUBSTRATE-041, ARCH-STRUCTURE-034): the journal every producer's
  *  episode lands in through the notify seam, the workspace domain both
@@ -20,7 +20,7 @@ export const projectNotificationsModule = {
     order: 100,
     label: "project notification history",
     requiresExclusiveOwner: true,
-    run: ({ dbFile }) => { recoverProjectNotificationHistory(dbFile) },
+    run: ({ dbFile }) => { recoverNotificationStore(dbFile) },
   }],
   contributions: [
     { domain: "commands", id: NOTIFICATIONS_COMMAND, value: {

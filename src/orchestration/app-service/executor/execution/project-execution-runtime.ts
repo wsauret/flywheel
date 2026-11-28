@@ -330,6 +330,9 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   const moduleServices = scope.own("module-services", composeModuleProcessServices(installedModules(), () => moduleSelection().enabledModuleIds, {
     transports, onFrontendEvent: (listener) => { bus.addListener(listener); return () => bus.removeListener(listener) },
     directories: { ...directories, executionCwd }, eventStore: eventReader, projectionReader, eventWriter, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition,
+    // A standalone host keeps profile state in its own store (ARCH-RUNTIME-052).
+    profileStore: { reader: projectionReader, writer: eventWriter, onStored: eventStore.onStored },
+    authProfileId: () => authRuntime.activeProfile().id,
     sessionManager: manager, sessionStore, config: runtimeConfig, launcher: options.launcher,
     onSelectionChanged: (listener) => capabilities.onChange(() => {
       void (async () => { await listener() })().catch((error: unknown) => log.warn("module selection application failed", { error: errorMessage(error) }))

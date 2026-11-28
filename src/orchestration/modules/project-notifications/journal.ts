@@ -2,11 +2,10 @@ import { capturedFacts, type AsyncEventReadSurface, type AsyncEventAppender, typ
 import type { NotificationOccurrence } from "../../../infra/substrate/events/notification-episode.js"
 import type { ProjectNotificationEpisode, ProjectNotificationProjection } from "../../../protocol/modules/project-notifications.js"
 import {
-  emptyProjectNotificationProjectionState,
+  applyProjectNotificationFact,
+  emptyProjectNotificationFold,
   materializeProjectNotificationProjection,
-  PROJECT_NOTIFICATION_AGGREGATE_ID,
   PROJECT_NOTIFICATION_LIFETIME_MS,
-  reduceProjectNotificationProjection,
 } from "./projection.js"
 
 export interface ProjectNotificationJournal {
@@ -20,20 +19,27 @@ export interface ProjectNotificationJournal {
   observe(events: readonly StoredFact[]): Promise<readonly StoredFact[]>
   activeEpisode(sourceId: string): Promise<ProjectNotificationEpisode | undefined>
   activeSourceIds(): Promise<ReadonlySet<string>>
+  /** The folded episode `id` names, without a read. */
+  episode(id: string): ProjectNotificationEpisode | undefined
+  /** Every folded episode of `sourceId`, oldest first, without a read. */
+  episodesOf(sourceId: string): readonly ProjectNotificationEpisode[]
   projection(): ProjectNotificationProjection
 }
 
 interface ProjectNotificationJournalDeps {
   readonly reader: AsyncEventReadSurface
   readonly writer: AsyncEventAppender
+  /** The project's aggregate or one auth profile's. */
+  readonly aggregateId: string
   readonly sessionId: string
   readonly now?: () => number
 }
 
-/** Owns strict replay, guarded appends, and the only mutable in-memory projection of the project notification aggregate. */
+/** Owns strict replay, guarded appends, and the only mutable in-memory projection of one notification aggregate. */
 export function createProjectNotificationJournal(deps: ProjectNotificationJournalDeps): ProjectNotificationJournal {
   const now = deps.now ?? Date.now
-  let state = emptyProjectNotificationProjectionState()
+  const aggregateId = deps.aggregateId
+  const state = emptyProjectNotificationFold(aggregateId)
   const reader = deps.reader
   let position = 0
   let replay = Promise.resolve<readonly StoredFact[]>([])
@@ -41,8 +47,8 @@ export function createProjectNotificationJournal(deps: ProjectNotificationJourna
   const fold = (events: readonly StoredFact[]): StoredFact[] => {
     const applied: StoredFact[] = []
     for (const event of events) {
-      if (event.aggregateId !== PROJECT_NOTIFICATION_AGGREGATE_ID || event.seq <= state.lastSeq) continue
-      state = reduceProjectNotificationProjection(state, event)
+      if (event.aggregateId !== aggregateId || event.seq <= state.lastSeq) continue
+      applyProjectNotificationFact(state, event)
       applied.push(event)
     }
     return applied
@@ -52,7 +58,7 @@ export function createProjectNotificationJournal(deps: ProjectNotificationJourna
     const next = replay.then(async () => {
       const upper = await reader.capturePosition()
       const applied: StoredFact[] = []
-      for await (const item of capturedFacts(reader, { aggregateId: PROJECT_NOTIFICATION_AGGREGATE_ID }, { upperPosition: upper, afterPosition: position })) {
+      for await (const item of capturedFacts(reader, { aggregateId }, { upperPosition: upper, afterPosition: position })) {
         applied.push(...fold([item]))
       }
       position = upper
@@ -66,13 +72,13 @@ export function createProjectNotificationJournal(deps: ProjectNotificationJourna
     for (;;) {
       await reconcile()
       const activeEpisodeId = state.activeSources.get(sourceId)
-      const targetEpisodeId = episodeId ?? activeEpisodeId ?? [...state.episodes.values()].findLast((episode) => episode.sourceId === sourceId)?.id
+      const targetEpisodeId = episodeId ?? activeEpisodeId ?? state.sourceEpisodes.get(sourceId)?.at(-1)
       const existing = targetEpisodeId === undefined ? undefined : state.episodes.get(targetEpisodeId)
       if (!existing || existing.sourceId !== sourceId) throw new Error(`Unknown project notification source: ${sourceId}`)
       if (episodeId !== undefined && existing.id !== episodeId) return
       if (type === "project.notification.resolved" ? existing.resolvedAt !== undefined : existing.dismissedAt !== undefined) return
       const result = await deps.writer.appendGuarded({
-          aggregateId: PROJECT_NOTIFICATION_AGGREGATE_ID,
+          aggregateId,
           type,
           version: 1,
           timestamp: now(),
@@ -99,7 +105,7 @@ export function createProjectNotificationJournal(deps: ProjectNotificationJourna
         if (existing) return existing
         const createdAt = now()
         const result = await deps.writer.appendGuarded({
-            aggregateId: PROJECT_NOTIFICATION_AGGREGATE_ID,
+            aggregateId,
             type: "project.notification.raised",
             version: 1,
             timestamp: createdAt,
@@ -122,7 +128,7 @@ export function createProjectNotificationJournal(deps: ProjectNotificationJourna
     dismiss: (sourceId, episodeId) => append("project.notification.dismissed", sourceId, episodeId),
     reconcile,
     observe: async (events) => {
-      const relevant = events.filter((event) => event.aggregateId === PROJECT_NOTIFICATION_AGGREGATE_ID)
+      const relevant = events.filter((event) => event.aggregateId === aggregateId)
       const applied = relevant.some((event) => event.seq > state.lastSeq + 1) ? [...await reconcile()] : []
       applied.push(...fold(relevant.toSorted((left, right) => left.seq - right.seq)))
       return [...applied, ...relevant.filter((event) => !applied.some((fact) => fact.id === event.id))]
@@ -136,6 +142,8 @@ export function createProjectNotificationJournal(deps: ProjectNotificationJourna
       await reconcile()
       return new Set(state.activeSources.keys())
     },
+    episode: (id) => state.episodes.get(id),
+    episodesOf: (sourceId) => (state.sourceEpisodes.get(sourceId) ?? []).flatMap((id) => state.episodes.get(id) ?? []),
     projection: () => materializeProjectNotificationProjection(state, now()),
   }
 }

@@ -57,6 +57,10 @@ describe("presentProjectNotifications", () => {
     expect(shown[1]?.message).toBe("Title replacement: Message replacement")
     setView([episode("alert", "alert"), episode("replacement")])
     expect(shown[2]).toEqual({ message: "Title alert: Message alert", variant: "error", duration: 7000 })
+    // A rebase to another auth profile and back brings no episode that was not announced.
+    setView([])
+    setView([episode("alert", "alert"), episode("replacement")])
+    expect(shown).toHaveLength(3)
     dispose()
   })
 

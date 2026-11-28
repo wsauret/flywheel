@@ -133,7 +133,7 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
       reportsExtraUsage: () => launch.config.engineToken !== undefined || cliLogin(launch.config.configDir)?.reportsExtraUsage === true,
       accountEmail: () => cliLogin(launch.config.configDir)?.email,
       onExtraUsageStop: (stop) => {
-        build.notify({ type: "raise", occurrence: extraUsageNotice(stop, { providerId: candidate.providerId, instanceId: candidate.instanceId, configDir: launch.config.configDir, name: login?.label ?? login?.identity ?? CLAUDE_AGENT_SDK_LABEL }) });
+        build.notify({ type: "raise", profileId: build.connection.profileId, occurrence: extraUsageNotice(stop, { providerId: candidate.providerId, instanceId: candidate.instanceId, configDir: launch.config.configDir, name: login?.label ?? login?.identity ?? CLAUDE_AGENT_SDK_LABEL }) });
       },
       recordUsage: (windows) => { processUsageReadings.record({ configDir: launch.config.configDir, accountId: candidate.instanceId }, windows, Date.now()); },
       recordOutcome: (outcome) => { observationsOf(seams).recordRequest({ configDir: launch.config.configDir, accountId: candidate.instanceId }, outcome); },

@@ -12,6 +12,7 @@ import { accountEventStoreDbFile } from "../../../infra/platform/files/paths.js"
 import { heldProjection } from "../../../infra/substrate/projection/projection-registry.js"
 import { createRuntimeEventStore } from "../../../infra/substrate/store/sqlite-event-store.js"
 import { parseAccountProjectFact } from "./account-project-facts.js"
+import type { ProfileStateStore } from "../executor/execution/module-service-host.js"
 
 const AGGREGATE_ID = "account-project-registry"
 const FACT_TYPE = "account.project.registration.updated"
@@ -54,6 +55,10 @@ export interface AccountProjectRegistry {
   record(input: { readonly projectRoot: string; readonly label: string; readonly lastAttachedAt?: number }): Promise<AccountProject>
   forget(projectRoot: string): Promise<void>
   watch(listener: (projects: readonly AccountProject[]) => void): () => void
+  /** The account store, which keeps the state of auth profiles for every
+   *  project this account serves (ARCH-RUNTIME-052). It lives as long as
+   *  the registry. */
+  readonly profileStore: ProfileStateStore
   dispose(): Promise<void>
 }
 
@@ -223,6 +228,7 @@ export function createAccountProjectRegistry(options: AccountProjectRegistryOpti
       }
     },
     forget,
+    profileStore: { dbFile, reader, writer: store, onStored: store.onStored },
     watch(listener) {
       watchers.add(listener)
       return () => { watchers.delete(listener) }

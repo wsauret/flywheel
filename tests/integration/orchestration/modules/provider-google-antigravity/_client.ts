@@ -67,7 +67,7 @@ export function openClientRig(logins: readonly HarnessLogin[]): ClientRig {
         model, wireModelId: model, family: "google",
         modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
         connection: {
-          id: "connection", authDir: projectRoot, oauthPersistence: "memory-only",
+          id: "connection", profileId: "default", authDir: projectRoot, oauthPersistence: "memory-only",
           auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [] },
           subscriptionCredentials: new Map([[PROVIDER_ID, [{ instanceId: accountId, identity: "person@example.com", lineageId: accountId, credential: { type: "external", configDir: owner.loginDir } }]]]),
         },

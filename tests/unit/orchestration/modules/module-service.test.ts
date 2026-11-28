@@ -16,7 +16,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { remoteModule } from "../../../../src/orchestration/modules/remote/module.js"
 import { remoteConfigSection } from "../../../../src/orchestration/modules/remote/config.js"
-import { kernelPorts } from "../../../helpers/module-kernel.js"
+import { kernelPorts, refusingProfileStore } from "../../../helpers/module-kernel.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import type { Schema } from "effect"
 import type { AccountModuleRequest } from "../../../../src/protocol/runtime/account-attach.js"
@@ -65,7 +65,7 @@ const refuse = (port: string) => (): never => { throw new Error(`the synthetic a
 const refusingAccountPorts: Omit<Parameters<typeof createAccountModuleServiceOwner>[0], "onStartFailure"> = {
   userDataRoot: "/scratch/account/.flywheel",
   version: "0.0.0-test",
-  registry: { list: refuse("registry.list"), record: refuse("registry.record"), forget: refuse("registry.forget"), watch: refuse("registry.watch"), dispose: refuse("registry.dispose") },
+  registry: { list: refuse("registry.list"), record: refuse("registry.record"), forget: refuse("registry.forget"), watch: refuse("registry.watch"), profileStore: refusingProfileStore(), dispose: refuse("registry.dispose") },
   projects: {
     open: refuse("projects.open"), close: refuse("projects.close"), closeFor: refuse("projects.closeFor"), state: refuse("projects.state"), project: refuse("projects.project"), slots: refuse("projects.slots"),
     watch: refuse("projects.watch"), openAdmission: refuse("projects.openAdmission"), closeAdmission: refuse("projects.closeAdmission"), dispose: refuse("projects.dispose"),

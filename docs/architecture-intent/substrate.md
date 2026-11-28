@@ -75,9 +75,9 @@ Bytes that cannot be decoded are never rewritten, retired, deleted, or replaced 
 
 Not: Rewriting or deleting unreadable facts to repair a session.
 
-## ARCH-SUBSTRATE-014: Project notification history is the one disposable domain
+## ARCH-SUBSTRATE-014: Notification history is the one disposable domain
 
-Project notification history is the one durable state exempt from the immutability of unreadable history, because it holds no user work, executable control, or replay evidence used outside notification presentation. Before runtime readers open the store, its owner folds the whole history strictly, and on any failure it discards the whole history and its sequence authority at once and starts empty.
+Project and profile notification history is the one durable state exempt from the immutability of unreadable history, because it holds no user work, executable control, or replay evidence used outside notification presentation. Before runtime readers open the store, its owner folds the whole history strictly, and on any failure it discards the whole history and its sequence authority at once and starts empty.
 
 Because: Malformed notification history must never block startup, and discarding it loses nothing a person depends on.
 
@@ -198,9 +198,9 @@ Not: A separate idempotency key, dedup record, or attempt resumed marker.
 
 Every durable record that names a process stores the pid, the kernel start stamp, and the boot where the platform has one, never the process group. A process that cannot read its own identity still takes its locks and loses only protection against pid reuse. Records are published whole, so no writer leaves an empty claim or holder.
 
-## ARCH-SUBSTRATE-041: Notification history is append-only facts with one projection
+## ARCH-SUBSTRATE-041: Notification history is append-only facts with one projection per aggregate
 
-Project notifications are durable presentation history in one append-only project aggregate owned by the project-notifications module. Raised, resolved, and dismissed facts are the sole authority, and one strict projection rebuilt from them is the only mutable runtime representation. Clients and other consumers never persist notification status or copies of its presentation.
+Notifications are durable presentation history in append-only aggregates owned by the project-notifications module: one per project, and one per auth profile in the account store. A producer declares each condition's scope, and a condition about a provider account or an auth profile is profile-scoped. Raised, resolved, and dismissed facts are the sole authority, and one strict projection per aggregate is its only mutable runtime representation. Clients and other consumers never persist notification status or copies of its presentation.
 
 Because: A mutable current-notification table loses causal history and makes retries ambiguous.
 

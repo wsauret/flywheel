@@ -175,6 +175,8 @@ describe("project notification sink", () => {
     const operations: string[] = []
     const activeSources = new Set(["accepted"])
     const sink = createProjectNotificationSink({
+      profileJournal: () => { throw new Error("a run notice names no profile") },
+      retireProjectCopies: async () => {},
       journal: {
         raise: async () => { throw new Error("raise is not used") },
         resolve: async (sourceId) => { operations.push(sourceId) },

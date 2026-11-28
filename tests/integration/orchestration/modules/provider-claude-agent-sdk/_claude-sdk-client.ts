@@ -108,7 +108,7 @@ function sdkBuild(target: SdkClientTarget, launcher: AccessProviderBuild["launch
     model: metadata.id, wireModelId: metadata.id, family: "anthropic",
     modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
     connection: {
-      id: "qualification", authDir: target.configDir, oauthPersistence: "memory-only",
+      id: "qualification", profileId: "default", authDir: target.configDir, oauthPersistence: "memory-only",
       auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [] },
       subscriptionCredentials: new Map([[candidate.providerId, [{ instanceId: candidate.instanceId, identity: candidate.instanceId, lineageId: candidate.instanceId, credential }]]]),
     },

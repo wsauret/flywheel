@@ -13,7 +13,7 @@ import { EMPTY_REMOTE_VIEW } from "../../../../../src/protocol/modules/remote.js
 import type { FrontendEvent } from "../../../../../src/protocol/runtime/app-service-types.js"
 import { createLauncherScope } from "../../../../../src/infra/process-supervisor.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
-import { kernelPorts } from "../../../../helpers/module-kernel.js"
+import { kernelPorts, refusingProfileStore } from "../../../../helpers/module-kernel.js"
 import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -67,13 +67,15 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
   // Only the ports the tested service consumes are supplied; the process owner
   // forwards the remaining kernel authorities without reading them.
   const kernel: Omit<AccountProjectModuleServices, "modules" | "enabled"> = {
-    projectRegistry: { list: async () => [], record: async () => { throw new Error("not used") }, forget: async () => {}, watch: () => () => {} },
+    projectRegistry: { list: async () => [], record: async () => { throw new Error("not used") }, forget: async () => {}, watch: () => () => {}, profileStore: refusingProfileStore() },
     directories: testDirectories("/scratch/remote-service"), launcher: createLauncherScope({ spawnOwned: () => { throw new Error("No process starts in this service fixture") }, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
     eventStore: asAsyncEventReadSurface(inMemoryEventReader([])),
     storage: createProjectStorage("/scratch/remote-service/.flywheel/flywheel.sqlite", undefined),
     projectionReader: asAsyncEventReadSurface(inMemoryEventReader([])),
     eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     onStored: () => () => {},
+    profileStore: refusingProfileStore(),
+    authProfileId: () => { throw new Error("the remote service reads no auth profile") },
     readUnreadChats: async () => ({ stopped: [], unread: [], turns: {}, snapshotPosition: 0 }),
     accountModuleFaults,
     config: { snapshot: () => { throw new Error("the remote service reads no config here") }, subscribe: () => async () => {}, mutateSection: async () => { throw new Error("the remote service writes no config") }, useTimeObserver: () => async () => { throw new Error("the remote service reads no config at use time") } },

@@ -109,7 +109,7 @@ async function openRig(fake: Parameters<typeof openEngineHarness>[1] = {}): Prom
         model, wireModelId: model, family: "google",
         modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
         connection: {
-          id: "connection", authDir: root, oauthPersistence: "memory-only",
+          id: "connection", profileId: "default", authDir: root, oauthPersistence: "memory-only",
           auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [] },
           subscriptionCredentials: new Map([[PROVIDER_ID, [{ instanceId: "account", identity: "person@example.com", lineageId: "account", credential: { type: "external", configDir: login.loginDir } }]]]),
         },

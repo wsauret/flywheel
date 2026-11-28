@@ -231,9 +231,9 @@ Update state is account-global: the account's one coordinator publishes it with 
 
 Not: A foreground session notice, or a second client copy of the update policy.
 
-## ARCH-PROTOCOL-044: Project notifications reach clients as whole episode changes
+## ARCH-PROTOCOL-044: Notifications reach clients as whole episode changes
 
-Project notifications reach clients as a durable-resnapshot workspace domain whose patches carry a raised episode whole and a resolution or dismissal by source and episode identity, so a client folds terminal state without inferring it. The action vocabulary stays closed, targeted auth actions carry only opaque account identity, and dismissal is one lossless mutation of one exact episode.
+Notifications reach clients as a durable-resnapshot workspace domain that carries the episodes of the project and of its active auth profile. Its patches carry a raised episode whole and a resolution or dismissal by source and episode identity, so a client folds terminal state without inferring it. The action vocabulary stays closed, targeted auth actions carry only opaque account identity, and dismissal is one lossless mutation of one exact episode.
 
 ## ARCH-PROTOCOL-045: The changes domain anchors its reads before awaiting
 
