@@ -107,6 +107,37 @@ describe("session picker scroll ownership", () => {
     }
   })
 
+  // A chat in Working asks a question while the person has another chat
+  // selected. The list is at its top, so the new Needs you group above the
+  // selection shows, and the selection stays on its chat.
+  it("keeps a list at its top in view when a chat moves into Needs you above the selection", async () => {
+    const working = Array.from({ length: 3 }, (_, index) => ({ ...sessionRow(index), group: "Working" as const }))
+    const recent = Array.from({ length: 37 }, (_, index) => sessionRow(index + 3))
+    const recentRows: PickerRow[] = [{ kind: "header", id: "spacer:Recent", label: "" }, { kind: "header", id: "header:Recent", label: "Recent" }, ...recent]
+    const before: PickerRow[] = [{ kind: "header", id: "header:Working", label: "Working" }, ...working, ...recentRows]
+    const { rendered, setResult, setCursor } = await renderPicker(before, 2, () => 0)
+    try {
+      expect(rendered.captureCharFrame()).toContain("> ○ session-01")
+      const asking: PickerSessionRow = { ...working[2]!, group: "Needs you" }
+      const after: PickerRow[] = [
+        { kind: "header", id: "header:Needs you", label: "Needs you" }, asking,
+        { kind: "header", id: "spacer:Working", label: "" }, { kind: "header", id: "header:Working", label: "Working" }, working[0]!, working[1]!,
+        ...recentRows,
+      ]
+      batch(() => {
+        setResult(resultOf(after))
+        setCursor(5)
+      })
+      await rendered.flush()
+      const frame = rendered.captureCharFrame()
+      expect(frame).toContain("Needs you")
+      expect(frame).toContain("session-02")
+      expect(frame).toContain("> ○ session-01")
+    } finally {
+      rendered.renderer.destroy()
+    }
+  })
+
   it("holds a wheel-scrolled position across data refreshes, and follows the cursor", async () => {
     const { rendered, rows, setResult, setCursor } = await renderPicker()
     try {
@@ -154,8 +185,12 @@ describe("session picker scroll ownership", () => {
       expect(frame).toContain("renamed-session")
       expect(frame).not.toContain("session-00")
 
-      // Reorder: the retained keyed rows must follow their new indices.
-      setResult(resultOf(renamed.toReversed()))
+      // Reorder: the retained keyed rows must follow their new indices. The
+      // selection follows its chat, as the keyed selection of the hook does.
+      batch(() => {
+        setResult(resultOf(renamed.toReversed()))
+        setCursor(renamed.length - 1)
+      })
       await rendered.flush()
       expect(rendered.captureCharFrame()).toContain("renamed-session")
       setCursor(1)

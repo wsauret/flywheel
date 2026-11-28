@@ -225,7 +225,7 @@ describe("streamAssistantTurn telemetry", () => {
     expect(stall.generation).toMatchObject({ durationMs: 10000 })
   })
 
-  test("excludes single chunks, terminal-only output and zero-duration blocks from both totals", async () => {
+  test("excludes single chunks, terminal-only output, zero-duration and burst blocks from both totals", async () => {
     const result = await measureOutput([
       [1000, { kind: "text_delta", blockKey: "single", text: "single" }],
       [1100, { kind: "text_terminal", blockKey: "terminal", content: "terminal" }],
@@ -241,6 +241,14 @@ describe("streamAssistantTurn telemetry", () => {
       [2000, { kind: "text_delta", blockKey: "a", text: "b" }],
     ])
     expect(mixed.generation).toMatchObject({ outputTokens: 2, durationMs: 1000, measuredBlocks: 1, excludedBlocks: 1 })
+    const burst = await measureOutput([
+      [1000, { kind: "text_delta", blockKey: "paced", text: "a" }],
+      ...Array.from({ length: 10 }, (_, index) => [1200 + index * 0.05, { kind: "text_delta", blockKey: "burst", text: "burst" }] as const),
+      [1300, { kind: "tool_input_delta", toolUseId: "t", partialJson: '{"a":1}', generationTiming: { first: 1250, last: 1250.5, chunks: 661 } }],
+      [2000, { kind: "text_delta", blockKey: "paced", text: "b" }],
+    ])
+    expect(burst.counted).toEqual(["ab"])
+    expect(burst.generation).toMatchObject({ outputTokens: 2, durationMs: 1000, measuredBlocks: 1, excludedBlocks: 2 })
   })
 
   test("measures original custom chunks without synthetic framing or presentation escaping", async () => {
