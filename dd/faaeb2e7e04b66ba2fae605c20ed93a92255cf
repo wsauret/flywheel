@@ -1,0 +1,108 @@
+bench/README.md
+  h_4b47e9e4a8b456 148,150,154-165
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 39-40,66,71-72,119-125,145,230-233,288-290,292-293,306,310-319,345-376
+bench/ab-persona/calibration.ts
+  h_4b47e9e4a8b456 1-60
+bench/ab-persona/calibration/judged-quality/controls.json
+  h_4b47e9e4a8b456 1-245
+bench/ab-persona/calibration/judged-quality/controls/astropy__astropy-14598--clean.patch
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/calibration/judged-quality/controls/astropy__astropy-14598--missed-defect.patch
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/calibration/judged-quality/controls/astropy__astropy-14598--needless-code.patch
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/calibration/judged-quality/controls/astropy__astropy-14598--wrong-abstraction.patch
+  h_4b47e9e4a8b456 1-22
+bench/ab-persona/calibration/judged-quality/controls/getmoto__moto-7365--clean.patch
+  h_4b47e9e4a8b456 1-43
+bench/ab-persona/calibration/judged-quality/controls/getmoto__moto-7365--convention-break.patch
+  h_4b47e9e4a8b456 1-43
+bench/ab-persona/calibration/judged-quality/controls/getmoto__moto-7365--missed-defect.patch
+  h_4b47e9e4a8b456 1-44
+bench/ab-persona/calibration/judged-quality/controls/getmoto__moto-7365--needless-code.patch
+  h_4b47e9e4a8b456 1-45
+bench/ab-persona/calibration/judged-quality/controls/getmoto__moto-7365--wrong-abstraction.patch
+  h_4b47e9e4a8b456 1-44
+bench/ab-persona/calibration/judged-quality/controls/httpx-streaming-json-iteration--clean.patch
+  h_4b47e9e4a8b456 1-588
+bench/ab-persona/calibration/judged-quality/controls/httpx-streaming-json-iteration--needless-code.patch
+  h_4b47e9e4a8b456 1-590
+bench/ab-persona/calibration/judged-quality/controls/jquense__yup-2305--clean.patch
+  h_4b47e9e4a8b456 1-99
+bench/ab-persona/calibration/judged-quality/controls/jquense__yup-2305--needless-code.patch
+  h_4b47e9e4a8b456 1-100
+bench/ab-persona/calibration/judged-quality/controls/psf__requests-6028--clean.patch
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/calibration/judged-quality/controls/psf__requests-6028--convention-break.patch
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/calibration/judged-quality/controls/psf__requests-6028--missed-defect.patch
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/calibration/judged-quality/controls/psf__requests-6028--needless-code.patch
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/calibration/judged-quality/controls/recall-punctuated-words--clean.patch
+  h_4b47e9e4a8b456 1-97
+bench/ab-persona/calibration/judged-quality/controls/recall-punctuated-words--needless-code.patch
+  h_4b47e9e4a8b456 1-98
+bench/ab-persona/calibration/judged-quality/controls/redis__redis-10068--clean.patch
+  h_4b47e9e4a8b456 1-49
+bench/ab-persona/calibration/judged-quality/controls/redis__redis-10068--convention-break.patch
+  h_4b47e9e4a8b456 1-49
+bench/ab-persona/calibration/judged-quality/controls/redis__redis-10068--missed-defect.patch
+  h_4b47e9e4a8b456 1-49
+bench/ab-persona/calibration/judged-quality/controls/redis__redis-10068--needless-code.patch
+  h_4b47e9e4a8b456 1-50
+bench/ab-persona/calibration/judged-quality/reviewer-labels.json
+  h_4b47e9e4a8b456 1-144
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 14,16-18,21-28,41-44,64,67,74,76-78,81-82,154,179-180
+bench/ab-persona/tiers.ts
+  h_4b47e9e4a8b456 4-8,15,17,30,32,34,40-44,49,54-56
+bench/tasks/implement/tiers.json
+  h_4b47e9e4a8b456 2-85
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 122,147-153
+package.json
+  h_4b47e9e4a8b456 112
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 99-118,378-381,397-399,450,459
+src/orchestration/modules/development/benchmark/persona/results-pages.ts
+  h_4b47e9e4a8b456 12-15,42,48-49,61-62,70-72,147-185,220,270,308,352,358-361,381
+src/orchestration/modules/development/benchmark/records/benchmark-records.ts
+  h_4b47e9e4a8b456 9,82-84,120,219
+src/orchestration/modules/development/benchmark/records/judge-calibration.ts
+  h_4b47e9e4a8b456 1-348
+src/orchestration/modules/development/benchmark/records/ranking-pool.ts
+  h_4b47e9e4a8b456 2,49-55,64-67,112-119,235
+src/orchestration/modules/development/benchmark/records/ranking.ts
+  h_4b47e9e4a8b456 6-7,20-22,26-29,74-75,98,126-146,161,173,195-209,214-216,218,230,234,236,239-240,301-302,329-334,359,412,461-462,467-472,476-478
+src/orchestration/modules/development/benchmark/records/task-tiers.ts
+  h_4b47e9e4a8b456 1,8-10,60-79
+src/orchestration/modules/development/benchmark/rejudge.ts
+  h_4b47e9e4a8b456 5,8,12,23-26,28,32,35-37,44-54,74,82-83,85,87-88,93,99,101-102,120-126
+src/orchestration/modules/development/benchmark/scoring/implement-scoring.ts
+  h_4b47e9e4a8b456 166
+src/orchestration/modules/development/benchmark/scoring/quality-judge.ts
+  h_4b47e9e4a8b456 1-201
+src/orchestration/modules/development/benchmark/scoring/run-store.ts
+  h_4b47e9e4a8b456 131-132,181-203
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 2,4-7,10-11,19-21,53-55,83-86,114-115,269-310,330-391,422,479,483-484,488,544-561
+tests/unit/bench/benchmark-rejudge.test.ts
+  h_4b47e9e4a8b456 8-10,98-158
+tests/unit/bench/cli.test.ts
+  h_4b47e9e4a8b456 21,27-28
+tests/unit/bench/judged-quality.test.ts
+  h_4b47e9e4a8b456 1-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ddfaaeb2e7e04b66ba2fae605c20ed93a92255cf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
