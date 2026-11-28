@@ -380,26 +380,48 @@ export function mountSessionListSearch(found: (query: string, signal: AbortSigna
 }
 
 /** The rail's list fed the project's waiting and unread sets as the runtime
- *  publishes them: each publication a new object. Records the marks sent. */
+ *  publishes them: each publication a new object. Records the marks sent.
+ *  The list's clock runs on a fake `Date.now` and `setInterval`, which
+ *  `advance` moves without a real wait; `reads` counts every read of the
+ *  list's data, which a layout pass or a search makes. */
 export function mountSessionListUnread(sessions: readonly SessionSummary[]) {
+  const real = { now: Date.now, setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval }
+  let clock = real.now()
+  const ticks = new Map<number, () => void>()
+  let nextTick = 0
+  Object.assign(Date, { now: () => clock })
+  Object.assign(globalThis, { setInterval: (run: () => void) => { ticks.set(++nextTick, run); return nextTick }, clearInterval: (id: number) => ticks.delete(id) })
   return createRoot((dispose) => {
     const [listed, setListed] = createSignal(sessions)
     const [waiting, setWaiting] = createSignal<WaitingSessionsView | undefined>()
     const [unread, setUnread] = createSignal<UnreadChatsView | undefined>()
     const marked: string[] = []
+    let reads = 0
     const root = createElement("root")
     insert(root, createComponent(SessionList, {
-      get sessions() { return listed() },
+      get sessions() { reads += 1; return listed() },
       errors: [],
-      get needsYou() { return selectNeedsYou({ waiting: waiting(), unread: unread(), listed: listed() }) },
-      get turns() { return unread()?.turns },
+      get needsYou() { reads += 1; return selectNeedsYou({ waiting: waiting(), unread: unread(), listed: listed() }) },
+      get turns() { reads += 1; return unread()?.turns },
       selected: undefined,
       grouped: true,
       actions: { onSelect() {}, working: () => false, onMarkRead(id) { marked.push(`read:${id}`) }, onMarkUnread(id) { marked.push(`unread:${id}`) } },
     }))
     const row = (id: string) => nodes(root).find((node) => node.properties["data-session"] === id)
     return {
-      dispose,
+      dispose() {
+        dispose()
+        Object.assign(Date, { now: real.now })
+        Object.assign(globalThis, { setInterval: real.setInterval, clearInterval: real.clearInterval })
+      },
+      /** Moves the clock by `ms` and runs every interval once. */
+      advance(ms: number) {
+        clock += ms
+        for (const run of ticks.values()) run()
+      },
+      /** How many intervals run. */
+      clocks: () => ticks.size,
+      reads: () => reads,
       setListed,
       setWaiting: (waitingSessions: WaitingSessionsView["sessions"]) => setWaiting({ sessions: waitingSessions }),
       setUnread: (view: UnreadChatsView) => setUnread({ stopped: view.stopped.map((chat) => ({ ...chat })), unread: [...view.unread], turns: { ...view.turns } }),

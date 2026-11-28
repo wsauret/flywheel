@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import { loadBudgetRenderFixture } from "../../test-support/budget-render-test-loader.js"
-import { textContent } from "../../test-support/render-ownership-host-fixture.js"
+import { nodes, textContent } from "../../test-support/render-ownership-host-fixture.js"
 
 test("session metadata shows only loading totals and restores prior metadata gating", async () => {
   const fixture = await loadBudgetRenderFixture()
@@ -190,4 +190,27 @@ test("a stopped unread chat lists under Needs you after a question and moves to 
     if (typeof markUnread === "function") markUnread({ stopPropagation() {} })
     assert.deepEqual(mounted.marked, ["read:done", "unread:done"])
   } finally { mounted.dispose() }
+})
+
+test("a row's age follows the clock in place, with one clock for the list and no new layout", async () => {
+  const now = Date.now()
+  const chat = (id: string) => ({ id, title: id, kind: "chat" as const, lifecycleState: "inactive" as const, active: false, working: false, lastUpdated: new Date(now).toISOString(), totalsLoading: false })
+  const mounted = (await loadBudgetRenderFixture()).mountSessionListUnread([chat("newer"), chat("older")])
+  try {
+    mounted.setUnread({ stopped: [], unread: [], turns: { newer: now - 30_000, older: now - 600_000 } })
+    const age = (id: string) => { const row = mounted.row(id); return row === undefined ? undefined : nodes(row).find((node) => node.properties.class === "session-when") }
+    const rows = [mounted.row("newer"), mounted.row("older")]
+    const labels = [age("newer"), age("older")]
+    assert.deepEqual(labels.map((label) => label === undefined ? undefined : textContent(label)), ["now", "10m"])
+    assert.equal(mounted.clocks(), 1, "the list owns one clock, not one for each row")
+    const reads = mounted.reads()
+
+    mounted.advance(90_000)
+    assert.deepEqual([age("newer"), age("older")].map((label) => label === undefined ? undefined : textContent(label)), ["2m", "12m"])
+    assert.ok(mounted.row("newer") === rows[0] && mounted.row("older") === rows[1], "a tick must not replace a row")
+    assert.ok(age("newer") === labels[0] && age("older") === labels[1], "a tick changes the label's text, not its node")
+    assert.deepEqual(mounted.rowOrder(), ["newer", "older"])
+    assert.equal(mounted.reads(), reads, "a tick reads no list data, so it lays out nothing again")
+  } finally { mounted.dispose() }
+  assert.equal(mounted.clocks(), 0, "the clock stops with the list")
 })

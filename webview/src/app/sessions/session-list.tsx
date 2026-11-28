@@ -159,6 +159,14 @@ export function SessionList(props: {
   })
   const searchingMessages = () => props.actions.searchChats !== undefined && content().searching
 
+  // One clock for every age label. Only the labels read it, so a tick
+  // changes the text of a label whose age changed and nothing else. Past
+  // the first minute an age counts whole minutes, so a tick every 10
+  // seconds keeps a label at most 10 seconds late.
+  const [now, setNow] = createSignal(Date.now())
+  const clock = setInterval(() => setNow(Date.now()), 10_000)
+  onCleanup(() => clearInterval(clock))
+
   const [tray, setTray] = createSignal<Tray | undefined>(undefined)
   let revealedSelected = false
   const revealSelected = (row: HTMLElement) => {
@@ -219,6 +227,7 @@ export function SessionList(props: {
               dragging={draggingOf(row().session.id)}
               onActive={() => props.onActive?.(index())}
               actions={actions()}
+              now={now}
             />
           </>
         )}
@@ -233,6 +242,7 @@ export function SessionList(props: {
             session={entry().session}
             selected={entry().session.id === props.selected}
             onOpen={() => props.actions.onOpenAt?.(entry().chat.sessionId, entry().chat.entryId)}
+            now={now}
           />
         )}
       </Key>
@@ -275,6 +285,8 @@ function SessionRow(props: {
   readonly dragging: boolean
   readonly onActive: () => void
   readonly actions: SessionListActions
+  /** The list's clock, which only the age label reads. */
+  readonly now: () => number
 }) {
   const session = () => props.row.session
   const diff = () => session().diffStats
@@ -315,7 +327,7 @@ function SessionRow(props: {
         <span class="session-title">
           {session().title}
         </span>
-        <span class="session-when">{formatTimeAgo(when())}</span>
+        <span class="session-when">{formatTimeAgo(when(), props.now())}</span>
         <Show when={description()}>{(line) => <span class="session-subtitle">{line()}</span>}</Show>
         <span class="session-meta" aria-busy={session().totalsLoading || undefined}>
           <Show when={session().totalsLoading}><span class="session-totals-loading">totals loading</span></Show>
@@ -385,6 +397,8 @@ function FoundRow(props: {
   readonly session: SessionSummary
   readonly selected: boolean
   readonly onOpen: () => void
+  /** The list's clock, which only the age label reads. */
+  readonly now: () => number
 }) {
   return (
     <div
@@ -401,7 +415,7 @@ function FoundRow(props: {
           <span class="session-dot" classList={{ open: props.session.active, live: props.session.working, waiting: props.session.awaitingAnswer === true }} />
         </span>
         <span class="session-title">{props.session.title}</span>
-        <span class="session-when">{formatTimeAgo(props.chat.lastActivityAt === undefined ? props.session.lastUpdated : new Date(props.chat.lastActivityAt).toISOString())}</span>
+        <span class="session-when">{formatTimeAgo(props.chat.lastActivityAt === undefined ? props.session.lastUpdated : new Date(props.chat.lastActivityAt).toISOString(), props.now())}</span>
         <span class="session-found-snippet">
           <For each={snippetParts(props.chat.snippet)}>{(part) => part.match ? <mark>{part.text}</mark> : <>{part.text}</>}</For>
         </span>
