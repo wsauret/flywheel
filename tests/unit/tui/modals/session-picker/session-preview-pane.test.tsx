@@ -58,7 +58,7 @@ describe("SessionPreviewPane", () => {
     const lanes = fakeLanes()
     const selected = catalogSession({ id: "a" })
     const [catalog, setCatalog] = createSignal<SessionPickerResult>({
-      rows: [{ kind: "session", id: "a", category: "Recent", session: selected }], totalMatches: 1, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0, searchingMessages: false,
+      rows: [{ kind: "session", id: "a", group: "Recent", lastActiveAt: 0, session: selected }], totalMatches: 1, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0, searchingMessages: false,
     })
     const calls: { request: OutputRangeRequest; resolve: (range: HydratedOutputRange) => void; reject: (error: Error) => void }[] = []
     const held: AnyBlock[] = [
@@ -129,7 +129,7 @@ describe("SessionPreviewPane", () => {
         else expect(preview.scrollTop).toBeGreaterThan(readingOffset)
         expect(rendered.captureCharFrame()).toContain("reading line 9")
       }
-      setCatalog({ ...catalog(), rows: [{ kind: "session", id: "a", category: "Recent", session: { ...selected, title: "updated" } }] })
+      setCatalog({ ...catalog(), rows: [{ kind: "session", id: "a", group: "Recent", lastActiveAt: 0, session: { ...selected, title: "updated" } }] })
       await paint()
       for (let i = 0; i < 6; i++) await Bun.sleep(30)
       expect(calls).toHaveLength(1)
@@ -182,7 +182,7 @@ describe("SessionPreviewPane", () => {
       expect(descendants(preview).includes(received)).toBe(true)
       expect(received.y - preview.viewport.y).toBe(receivedOffset)
       expect(rendered.captureCharFrame()).toContain("Message from")
-      setCatalog({ ...catalog(), rows: [{ kind: "session", id: "b", category: "Recent", session: catalogSession({ id: "b" }) }] })
+      setCatalog({ ...catalog(), rows: [{ kind: "session", id: "b", group: "Recent", lastActiveAt: 0, session: catalogSession({ id: "b" }) }] })
       await rendered.renderOnce()
       expect(rendered.captureCharFrame()).not.toContain("reading line")
       expect(rendered.captureCharFrame()).not.toContain("disclosed tool output")

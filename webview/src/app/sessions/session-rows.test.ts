@@ -17,7 +17,7 @@ function summary(id: string, ageMs: number, overrides: Partial<SessionSummary> =
  *  waiting marks come from and the project's unread set. */
 function layout(sessions: readonly SessionSummary[], grouped: boolean, previous: readonly SessionRow[], unread?: UnreadChatsView): SessionRow[] {
   const waiting = { sessions: sessions.flatMap((session) => session.awaitingAnswer ? [{ sessionId: session.id, openedAt: Date.parse(session.lastUpdated) }] : []) }
-  return layoutSessionRows(sessions, selectNeedsYou({ waiting, unread, listed: sessions }), grouped, previous)
+  return layoutSessionRows(sessions, selectNeedsYou({ waiting, unread, listed: sessions }), unread?.turns, grouped, previous)
 }
 
 function stop(sessionId: string, ageMs: number, overrides: Partial<StoppedChat> = {}): StoppedChat {
@@ -67,7 +67,7 @@ describe("session row layout", () => {
       summary("stopped-new", 3 * HOUR, { lifecycleState: "active", active: true }),
       summary("recent", 1 * HOUR),
     ]
-    const rows = layout(sessions, true, [], { stopped: [stop("stopped-new", 1 * HOUR), stop("stopped-old", 2 * HOUR, { ending: { kind: "failed", failure: "api_error" } })], unread: [] })
+    const rows = layout(sessions, true, [], { stopped: [stop("stopped-new", 1 * HOUR), stop("stopped-old", 2 * HOUR, { ending: { kind: "failed", failure: "api_error" } })], unread: [], turns: {} })
     assert.deepEqual(rows.map((row) => [row.session.id, row.heading, row.need]), [
       ["question", "Needs you", "question"],
       ["stopped-new", undefined, "stopped"],
@@ -81,17 +81,17 @@ describe("session row layout", () => {
   test("a working chat with unread messages keeps its place and carries the mark", () => {
     const sessions = [summary("newer", 0, { working: true }), summary("unread", 1 * HOUR, { working: true })]
     const before = layout(sessions, true, [])
-    const rows = layout(sessions, true, before, { stopped: [], unread: ["unread"] })
+    const rows = layout(sessions, true, before, { stopped: [], unread: ["unread"], turns: {} })
     assert.deepEqual(rows.map((row) => [row.session.id, row.group, row.unread]), [["newer", "Working", false], ["unread", "Working", true]])
     assert.equal(rows[0], before[0])
   })
 
   test("a set republished with equal stops keeps every row", () => {
     const sessions = [summary("stopped", 0)]
-    const first = layout(sessions, true, [], { stopped: [stop("stopped", 0)], unread: [] })
-    const second = layout(sessions, true, first, { stopped: [stop("stopped", 0)], unread: [] })
+    const first = layout(sessions, true, [], { stopped: [stop("stopped", 0)], unread: [], turns: {} })
+    const second = layout(sessions, true, first, { stopped: [stop("stopped", 0)], unread: [], turns: {} })
     assert.equal(second[0], first[0])
-    const read = layout(sessions, true, second, { stopped: [], unread: [] })
+    const read = layout(sessions, true, second, { stopped: [], unread: [], turns: {} })
     assert.deepEqual(read.map((row) => [row.group, row.need]), [["Recent", undefined]])
   })
 
@@ -102,6 +102,23 @@ describe("session row layout", () => {
     }
     const [warning] = layout([summary("warning", 0, { notices: [{ id: "warning", scope: "session", presentation: "provider.status_alert", severity: "warning", title: "Warning", message: "Warning", startedAt: 1, updatedAt: 1 }] })], true, [])
     assert.equal(warning?.group, "Recent")
+  })
+
+  test("Working and Recent order by the latest turn, which the row's time shows, and an opened chat keeps its place", () => {
+    const sessions = [summary("opened", 0), summary("worked", 5 * HOUR), summary("busy", 6 * HOUR, { working: true })]
+    const turns = { opened: NOW - 3 * HOUR, worked: NOW - HOUR, busy: NOW - 2 * HOUR }
+    const first = layout(sessions, true, [], { stopped: [], unread: [], turns })
+    assert.deepEqual(first.map((row) => [row.session.id, row.group, row.lastActiveAt]), [["busy", "Working", turns.busy], ["worked", "Recent", turns.worked], ["opened", "Recent", turns.opened]])
+    // Opening a chat writes its last change and no turn: nothing moves, and
+    // the rows that did not change keep their identity.
+    const opened = layout([summary("opened", 0, { active: true, lifecycleState: "active" }), sessions[1]!, sessions[2]!], true, first, { stopped: [], unread: [], turns })
+    assert.deepEqual(opened.map((row) => row.session.id), ["busy", "worked", "opened"])
+    assert.equal(opened[0], first[0])
+    assert.equal(opened[1], first[1])
+    // A new turn moves its chat and its time only.
+    const turned = layout(sessions, true, opened, { stopped: [], unread: [], turns: { ...turns, opened: NOW } })
+    assert.deepEqual(turned.map((row) => [row.session.id, row.lastActiveAt]), [["busy", turns.busy], ["opened", NOW], ["worked", turns.worked]])
+    assert.equal(turned[0], first[0])
   })
 
   test("filtered lists omit empty groups and preserve priority", () => {

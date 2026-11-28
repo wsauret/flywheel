@@ -54,7 +54,7 @@ describe("remote notifier", () => {
     const notifier = createRemoteNotifier({
       addListener: (listener) => { listeners.add(listener) },
       removeListener: (listener) => { listeners.delete(listener) },
-      readUnreadChats: overrides.readUnreadChats ?? (async () => ({ stopped: [], unread: [], snapshotPosition: 0 })),
+      readUnreadChats: overrides.readUnreadChats ?? (async () => ({ stopped: [], unread: [], turns: {}, snapshotPosition: 0 })),
       targets: () => [target],
       forgetSubscription: async (deviceId, subscription) => { forgotten.push(deviceId); expect(subscription).toEqual(target.subscription); await overrides.forgetSubscription?.(deviceId, subscription) },
       appOrigin: "https://remote.example.test",
@@ -69,7 +69,7 @@ describe("remote notifier", () => {
      *  service does, announcing the stops in `newStops`. */
     const publishStopped = (stopped: readonly StoppedChat[], newStops: readonly StoppedChat[] = []) => {
       unreadPosition += 1
-      emit({ type: "patch", patch: { cursor: unreadChatsCursor(), position: unreadPosition, prevPosition: unreadPosition - 1, payload: { kind: "unreadChats.changed", stopped, unread: [], newStops } } })
+      emit({ type: "patch", patch: { cursor: unreadChatsCursor(), position: unreadPosition, prevPosition: unreadPosition - 1, payload: { kind: "unreadChats.changed", places: { stopped, unread: [] }, turns: {}, newStops } } })
     }
     return { notifier, sent, forgotten, emit, publishStopped, setOutcome: (next: WebPushOutcome) => { outcome = next } }
   }
@@ -88,7 +88,7 @@ describe("remote notifier", () => {
 
   test("pushes once for each stop that the set announces, with the words for finished or for an error and a link that opens the chat", async () => {
     let reads = 0
-    const h = harness({ readUnreadChats: async () => { reads += 1; return { stopped: [stop("earlier")], unread: [], snapshotPosition: 0 } } })
+    const h = harness({ readUnreadChats: async () => { reads += 1; return { stopped: [stop("earlier")], unread: [], turns: {}, snapshotPosition: 0 } } })
     await settle()
     // The read starts the set; what it holds at start sends none.
     expect(reads).toBe(1)

@@ -9,10 +9,11 @@ import { contentResults, createContentSearch, type ContentAnswer } from "../../.
 import { createListModalKeys, type ListModalKeyEvent } from "../../../../components/modal/select/modal-list-keys.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../../../../terminal/keymap/text-entry.js"
 import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../../../../components/modal/select/modal-select-helpers.js"
-import { flattenSessionRows, formatCompactTimeAgo, NEEDS_YOU_GROUP, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../../../../modals/session-picker/picker-helpers.js"
+import { flattenSessionRows, formatCompactTimeAgo, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../../../../modals/session-picker/picker-helpers.js"
 import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow, SessionPickerResult } from "../../../../modals/session-picker/picker-types.js"
 import type { ModalHandle } from "../../../../components/modal-stack.js"
-import type { NeedsYou } from "../../../../../protocol/client/session/needs-you.js"
+import { groupSessionList, type GroupedChat } from "../../../../../protocol/client/session/session-list-groups.js"
+import { isWorkingStatus } from "../../../../../protocol/session/status-protocol-types.js"
 import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionRenameState } from "./use-session-modal-types.js"
 import { createKeyedListSelection } from "../create-keyed-list-selection.js"
 
@@ -45,16 +46,22 @@ export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: n
   // action captures it, so a late completion can only touch its own modal.
   let entry: ModalHandle | undefined
 
-  // Minute-quantized clock: rows need `now` only for date-group headers and
-  // the time-ago column width, which move at minute granularity. Tracking the
-  // 1-second ticker here rebuilt every picker row object every second for the
-  // modal's whole lifetime.
+  // Minute-quantized clock: rows need `now` only for the time-ago column
+  // width, which moves at minute granularity. Tracking the 1-second ticker
+  // here rebuilt the labels every second for the modal's whole lifetime.
   const nowMinute = createMemo(() => Math.floor(signals.now() / 60_000) * 60_000)
+  // The catalog is read only while this picker is open.
+  const listed = createMemo(() => deps.modal.stack.some((modal) => modal.element === deps.renderModal) ? deps.sessions() : undefined)
+  // Working reads the status that the row's dot reads, so a row never spins
+  // in one group and rests in another. A status change that keeps every chat
+  // in its group, such as thinking to generating, files no row again.
+  const workingIds = createMemo(() => (listed() ?? []).flatMap((row) => isWorkingStatus(signals.statusView(row.id)) ? [row.id] : []), [], { equals: sameIds })
   const titleResult = createMemo<PickerRowsResult>(() => {
-    if (!deps.modal.stack.some((modal) => modal.element === deps.renderModal)) {
-      return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
-    }
-    return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute(), signals.needsYou().rows)
+    const rows = listed()
+    if (rows === undefined) return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
+    const working = new Set(workingIds())
+    const grouped = groupSessionList({ rows, needsYou: signals.needsYou(), working: (row) => working.has(row.id), turns: signals.chatTurns() })
+    return pickerRowsFor(grouped, deps.sessionCatalogErrors(), filterQuery())
   })
   const titleMatchIds = createMemo(() => titleResult().rows.flatMap((row) => row.kind === "session" ? [row.session.id] : []), [], { equals: sameIds })
   // Chats found by their messages go below every title match, so an answer
@@ -470,14 +477,13 @@ interface PickerRowsResult {
 }
 
 function pickerRowsFor(
-  sessionList: readonly SessionCatalogRow[],
+  grouped: readonly GroupedChat<SessionCatalogRow>[],
   errors: readonly SessionCatalogError[],
   query: string,
-  now: number,
-  needsYou: NeedsYou["rows"],
 ): PickerRowsResult {
   const corrupt = corruptPickerRows(errors)
-  const sessionRows = allSessionRows(sessionList, now, needsYou)
+  const listed = flattenSessionRows(grouped)
+  const sessionRows = listed.filter((row): row is PickerSessionRow => row.kind === "session")
   const knownIds = new Set([...sessionRows.map((row) => row.session.id), ...corrupt.map((row) => row.sessionId)])
   const exactId = parseSessionIdQuery(query, knownIds)
   if (exactId) {
@@ -490,7 +496,7 @@ function pickerRowsFor(
   const activeQuery = query.trim()
   if (activeQuery) return matchingRows(sessionRows, corrupt, activeQuery)
 
-  const rows = withCorruptRows(flattenSessionRows(sessionList, now, needsYou), corrupt)
+  const rows = withCorruptRows(listed, corrupt)
   const totalMatches = rows.filter(isSelectablePickerRow).length
   const capped = rows.filter(isCappedRow).length > MAX_RENDERED_ROWS
   return {
@@ -540,16 +546,11 @@ function matchingRows(sessionRows: readonly PickerSessionRow[], corrupt: readonl
   }
 }
 
-function allSessionRows(sessionList: readonly SessionCatalogRow[], now: number, needsYou: NeedsYou["rows"]): PickerSessionRow[] {
-  return flattenSessionRows(sessionList, now, needsYou)
-    .filter((row): row is PickerSessionRow => row.kind === "session")
-}
-
 /** Whether the 200-row cap counts a row. Every chat that waits on the
  *  person stays outside the cap, so each one the count names is reachable
  *  (PI-INTERACTION-184). */
 function isCappedRow(row: PickerRow): row is SelectablePickerRow {
-  return isSelectablePickerRow(row) && !(row.kind === "session" && row.category === NEEDS_YOU_GROUP)
+  return isSelectablePickerRow(row) && !(row.kind === "session" && row.group === "Needs you")
 }
 
 /** Caps the rows that the cap counts at `maxRows`, keeping the selected row. */

@@ -624,7 +624,7 @@ A chat with agent messages that the person has not read shows an unread mark on 
 
 ## PI-INTERACTION-189: Session lists order chats by their latest turn
 
-In Working and Recent, every client lists chats by the time their latest turn started or stopped, newest first. Opening, closing, or reading a chat does not move it, and neither does a restart of the service. A chat with no recorded turn takes the time of its last change.
+In Working and Recent, every client lists chats by the time their latest turn started or stopped, newest first. Opening, closing, or reading a chat does not move it, and neither does a restart of the service. A chat with no recorded turn takes the time of its newest message.
 
 ## PI-INTERACTION-084: The web header names the open session and where it works
 

@@ -116,7 +116,7 @@ export function createDesktopPages(options: {
   }
 
   /** Drops each page still reading its title whose stop `view` no longer lists. */
-  function prune(view: UnreadChatsView): void {
+  function prune(view: Pick<UnreadChatsView, "stopped">): void {
     for (const [sessionId, stopKey] of pendingStops) {
       if (!view.stopped.some((chat) => chat.sessionId === sessionId && chat.stopKey === stopKey)) pendingStops.delete(sessionId)
     }
@@ -126,7 +126,7 @@ export function createDesktopPages(options: {
     if (disposed || event.type !== "patch") return
     const { payload } = event.patch
     if (payload.kind === "unreadChats.changed") {
-      prune(payload)
+      if (payload.places) prune(payload.places)
       for (const chat of payload.newStops) pageStop(chat)
       return
     }

@@ -40,7 +40,8 @@ function pickerRow(rowSession: SessionCatalogRow, overrides: Partial<PickerSessi
     kind: "session",
     id: rowSession.id,
     session: rowSession,
-    category: "Today",
+    group: "Recent",
+    lastActiveAt: Date.parse(rowSession.lastUpdated),
     ...overrides,
   }
 }
@@ -145,7 +146,7 @@ describe("SessionPickerRow", () => {
     { mark: "failed", ending: { kind: "failed", failure: "api_overloaded" }, glyph: "! ", markTone: "error", detail: "    The model provider is overloaded", detailTone: "error" },
   ] as const)("renders a $mark stop with its mark, its detail line, and the age of the stop", async ({ mark, ending, glyph, markTone, detail, detailTone }) => {
     const stopped = { sessionId: "session-1", ending, firstLine: "All tests pass.", stoppedAt: now - 2 * 3_600_000, stopKey: "entry-1" }
-    const row = pickerRow(session({ lastUpdated: new Date(now - 60_000).toISOString() }), { category: "Needs you", stopped })
+    const row = pickerRow(session({ lastUpdated: new Date(now - 60_000).toISOString() }), { group: "Needs you", lastActiveAt: stopped.stoppedAt, stopped })
     const result = await testRender(() => createComponent(SessionPickerRow, { row, theme, rowWidth: 60, selected: false, isWorking: false, mark, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 2 })
     try {
       await result.renderOnce()
@@ -183,7 +184,7 @@ describe("SessionPickerRow", () => {
 
   it("keeps the age of a stop in its column after a title of wide characters", async () => {
     const stopped = { sessionId: "session-1", ending: { kind: "completed" }, firstLine: "完了しました。", stoppedAt: now - 2 * 3_600_000, stopKey: "entry-1" } as const
-    const row = pickerRow(session({ title: "日本語のとても長いタイトルがここにあります。日本語のとても長いタイトル" }), { category: "Needs you", stopped })
+    const row = pickerRow(session({ title: "日本語のとても長いタイトルがここにあります。日本語のとても長いタイトル" }), { group: "Needs you", lastActiveAt: stopped.stoppedAt, stopped })
     const result = await testRender(() => createComponent(SessionPickerRow, { row, theme, rowWidth: 40, selected: false, isWorking: false, mark: "stopped", blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 40, height: 2 })
     try {
       await result.renderOnce()
@@ -200,7 +201,7 @@ describe("SessionPickerRow", () => {
 
   it("keeps every line of a stopped row legible while its delete waits on the confirmation", async () => {
     const stopped = { sessionId: "session-1", ending: { kind: "failed", failure: "api_overloaded" }, firstLine: "", stoppedAt: now - 60_000, stopKey: "entry-1" } as const
-    const row = pickerRow(session(), { category: "Needs you", stopped })
+    const row = pickerRow(session(), { group: "Needs you", lastActiveAt: stopped.stoppedAt, stopped })
     const result = await testRender(() => createComponent(SessionPickerRow, { row, theme, rowWidth: 60, selected: true, isWorking: false, mark: "failed", blinkOn: true, now, timeAgoWidth: 3, confirmDeleteSessionId: "session-1", rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 2 })
     try {
       await result.renderOnce()

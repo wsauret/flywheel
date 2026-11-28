@@ -3,7 +3,8 @@ import { createHeldView } from "../../../../../src/protocol/client/runtime/held-
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../../../../src/protocol/git/git-ai-attribution-protocol-types.js"
 import { updatesCursor, type UpdateStatusView } from "../../../../../src/protocol/runtime/update-protocol-types.js"
 import { waitingSessionsCursor, type WaitingSessionsView } from "../../../../../src/protocol/session/question-protocol-types.js"
-import { unreadChatsCursor, type UnreadChatsView } from "../../../../../src/protocol/session/unread-protocol-types.js"
+import type { ListedTurns } from "../../../../../src/protocol/client/session/session-list-groups.js"
+import { foldUnreadChatsPatch, unreadChatsCursor, type UnreadChatsView } from "../../../../../src/protocol/session/unread-protocol-types.js"
 
 /** The workspace status views that read themselves: each one holds its own
  *  cursor, reads its snapshot, and adopts its own patches, so the session
@@ -23,6 +24,9 @@ export interface WorkspaceStatusViews {
    *  unread messages (ARCH-PROTOCOL-072), or undefined before the first read
    *  and from a runtime that refuses it. */
   readonly unreadChats: UnreadChatsView | undefined
+  /** The latest turn times of `unreadChats`, or undefined while
+   *  `unreadChats` is undefined. */
+  readonly chatTurns: ListedTurns
   dispose(): void
 }
 
@@ -75,7 +79,8 @@ export function createWorkspaceStatusViews(input: {
       const snapshot = await connection.query({ type: "unreadChatsSnapshot" })
       return { view: snapshot, position: snapshot.snapshotPosition }
     },
-    adopt: (payload) => (payload.kind === "unreadChats.changed" ? payload : undefined),
+    // A patch folds into the view that the snapshot read, which it follows.
+    adopt: (payload, _position, current) => (payload.kind === "unreadChats.changed" && current !== undefined ? foldUnreadChatsPatch(current, payload) : undefined),
     changed: input.changed,
     label: "unread chats",
   })
@@ -84,6 +89,7 @@ export function createWorkspaceStatusViews(input: {
     get gitAiAttribution() { return gitAiAttribution.view },
     get waitingSessions() { return waiting.view },
     get unreadChats() { return unread.view },
+    get chatTurns() { return unread.view?.turns },
     dispose() {
       updates.dispose()
       gitAiAttribution.dispose()

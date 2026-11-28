@@ -13,7 +13,10 @@ import { ChatTurnEndingSchema } from "../../../protocol/session/chat-settlement-
  *  query. `finalEntryId` names the entry of the assistant's final message,
  *  and `firstLine` is its first line as plain text, so a list row needs no
  *  transcript read. Both are absent when the turn ended with no answer, as a
- *  failed or refused turn does. Only the newest fact of a session applies. */
+ *  failed or refused turn does. `endedAt`, in epoch milliseconds, is when
+ *  the turn ended, for a stop recorded later than that: recovery records it
+ *  at the time of the final message. Without it the turn ended when the fact
+ *  was recorded. Only the newest fact of a session applies. */
 const ChatTurnStoppedFactSchema = defineFact({
   type: "chat.turn.stopped",
   version: 1,
@@ -23,6 +26,7 @@ const ChatTurnStoppedFactSchema = defineFact({
     ending: ChatTurnEndingSchema,
     finalEntryId: Schema.optionalKey(Schema.NonEmptyString),
     firstLine: Schema.optionalKey(Schema.String),
+    endedAt: Schema.optionalKey(Schema.Number),
   }),
 })
 

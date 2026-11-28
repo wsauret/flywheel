@@ -10,13 +10,19 @@ import { parseProjectionFact } from "../../../../../src/infra/substrate/projecti
 import { turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { chatEntriesFacts } from "../../../../../src/orchestration/session/conversation/conversation-facts.js"
 import type { ConversationEntry } from "../../../../../src/orchestration/session/conversation/conversation-entry-types.js"
+import { resolveEventStoreDbFile } from "../../../../../src/infra/platform/files/paths.js"
 import { createSqliteEventStore } from "../../../../../src/infra/substrate/store/sqlite-event-store.js"
 import { Log } from "../../../../../src/infra/diagnostics/log.js"
-import { asAsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/substrate/store/event-store-types.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime/runtime-ui-protocol-types.js"
 import type { ChatTurnEnding } from "../../../../../src/protocol/session/chat-settlement-protocol-types.js"
 import { countStateRequests } from "../../../../helpers/state-requests.js"
+import { temporaryDirectories } from "../../../../helpers/directories.js"
+import { foldUnreadChatsPatch, type UnreadChatsView } from "../../../../../src/protocol/session/unread-protocol-types.js"
+import { servedProjectState } from "../_served-project-state-fixture.js"
+import { readNewestPerAggregate } from "../../../../../src/orchestration/app-service/project-state/project-state-newest-reads.js"
 
+const createDirectory = temporaryDirectories()
 const opened: Array<{ readonly store: LocalSqliteEventStore; readonly directory: string }> = []
 
 afterEach(() => {
@@ -49,15 +55,24 @@ function stopped(store: LocalSqliteEventStore, sessionId: string, answer?: { rea
   return sessionFact(store, sessionId, "chat.turn.stopped", { conversationId: `conv-${sessionId}`, ending, ...(answer ? { finalEntryId: answer.entryId, firstLine: answer.firstLine } : {}) })
 }
 
+/** A session's creation, as the metadata store records it. */
+function created(store: LocalSqliteEventStore, sessionId: string, kind: "chat" | "subagent" = "chat"): StoredFact {
+  const at = new Date(clock).toISOString()
+  return store.append({
+    aggregateId: `session:${sessionId}`, sessionId, type: "session.created", version: 6, actor: "flywheel", timestamp: clock++,
+    payload: { label: sessionId, lastUpdated: at, createdAt: at, lifecycleState: "inactive", kind, command: kind, conversationId: `conv-${sessionId}`, executionCwd: "/workspace", ...(kind === "subagent" ? { launchedFrom: { parentSessionId: "parent" } } : {}) },
+  })
+}
+
 let entryCount = 0
 /** One entry batch of the chat's conversation: an assistant answer, or the
  *  entry that `kind` names: a compaction, or the record of the person's
  *  interrupt. */
-function appended(store: LocalSqliteEventStore, sessionId: string, kind: "assistant" | "compaction" | "cut" = "assistant"): StoredFact & { readonly entryId: string } {
+function appended(store: LocalSqliteEventStore, sessionId: string, kind: "assistant" | "compaction" | "cut" = "assistant", text = "Working."): StoredFact & { readonly entryId: string } {
   const timestamp = "2026-11-26T00:00:00.000Z"
   const entryId = kind === "cut" ? turnEndEntryId({ reason: "paused", pausedBy: "person" }, `cut-${++entryCount}`) : `entry-${++entryCount}`
   const entry: ConversationEntry = kind === "assistant"
-    ? { kind: "message", id: entryId, parentId: null, timestamp, message: { kind: "assistant", content: [{ type: "text", text: "Working." }] } }
+    ? { kind: "message", id: entryId, parentId: null, timestamp, message: { kind: "assistant", content: [{ type: "text", text }] } }
     : kind === "cut"
       ? { kind: "message", id: entryId, parentId: null, timestamp, displayOnly: true, message: { kind: "system", content: "Interrupted." } }
       : { kind: "compaction", id: entryId, parentId: null, timestamp, mode: "reset", sourceLeafId: "entry-0", tokensBefore: 10, tokensAfter: 5 }
@@ -75,18 +90,24 @@ type Projection = ReturnType<typeof createUnreadChatsProjection<Connection>>
 const presence = (projection: Projection, connection: Connection, sessionId: string | undefined) => projection.dispatch({ type: "chat.presence", ...(sessionId === undefined ? {} : { sessionId }) }, connection)
 const mark = (projection: Projection, sessionId: string, read: boolean) => projection.dispatch({ type: read ? "chat.mark_read" : "chat.mark_unread", sessionId }, undefined)
 
-function project(store: LocalSqliteEventStore, reader: UnreadChatsProjectionDeps["reader"] = asAsyncEventReadSurface(store), writer: UnreadChatsProjectionDeps["writer"] = { append: async (event) => store.append(event) }) {
+type Reader = UnreadChatsProjectionDeps["reader"] & Pick<AsyncEventStateReadSurface, "readSlice">
+/** The newest reads of the state boundary, through `reader`. */
+const newestThrough = (reader: Pick<AsyncEventStateReadSurface, "readSlice">): UnreadChatsProjectionDeps["readNewest"] => (...args) => readNewestPerAggregate(reader, ...args)
+
+function project(store: LocalSqliteEventStore, reader: Reader = asAsyncEventReadSurface(store), writer: UnreadChatsProjectionDeps["writer"] = { append: async (event) => store.append(event) }) {
   const patches: RuntimeUiPatchInput[] = []
   const projection = createUnreadChatsProjection<Connection>({
-    reader, writer, onStored: store.onStored,
+    reader, readNewest: newestThrough(reader), writer, onStored: store.onStored,
     bus: { publish: (patch) => { patches.push(patch) }, snapshotPosition: () => 0 },
   })
+  /** The stopped and unread view; `turns` answers the latest turn times. */
   const view = async () => {
-    const { snapshotPosition: _position, ...rest } = await projection.snapshot()
+    const { snapshotPosition: _position, turns: _turns, ...rest } = await projection.snapshot()
     return rest
   }
+  const turns = async () => (await projection.snapshot()).turns
   const stoppedIds = async () => (await view()).stopped.map((chat) => chat.sessionId)
-  return { projection, patches, view, stoppedIds }
+  return { projection, patches, view, turns, stoppedIds }
 }
 
 const ANSWER = { entryId: "answer-1", firstLine: "All done." }
@@ -133,10 +154,11 @@ describe("unread chats projection", () => {
     await view()
     await presence(projection, {}, "chat")
     appended(store, "chat")
-    stopped(store, "chat", ANSWER)
+    const stop = stopped(store, "chat", ANSWER)
     expect(await view()).toEqual({ stopped: [], unread: [] })
     expect(receipts(store)).toEqual([{ sessionId: "chat", readThrough: expect.any(Number), finalEntryId: "answer-1", cause: "stopped_under_presence" }])
-    expect(patches).toEqual([])
+    // The stop moves no place, so clients hear only its time.
+    expect(patches).toEqual([{ cursor: { scope: "workspace", domain: "unreadChats" }, payload: { kind: "unreadChats.changed", turns: { chat: stop.timestamp }, newStops: [] } }])
     projection.dispose()
   })
 
@@ -169,9 +191,9 @@ describe("unread chats projection", () => {
     await presence(projection, connection, "other")
     await presence(projection, connection, undefined)
     expect(receipts(store)).toHaveLength(1)
-    stopped(store, "chat", { entryId: message.entryId, firstLine: "Working." })
+    const stop = stopped(store, "chat", { entryId: message.entryId, firstLine: "Working." })
     expect(await view()).toEqual({ stopped: [], unread: [] })
-    expect(patches).toEqual([])
+    expect(patches).toEqual([{ cursor: { scope: "workspace", domain: "unreadChats" }, payload: { kind: "unreadChats.changed", turns: { chat: stop.timestamp }, newStops: [] } }])
     projection.dispose()
   })
 
@@ -275,7 +297,7 @@ describe("unread chats projection", () => {
     appended(store, "chat")
     appended(store, "chat")
     expect(await view()).toEqual({ stopped: [], unread: ["chat"] })
-    expect(patches).toEqual([{ cursor: { scope: "workspace", domain: "unreadChats" }, payload: { kind: "unreadChats.changed", stopped: [], unread: ["chat"], newStops: [] } }])
+    expect(patches).toEqual([{ cursor: { scope: "workspace", domain: "unreadChats" }, payload: { kind: "unreadChats.changed", places: { stopped: [], unread: ["chat"] }, turns: {}, newStops: [] } }])
     projection.dispose()
   })
 
@@ -309,7 +331,7 @@ describe("unread chats projection", () => {
     third.projection.dispose()
   })
 
-  test("a deleted chat leaves the view, also after a restart", async () => {
+  test("a deleted chat leaves the view and its latest turn time, also after a restart", async () => {
     const { store } = openStore()
     started(store, "chat")
     stopped(store, "chat", ANSWER)
@@ -317,9 +339,12 @@ describe("unread chats projection", () => {
     expect(await first.stoppedIds()).toEqual(["chat"])
     sessionFact(store, "chat", "session.deleted", {})
     expect(await first.stoppedIds()).toEqual([])
+    expect(await first.turns()).toEqual({})
+    expect(first.patches.at(-1)?.payload).toMatchObject({ turns: { chat: null } })
     first.projection.dispose()
     const second = project(store)
     expect(await second.stoppedIds()).toEqual([])
+    expect(await second.turns()).toEqual({})
     second.projection.dispose()
   })
 
@@ -413,7 +438,7 @@ describe("unread chats projection", () => {
     const reader = { ...surface, capturePosition: async () => { const position = await surface.capturePosition(); stopped(store, "chat", ANSWER); return position } }
     const patches: RuntimeUiPatchInput[] = []
     const projection = createUnreadChatsProjection<Connection>({
-      reader, writer: { append: async (event) => store.append(event) }, onStored: store.onStored,
+      reader, readNewest: newestThrough(reader), writer: { append: async (event) => store.append(event) }, onStored: store.onStored,
       bus: { publish: (patch) => { patches.push(patch) }, snapshotPosition: () => patches.length },
     })
     const snapshot = await projection.snapshot()
@@ -467,7 +492,7 @@ describe("unread chats projection", () => {
     stopped(store, "chat", ANSWER)
     let fail = true
     const projection = createUnreadChatsProjection<Connection>({
-      reader: asAsyncEventReadSurface(store), onStored: store.onStored,
+      reader: asAsyncEventReadSurface(store), readNewest: newestThrough(asAsyncEventReadSurface(store)), onStored: store.onStored,
       writer: { append: async (event) => { if (fail) throw new Error("store refused"); return store.append(event) } },
       bus: { publish() {}, snapshotPosition: () => 0 },
     })
@@ -485,6 +510,121 @@ describe("unread chats projection", () => {
       warn.mockRestore()
       projection.dispose()
     }
+  })
+
+  test("a chat's latest turn time is its newest start or stop, and only a start or stop moves it", async () => {
+    const { store } = openStore()
+    created(store, "done")
+    started(store, "done")
+    const doneStop = stopped(store, "done", ANSWER)
+    created(store, "working")
+    const workingStart = started(store, "working")
+    // A chat from before turns were recorded takes the time of its newest
+    // entry batch; one with no entry, and a subagent, have no time.
+    created(store, "quiet")
+    appended(store, "quiet")
+    const quietBatch = appended(store, "quiet")
+    created(store, "empty")
+    created(store, "child", "subagent")
+    appended(store, "child")
+    const first = project(store)
+    const times = { done: doneStop.timestamp, working: workingStart.timestamp, quiet: quietBatch.timestamp }
+    expect(await first.turns()).toEqual(times)
+    expect(first.patches).toEqual([])
+
+    // Opening, reading, marking, and closing a chat move no time.
+    const connection = {}
+    await presence(first.projection, connection, "done")
+    await presence(first.projection, connection, undefined)
+    await mark(first.projection, "done", false)
+    await mark(first.projection, "done", true)
+    sessionFact(store, "done", "session.lifecycle.changed", { lifecycleState: "active", lastUpdated: new Date(clock).toISOString() })
+    appended(store, "working")
+    expect(await first.turns()).toEqual(times)
+    expect(first.patches.map((patch) => patch.payload.kind === "unreadChats.changed" ? patch.payload.turns : undefined).filter((turns) => Object.keys(turns ?? {}).length > 0)).toEqual([])
+
+    // A start publishes only the time that it moved, and no view.
+    const { snapshotPosition: _held, ...held } = await first.projection.snapshot()
+    first.patches.length = 0
+    const next = started(store, "done")
+    expect(first.patches.map((patch) => patch.payload)).toEqual([{ kind: "unreadChats.changed", turns: { done: next.timestamp }, newStops: [] }])
+    // A chat created after the first read takes its time from its
+    // conversation's batches, as a read after a restart does.
+    created(store, "fork")
+    const forkBatch = appended(store, "fork")
+    // A stop that recovery records late keeps the time its turn ended.
+    started(store, "recovered")
+    sessionFact(store, "recovered", "chat.turn.stopped", { conversationId: "conv-recovered", ending: { kind: "completed" }, finalEntryId: "answer-r", firstLine: "Done.", endedAt: 7 })
+    const after = await first.turns()
+    expect(after).toEqual({ ...times, done: next.timestamp, fork: forkBatch.timestamp, recovered: 7 })
+    expect((await first.view()).stopped.find((chat) => chat.sessionId === "recovered")?.stoppedAt).toBe(7)
+    // A client that folds the patches into the snapshot it read holds what a later snapshot answers.
+    const folded = first.patches.reduce<UnreadChatsView>((view, patch) => patch.payload.kind === "unreadChats.changed" ? foldUnreadChatsPatch(view, patch.payload) : view, held)
+    const { snapshotPosition: _position, ...later } = await first.projection.snapshot()
+    expect(folded).toEqual(later)
+    first.projection.dispose()
+
+    // A restart answers the same times.
+    const second = project(store)
+    expect(await second.turns()).toEqual(after)
+    second.projection.dispose()
+  })
+
+  test("the baseline reads the newest batches of more chats than one served read holds, also past its response budget", async () => {
+    const accountHome = createDirectory("flywheel-unread-chats-account-")
+    const projectRoot = createDirectory("flywheel-unread-chats-project-")
+    const served = servedProjectState({ projectRoot, accountHome, userDataRoot: accountHome })
+    const seed = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
+    try {
+      // More quiet chats than the row bound of one read, and working chats
+      // whose newest batches pass the 8 MiB budget of one read together.
+      const quiet = Array.from({ length: 300 }, (_, index) => `quiet-${index}`)
+      for (const sessionId of quiet) {
+        created(seed, sessionId)
+        appended(seed, sessionId)
+      }
+      const long = "x".repeat(300 * 1024)
+      const working = Array.from({ length: 20 }, (_, index) => `working-${index}`)
+      for (const sessionId of working) {
+        started(seed, sessionId)
+        for (let batch = 0; batch < 2; batch += 1) appended(seed, sessionId, "assistant", long)
+      }
+      const projection = createUnreadChatsProjection<Connection>({
+        reader: served.state, readNewest: newestThrough(served.state), writer: { append: async (event) => served.store.append(event) }, onStored: served.store.onStored,
+        bus: { publish() {}, snapshotPosition: () => 0 },
+      })
+      const warn = spyOn(Log.create({ service: "unread-chats-projection" }), "warn")
+      try {
+        const { turns } = await projection.snapshot()
+        expect(Object.keys(turns).toSorted()).toEqual([...quiet, ...working].toSorted())
+        // No conversation was left out of the reads.
+        expect(warn).not.toHaveBeenCalled()
+      } finally {
+        warn.mockRestore()
+        projection.dispose()
+      }
+    } finally {
+      seed.close()
+      await served.close()
+    }
+  })
+
+  test("the baseline reads the newest entry batch of every chat that records no turn in one request, whatever the chat count", async () => {
+    async function baselineRequests(chats: number) {
+      const { store } = openStore()
+      for (let index = 0; index < chats; index += 1) {
+        created(store, `chat-${index}`)
+        appended(store, `chat-${index}`)
+      }
+      const counter = countStateRequests(asAsyncEventReadSurface(store))
+      const { projection, turns } = project(store, counter.reader)
+      expect(Object.keys(await turns())).toHaveLength(chats)
+      projection.dispose()
+      return counter.take().map((request) => request.method)
+    }
+    const few = await baselineRequests(3)
+    expect(few.filter((method) => method === "readSlice")).toHaveLength(1)
+    expect(await baselineRequests(30)).toEqual(few)
   })
 
   test("advancing the set reads nothing per change, whatever the chat count or history length", async () => {
@@ -509,6 +649,7 @@ describe("unread chats projection", () => {
         () => presence(projection, connection, "chat-0"),
         () => stopped(store, "chat-0", { entryId: "answer-next", firstLine: "Next." }),
         () => presence(projection, connection, undefined),
+        () => sessionFact(store, "chat-0", "session.lifecycle.changed", { lifecycleState: "inactive", lastUpdated: new Date(clock).toISOString() }),
         () => mark(projection, "chat-1", true),
         () => mark(projection, "chat-1", false),
       ]
@@ -521,7 +662,7 @@ describe("unread chats projection", () => {
       return counts
     }
 
-    const zero = [0, 0, 0, 0, 0, 0, 0]
+    const zero = [0, 0, 0, 0, 0, 0, 0, 0]
     expect(await requestsPerChange(3, 2)).toEqual(zero)
     expect(await requestsPerChange(30, 2)).toEqual(zero)
     expect(await requestsPerChange(3, 20)).toEqual(zero)

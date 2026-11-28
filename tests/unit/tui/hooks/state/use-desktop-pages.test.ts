@@ -38,7 +38,7 @@ function fakeRuntime(waiting: ReadonlyMap<string, PendingQuestionView>, stopped:
       detailReads.push(request.sessionId)
       return { view: detailView(request.sessionId) }
     },
-    unreadChatsSnapshot: async () => ({ stopped, unread: [], snapshotPosition: sequencer.snapshotPosition({ kind: "cursor", cursor: unreadChatsCursor() }) }),
+    unreadChatsSnapshot: async () => ({ stopped, unread: [], turns: {}, snapshotPosition: sequencer.snapshotPosition({ kind: "cursor", cursor: unreadChatsCursor() }) }),
   })
   const emit = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
   // Before a client attaches, the runtime publishes to no one.
@@ -55,7 +55,7 @@ function fakeRuntime(waiting: ReadonlyMap<string, PendingQuestionView>, stopped:
     /** Publishes the set as `next`, announcing the stops in `newStops`. */
     stop(next: readonly StoppedChat[], newStops: readonly StoppedChat[] = []) {
       stopped.splice(0, stopped.length, ...next)
-      publish({ cursor: unreadChatsCursor(), payload: { kind: "unreadChats.changed", stopped: next, unread: [], newStops } })
+      publish({ cursor: unreadChatsCursor(), payload: { kind: "unreadChats.changed", places: { stopped: next, unread: [] }, turns: {}, newStops } })
     },
     unrelated(sessionId: string) { publish({ cursor: statusCursor(sessionId), payload: { kind: "status.removed" } }) },
     reconnect() { lanes.end(); emit(LANE_BREAK); lanes.open() },

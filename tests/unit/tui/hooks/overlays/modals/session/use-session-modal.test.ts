@@ -463,7 +463,7 @@ describe("useSessionModal", () => {
       const { hook, modals, activateSession } = createModal({ sessions: [parent] })
 
       hook.openSessionsModal()
-      expect(rowLabels(hook)).toEqual(["Today", "parent"])
+      expect(rowLabels(hook)).toEqual(["Recent", "parent"])
       modals.input({ name: "down" })
       modals.input({ name: "enter" })
       expect(activateSession).toHaveBeenCalledWith(parent)
@@ -517,7 +517,7 @@ describe("useSessionModal", () => {
       })
 
       hook.openSessionsModal()
-      expect(rowLabels(hook)).toEqual(["Today", "good", "", "Unreadable", "corrupt:broken"])
+      expect(rowLabels(hook)).toEqual(["Recent", "good", "", "Unreadable", "corrupt:broken"])
 
       modals.input({ name: "down" })
       expect(hook.modalCursor()).toBe(4)

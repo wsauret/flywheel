@@ -1,6 +1,7 @@
 import type { CommandUse } from "../../../../src/protocol/commands/command-usage-protocol-types.js"
 import type { PendingQuestionView, WaitingSessionsView } from "../../../../src/protocol/session/question-protocol-types.js"
 import type { UnreadChatsView } from "../../../../src/protocol/session/unread-protocol-types.js"
+import type { ListedTurns } from "../../../../src/protocol/client/session/session-list-groups.js"
 import { selectNeedsYou, type NeedsYou } from "../../../../src/protocol/client/session/needs-you.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../../src/protocol/commands/command-catalog-protocol-types.js"
 import { effectiveSessionShortTitle, type FrontendActivity, type FrontendOutputBlock, type FrontendToolEntry, type FrontendToolStreamingText, type RuntimeHealth, type SessionCatalogError, type SessionRow } from "../../../../src/protocol/runtime/app-service-types.js"
@@ -81,6 +82,10 @@ export interface ClientViewState {
    *  them, and the listed chats with unread messages (PI-INTERACTION-057,
    *  PI-INTERACTION-188). The object keeps its identity while its inputs do. */
   readonly needsYou: NeedsYou
+  /** The latest turn time of each chat, which orders the session list
+   *  (PI-INTERACTION-189), absent until the unread set's first read answers
+   *  and when it failed. */
+  readonly turns?: ListedTurns
   /** The newest known open time among waiting questions, absent when none are known. */
   readonly newestQuestionOpenedAt: number | undefined
   /** The question the open session waits on, from the durable question
@@ -187,8 +192,11 @@ export interface SessionSummary {
   /** True while the session's runner is doing work, by the same rule the
    *  terminal's tab spinner uses. */
   readonly working: boolean
-  /** ISO timestamp of the last change, for the list's time-ago column. */
+  /** ISO timestamp of the last change, the list's time for a chat with no
+   *  latest turn and no creation time. */
   readonly lastUpdated: string
+  /** ISO timestamp of the session's creation. */
+  readonly createdAt?: string
   readonly totalsLoading: boolean
   readonly totalCost?: number
   readonly priceUnavailable?: boolean
@@ -375,6 +383,7 @@ function buildViewState(session: SessionState, lists: SessionSummaryLists, needs
     ...(session.executionCwd === undefined ? {} : { executionCwd: session.executionCwd }),
     sessions: lists.sessions,
     needsYou,
+    ...(session.chatTurns === undefined ? {} : { turns: session.chatTurns }),
     newestQuestionOpenedAt: newestQuestionOpenedAt(needsYou, pendingQuestion),
     ...(pendingQuestion === undefined ? {} : { pendingQuestion }),
     ...(session.backgroundIndex === undefined ? {} : { backgroundIndex: session.backgroundIndex }),
@@ -482,6 +491,7 @@ function sameSummary(left: SessionSummary, right: SessionSummary): boolean {
     && left.awaitingAnswer === right.awaitingAnswer
     && left.notices === right.notices
     && left.lastUpdated === right.lastUpdated
+    && left.createdAt === right.createdAt
     && left.totalsLoading === right.totalsLoading
     && left.totalCost === right.totalCost
     && left.priceUnavailable === right.priceUnavailable
@@ -515,6 +525,7 @@ function toSummary(row: SessionRow, detail: SessionReading): SessionSummary {
     active: row.lifecycleState === "active",
     working: detail.working,
     lastUpdated: row.lastUpdated,
+    ...(row.createdAt === undefined ? {} : { createdAt: row.createdAt }),
     totalsLoading: row.totalsLoading,
     ...(row.totalCost === undefined ? {} : { totalCost: row.totalCost }),
     ...(row.priceUnavailable === undefined ? {} : { priceUnavailable: row.priceUnavailable }),

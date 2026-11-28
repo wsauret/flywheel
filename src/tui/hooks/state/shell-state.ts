@@ -9,7 +9,8 @@ import type { OutputTranscriptCache, OutputTranscriptView } from "../../transcri
 import type { RuntimeAuthView } from "../../../protocol/auth/auth-status-protocol-types.js"
 import type { BudgetView } from "../../../protocol/session/budget-protocol-types.js"
 import { waitingSessionsCursor, type PendingQuestionView, type WaitingSessionsView } from "../../../protocol/session/question-protocol-types.js"
-import { unreadChatsCursor, type UnreadChatsView } from "../../../protocol/session/unread-protocol-types.js"
+import { foldUnreadChatsPatch, unreadChatsCursor, type UnreadChatsView } from "../../../protocol/session/unread-protocol-types.js"
+import type { ListedTurns } from "../../../protocol/client/session/session-list-groups.js"
 import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../../infra/substrate/events/session-notice.js"
 import { createToastPresenter } from "../../context/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../../protocol/runtime/app-service-types.js"
@@ -123,6 +124,10 @@ export interface ShellSignals {
    *  the one source of every such row, mark, and count (ARCH-PROTOCOL-068,
    *  ARCH-PROTOCOL-072). Closed chats are included. */
   needsYou: Accessor<NeedsYou>
+  /** The latest turn time of each chat, which orders the session list
+   *  (PI-INTERACTION-189), undefined until the first read of the unread set
+   *  answers and when it failed. */
+  chatTurns: Accessor<ListedTurns>
   /** The mark that a chat's tab and row carry, from `needsYou`. */
   chatMark: (sessionId: string) => ChatMark | undefined
   /** Session role assignments from the ordered roles cache. */
@@ -332,12 +337,14 @@ function createUnreadChatsCache(deps: { appService: Pick<AttachedRuntimeClient, 
       const snapshot = await deps.appService.query({ type: "unreadChatsSnapshot" })
       return { view: snapshot, position: snapshot.snapshotPosition }
     },
-    adopt: (payload) => (payload.kind === "unreadChats.changed" ? payload : undefined),
+    // A patch folds into the view that the snapshot read, which it follows.
+    adopt: (payload, _position, current) => (payload.kind === "unreadChats.changed" && current !== undefined ? foldUnreadChatsPatch(current, payload) : undefined),
     changed: (next) => setView(next),
     label: "unread chats",
   })
   onCleanup(held.dispose)
-  return { view }
+  const turns = (): ListedTurns => view()?.turns
+  return { view, turns }
 }
 
 function createCommandUsageCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
@@ -656,6 +663,7 @@ export function createShellState(deps: {
     budgetView: budgetCache.view,
     modules: moduleIntakes,
     needsYou,
+    chatTurns: intake.unreadChats.turns,
     chatMark: (sessionId: string) => marks().get(sessionId),
     roleView: roleCache.view,
     ensureRoleViews: roleCache.ensureMany,

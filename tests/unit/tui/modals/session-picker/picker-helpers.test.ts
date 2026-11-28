@@ -12,6 +12,7 @@ import {
   timeAgoColumnWidth,
 } from "../../../../../src/tui/modals/session-picker/picker-helpers.js"
 import { selectNeedsYou } from "../../../../../src/protocol/client/session/needs-you.js"
+import { groupSessionList } from "../../../../../src/protocol/client/session/session-list-groups.js"
 import type { PickerRow, PickerSessionRow } from "../../../../../src/tui/modals/session-picker/picker-types.js"
 
 function session(id: string, lastUpdated: string, options: {
@@ -63,60 +64,13 @@ function rowLabel(row: PickerRow): string {
 
 describe("picker helpers", () => {
   it("lists chats without expanding owned workflow or subagent ids", () => {
-    const now = new Date(2026, 6, 5, 13)
     const parent = session("parent", "2026-07-05T12:00:00.000Z", { childSessionIds: ["subagent", "workflow"] })
-    const rows = flattenSessionRows([
-      parent,
-    ], now)
+    const rows = flattenSessionRows(groupSessionList({ rows: [parent], needsYou: selectNeedsYou({ waiting: undefined, unread: undefined, listed: [parent] }), working: () => false, turns: undefined }))
 
     expect(sessionRows(rows).map((row) => row.session.id)).toEqual(["parent"])
   })
 
-  it("sorts roots by recency and groups them under current date headers", () => {
-    const now = new Date(2026, 6, 5, 12)
-    const old = new Date(2026, 5, 1, 10)
-    const rows = flattenSessionRows([
-      session("yesterday", new Date(2026, 6, 4, 10).toISOString()),
-      session("today-early", new Date(2026, 6, 5, 9).toISOString()),
-      session("old", old.toISOString()),
-      session("today-late", new Date(2026, 6, 5, 11).toISOString()),
-    ], now)
-
-    expect(rows.map(rowLabel)).toEqual([
-      "header:Today",
-      "session:today-late",
-      "session:today-early",
-      "header:",
-      "header:Yesterday",
-      "session:yesterday",
-      "header:",
-      `header:${old.toDateString()}`,
-      "session:old",
-    ])
-  })
-
-  it("sorts and groups roots by createdAt when present, not by lastUpdated", () => {
-    const now = new Date(2026, 6, 5, 12)
-    const startedYesterday = {
-      ...session("started-yesterday", new Date(2026, 6, 5, 11).toISOString()),
-      createdAt: new Date(2026, 6, 4, 10).toISOString(),
-    }
-    const startedToday = {
-      ...session("started-today", new Date(2026, 6, 5, 9).toISOString()),
-      createdAt: new Date(2026, 6, 5, 8).toISOString(),
-    }
-    const rows = flattenSessionRows([startedYesterday, startedToday], now)
-
-    expect(rows.map(rowLabel)).toEqual([
-      "header:Today",
-      "session:started-today",
-      "header:",
-      "header:Yesterday",
-      "session:started-yesterday",
-    ])
-  })
-
-  it("leads with the chats that need the person, questions before stops, closed ones included, newest first", () => {
+  it("heads each group that has a chat, Needs you, then Working, then Recent, with a spacer between groups and no day heading", () => {
     const now = new Date(2026, 6, 5, 12)
     const listed = [
       session("today", new Date(2026, 6, 5, 11).toISOString()),
@@ -125,15 +79,17 @@ describe("picker helpers", () => {
       session("yesterday", new Date(2026, 6, 4, 10).toISOString()),
       session("stopped-old", new Date(2026, 6, 5, 9).toISOString()),
       session("failed-new", new Date(2026, 6, 5, 8).toISOString()),
+      session("working", new Date(2026, 5, 1, 9).toISOString()),
     ]
     const failed = { sessionId: "failed-new", ending: { kind: "failed", failure: "api_overloaded" }, stoppedAt: now.getTime() - 60_000, stopKey: "stop:9" } as const
     const stopped = { sessionId: "stopped-old", ending: { kind: "completed" }, firstLine: "All tests pass.", stoppedAt: now.getTime() - 3 * 60 * 60_000, stopKey: "entry-1" } as const
+    const unread = { stopped: [failed, stopped], unread: ["today"], turns: { yesterday: now.getTime() - 5 * 60_000 } }
     const needsYou = selectNeedsYou({
       waiting: { sessions: [{ sessionId: "waiting-old", openedAt: 1 }, { sessionId: "waiting-new", openedAt: 2 }, { sessionId: "deleted", openedAt: 3 }] },
-      unread: { stopped: [failed, stopped], unread: ["today"] },
+      unread,
       listed,
     })
-    const rows = flattenSessionRows(listed, now, needsYou.rows)
+    const rows = flattenSessionRows(groupSessionList({ rows: listed, needsYou, working: (row) => row.id === "working", turns: unread.turns }))
 
     expect(rows.map(rowLabel)).toEqual([
       "header:Needs you",
@@ -142,20 +98,28 @@ describe("picker helpers", () => {
       "session:failed-new",
       "session:stopped-old",
       "header:",
-      "header:Today",
-      "session:today",
+      "header:Working",
+      "session:working",
       "header:",
-      "header:Yesterday",
+      "header:Recent",
       "session:yesterday",
+      "session:today",
     ])
     // A stopped row shows what it stopped with on a second line, and its age
-    // counts from the stop; a working chat with unread messages keeps its place.
+    // counts from the stop; another row's age counts from its latest turn.
     const row = (id: string) => rows.find((candidate): candidate is PickerSessionRow => candidate.kind === "session" && candidate.session.id === id)
-    expect(row("stopped-old")).toMatchObject({ category: "Needs you", stopped })
+    expect(row("stopped-old")).toMatchObject({ group: "Needs you", stopped })
     expect([pickerRowLines(row("stopped-old")!), pickerRowLines(row("waiting-new")!)]).toEqual([2, 1])
     expect(formatCompactTimeAgo(now.getTime(), pickerRowLastActive(row("stopped-old")!))).toBe("3h")
+    expect(formatCompactTimeAgo(now.getTime(), pickerRowLastActive(row("yesterday")!))).toBe("5m")
     expect([stopDetail(stopped), stopDetail(failed)]).toEqual(["All tests pass.", "The model provider is overloaded"])
-    expect(row("today")?.category).toBe("Today")
+    expect(row("today")?.group).toBe("Recent")
+  })
+
+  it("shows no heading for an empty group", () => {
+    const listed = [session("only", "2026-07-05T12:00:00.000Z")]
+    const rows = flattenSessionRows(groupSessionList({ rows: listed, needsYou: selectNeedsYou({ waiting: undefined, unread: undefined, listed }), working: () => false, turns: undefined }))
+    expect(rows.map(rowLabel)).toEqual(["header:Recent", "session:only"])
   })
 
   it("formats compact time ago labels with coarse thresholds", () => {
