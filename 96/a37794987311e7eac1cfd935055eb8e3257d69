@@ -1,0 +1,52 @@
+AGENTS.md
+  h_4b47e9e4a8b456 112
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 87,89
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 274-277
+src/orchestration/agent-runtime/background-execution/shell-runtime.ts
+  h_4b47e9e4a8b456 6,10,90,96,102-114
+src/orchestration/agent-runtime/background-execution/worktree-handover.ts
+  h_4b47e9e4a8b456 1-72
+src/orchestration/agent-runtime/loop/agent-loop.ts
+  h_4b47e9e4a8b456 36,106,225,311-314
+src/orchestration/agent-runtime/loop/closure/agent-loop-handoff.ts
+  h_4b47e9e4a8b456 55-56,69-71,78,81-84
+src/orchestration/agent-runtime/loop/nudges/worktree-reminder.ts
+  h_4b47e9e4a8b456 1-21
+src/orchestration/agent-runtime/tools/bash/bash.ts
+  h_4b47e9e4a8b456 296,300
+src/orchestration/agent-runtime/tools/bash/execution/shell-execution.ts
+  h_4b47e9e4a8b456 100
+src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types.ts
+  h_4b47e9e4a8b456 7,51-53,103-104
+src/orchestration/agent-runtime/tools/bash/git/created-worktrees.ts
+  h_4b47e9e4a8b456 1-83
+src/orchestration/modules/bash/definitions/skills/worktree-lifecycle/SKILL.md
+  h_4b47e9e4a8b456 14-15,33,37,41
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/examples/build-review-loop.workflow.yaml
+  h_4b47e9e4a8b456 58,65,120,128,147
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/references/implement-briefs.md
+  h_4b47e9e4a8b456 35,95,106,114-117
+tests/unit/orchestration/agent-runtime/background-execution/background-execution-owner.test.ts
+  h_4b47e9e4a8b456 2-3,17,306,654-681
+tests/unit/orchestration/agent-runtime/context/worktree-reminder.test.ts
+  h_4b47e9e4a8b456 1-80
+tests/unit/orchestration/agent-runtime/loop/closure/agent-loop-handoff.test.ts
+  h_4b47e9e4a8b456 55-67
+tests/unit/orchestration/agent-runtime/tools/bash/tools-bash.test.ts
+  h_4b47e9e4a8b456 24,272-319,331
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 245-247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "96a37794987311e7eac1cfd935055eb8e3257d69",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
