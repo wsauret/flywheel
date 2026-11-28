@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { Cause, Effect, Exit, Queue } from "effect";
 import { DebugLog } from "../../../../infra/diagnostics/debug-log.js";
 import type { ModelRefusal } from "../../../../infra/providers/auth/provider-models/provider-model-catalog-store.js";
@@ -16,7 +17,7 @@ import { EngineCannotStartError } from "../login-observations.js";
 import { observeEngine } from "../engine/observed-engine.js";
 import type { EngineValues } from "../query/query-engine.js";
 import type { CliUserFrame, HostLaunch, LaunchedHost } from "../engine/query-launcher.js";
-import { classifySdkMessage, cliFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../query/sdk-events.js";
+import { classifySdkMessage, cliFailure, quotaFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../query/sdk-events.js";
 import { wireFailure, type WireFailure } from "../engine/service-requests.js";
 import { bridgeSessionId } from "../engine/session-id.js";
 import { stepGateFailure, type PluginGateServer } from "../engine/step-gate.js";
@@ -374,6 +375,25 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
     return "demoted";
   };
 
+  /** The quota failure of each agent request that the service refused for spent usage, so the login is marked once. */
+  const spentRequests = new WeakMap<Error, Error>();
+  /** The failure of an agent's request, as the walk reads it. The engine writes no error text for an agent's request,
+   *  so the service's 429 is the refusal and the engine's last rejected report names its limit. A report that names a
+   *  usage window makes the 429 spent usage of the login, which the error map marks as for a frame (`frameFailed`):
+   *  retries in place cannot clear it, and a rate limit that outlasts them would mark the whole provider unreachable
+   *  for every account and model (PI-MODEL-060). Any other 429, such as too many concurrent requests or a refusal of
+   *  the extended window, stays the service's own answer. */
+  const agentFailure = (failure: Error): Error => {
+    const rejection = reports.limitRejection;
+    if (rejection === undefined || !(failure instanceof Anthropic.RateLimitError) || classifyAnthropicError(failure) instanceof ModelAccessRefusedError) return failure;
+    const known = spentRequests.get(failure);
+    if (known !== undefined) return known;
+    const spent = quotaFailure(failure.message, () => config.markQuotaExhausted(rejection.resetsAtMs));
+    spentRequests.set(failure, spent);
+    DebugLog.record({ type: "provider.claude_sdk.host.agent_usage_spent", payload: { sessionId, marked: spent instanceof QuotaExhaustedError, ...(rejection.resetsAtMs === undefined ? {} : { resetsAtMs: rejection.resetsAtMs }) } });
+    return spent;
+  };
+
   /** Decides a frame whose turn the engine ended with an error, from the service's answer to the frame's first failed
    *  request (`HostedRequests.frameFailure`). A refusal for the login's spent usage (`reportsSpentUsage`), which the
    *  engine reports as a rate limit with its usage-limit text, belongs to the login and not to the model: every
@@ -648,7 +668,7 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
     },
     takeHiddenRequests: (agentId) => requests.takeHidden(agentId),
     released: (agentId) => { requests.released(agentId); },
-    requestFailure: (agentId) => requests.failure(agentId),
+    requestFailure: async (agentId) => agentFailure(await requests.failure(agentId)),
     settled: async (agentId) => { await running.get(agentId)?.promise; },
     stopTask: stop,
     close: (reason, error) => close(reason, error),

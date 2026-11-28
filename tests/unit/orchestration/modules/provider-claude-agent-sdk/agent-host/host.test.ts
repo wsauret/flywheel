@@ -189,6 +189,40 @@ describe("the shared agent host", () => {
     await host.close("lifetime-end");
   });
 
+  test("an agent's request that the service refused with a 429 after the engine reported a spent usage window is spent quota: it marks the login's quota once and keeps the host, while a 429 for too many concurrent requests stays a rate limit", async () => {
+    const agentId = "a0000000000000001";
+    const refusedAgent = async (report: SDKMessage, retryAfter: string, message: string) => {
+      const engine = fakeEngineHost();
+      engine.emit(cliInit({ session_id: engine.host.sessionId, claude_code_version: "2.1.321", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
+      await engine.read();
+      await engine.host.admit(agentId, {}, { item: () => {}, done: () => {} });
+      expect(await engine.ask("/step", { turnId: "t", index: 0, messageCount: 1, agentId })).toMatchObject({ admit: true });
+      engine.stderr([
+        ...sentBlock("log_1", { agent: agentId }), ...responseBlock("error", 429, { "request-id": "req_1", "retry-after": retryAfter }, "log_1"),
+        apiErrorLine(429, `{"type":"error","error":{"type":"rate_limit_error","message":"${message}"},"request_id":"req_1"}`),
+      ]);
+      engine.emit(report);
+      await engine.read();
+      return { ...engine, failure: await engine.host.requestFailure(agentId) };
+    };
+
+    // The weekly limit of one model: the service states a reset that is days away, and the engine names the window.
+    const spent = await refusedAgent(rateLimitReport({ status: "rejected", rateLimitType: "seven_day_overage_included", resetsAt: 1_796_112_000 }), "279524", "This request would exceed your account's rate limit. Please try again later.");
+    expect(spent.failure).toBeInstanceOf(QuotaExhaustedError);
+    // The shared adapter keeps the quota failure, so the walk moves to the next account without a retry.
+    expect(classifyAnthropicError(spent.failure)).toBe(spent.failure);
+    // The window spends one model's allowance, so its reset does not bound the account.
+    expect(spent.quotaMarks).toEqual([undefined]);
+    expect(await spent.host.requestFailure(agentId)).toBe(spent.failure);
+    expect(spent.quotaMarks).toHaveLength(1);
+    expect(payloads("provider.claude_sdk.host.closed")).toEqual([]);
+
+    const throttled = await refusedAgent(concurrentsRejected, "7", "Number of concurrent connections has exceeded your rate limit.");
+    expect(classifyAnthropicError(throttled.failure)).toMatchObject({ kind: "rate_limit", retryDelayMs: 7000 });
+    expect(throttled.quotaMarks).toEqual([]);
+    await Promise.all([spent.host.close("lifetime-end"), throttled.host.close("lifetime-end")]);
+  });
+
   test("a task's end reaches its agent's listener once, and the host keeps no listener of an ended task, so its later close tells that agent nothing", async () => {
     const { host, emit, nextFrame } = fakeEngineHost();
     const agentId = "a0000000000000001";
