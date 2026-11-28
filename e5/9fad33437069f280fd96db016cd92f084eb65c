@@ -1,0 +1,218 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 116-118
+bench/README.md
+  h_4b47e9e4a8b456 36-37
+bench/tasks/implement/ansible__ansible-40ade1f8/adapter.ts
+  h_4b47e9e4a8b456 1-179
+bench/tasks/implement/ansible__ansible-40ade1f8/calibration.json
+  h_4b47e9e4a8b456 1-6
+bench/tasks/implement/ansible__ansible-40ade1f8/checks.json
+  h_4b47e9e4a8b456 1-50
+bench/tasks/implement/ansible__ansible-40ade1f8/controls/mount-timeout-fault.patch
+  h_4b47e9e4a8b456 1-11
+bench/tasks/implement/ansible__ansible-40ade1f8/copy-ledger.json
+  h_4b47e9e4a8b456 1-238
+bench/tasks/implement/ansible__ansible-40ade1f8/environment.txt
+  h_4b47e9e4a8b456 1-6
+bench/tasks/implement/ansible__ansible-40ade1f8/instruction.txt
+  h_4b47e9e4a8b456 1-503
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/python-LICENSE.txt
+  h_4b47e9e4a8b456 1-279
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/source-COPYING
+  h_4b47e9e4a8b456 1-674
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/task-LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/MarkupSafe-2.1.5-cp312-cp312-macosx_10_9_universal2.whl/MarkupSafe-2.1.5.dist-info/LICENSE.rst
+  h_4b47e9e4a8b456 1-28
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/PyYAML-6.0.2-cp312-cp312-macosx_11_0_arm64.whl/PyYAML-6.0.2.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-20
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/cffi-1.17.1-cp312-cp312-macosx_11_0_arm64.whl/cffi-1.17.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-26
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/coverage-7.6.1-cp312-cp312-macosx_11_0_arm64.whl/coverage-7.6.1.dist-info/LICENSE.txt
+  h_4b47e9e4a8b456 1-177
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl/cryptography-43.0.1.dist-info/license_files/LICENSE
+  h_4b47e9e4a8b456 1-3
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl/cryptography-43.0.1.dist-info/license_files/LICENSE.APACHE
+  h_4b47e9e4a8b456 1-202
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/cryptography-43.0.1-cp39-abi3-macosx_10_9_universal2.whl/cryptography-43.0.1.dist-info/license_files/LICENSE.BSD
+  h_4b47e9e4a8b456 1-27
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/execnet-2.1.1-py3-none-any.whl/execnet-2.1.1.dist-info/licenses/LICENSE
+  h_4b47e9e4a8b456 1-18
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/iniconfig-2.0.0-py3-none-any.whl/iniconfig-2.0.0.dist-info/licenses/LICENSE
+  h_4b47e9e4a8b456 1-19
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/jinja2-3.1.4-py3-none-any.whl/jinja2-3.1.4.dist-info/LICENSE.txt
+  h_4b47e9e4a8b456 1-28
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/mock-5.1.0-py3-none-any.whl/mock-5.1.0.dist-info/LICENSE.txt
+  h_4b47e9e4a8b456 1-26
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/packaging-24.1-py3-none-any.whl/packaging-24.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-3
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/packaging-24.1-py3-none-any.whl/packaging-24.1.dist-info/LICENSE.APACHE
+  h_4b47e9e4a8b456 1-177
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/packaging-24.1-py3-none-any.whl/packaging-24.1.dist-info/LICENSE.BSD
+  h_4b47e9e4a8b456 1-23
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pip-24.2-py3-none-any.whl/pip-24.2.dist-info/AUTHORS.txt
+  h_4b47e9e4a8b456 1-796
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pip-24.2-py3-none-any.whl/pip-24.2.dist-info/LICENSE.txt
+  h_4b47e9e4a8b456 1-20
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pluggy-1.5.0-py3-none-any.whl/pluggy-1.5.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pycparser-2.22-py3-none-any.whl/pycparser-2.22.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-27
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pytest-8.3.3-py3-none-any.whl/pytest-8.3.3.dist-info/AUTHORS
+  h_4b47e9e4a8b456 1-469
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pytest-8.3.3-py3-none-any.whl/pytest-8.3.3.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pytest_mock-3.14.0-py3-none-any.whl/pytest_mock-3.14.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pytest_rerunfailures-14.0-py3-none-any.whl/pytest_rerunfailures-14.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-3
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/pytest_xdist-3.6.1-py3-none-any.whl/pytest_xdist-3.6.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/resolvelib-1.0.1-py2.py3-none-any.whl/resolvelib-1.0.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-13
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools-75.1.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-166
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-202
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/importlib_resources-6.4.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-202
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/inflect-7.3.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.collections-5.1.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.context-5.3.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.functools-4.0.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/jaraco.text-3.12.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/more_itertools-10.3.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-19
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/packaging-24.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-3
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/packaging-24.1.dist-info/LICENSE.APACHE
+  h_4b47e9e4a8b456 1-177
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/packaging-24.1.dist-info/LICENSE.BSD
+  h_4b47e9e4a8b456 1-23
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/platformdirs-4.2.2.dist-info/licenses/LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/tomli-2.0.1.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/typeguard-4.3.0.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-19
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/typing_extensions-4.12.2.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-279
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/wheel-0.43.0.dist-info/LICENSE.txt
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/setuptools-75.1.0-py3-none-any.whl/setuptools/_vendor/zipp-3.19.2.dist-info/LICENSE
+  h_4b47e9e4a8b456 1-17
+bench/tasks/implement/ansible__ansible-40ade1f8/licenses/wheels/wheel-0.44.0-py3-none-any.whl/wheel-0.44.0.dist-info/LICENSE.txt
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/ansible__ansible-40ade1f8/original/environment/Dockerfile
+  h_4b47e9e4a8b456 1
+bench/tasks/implement/ansible__ansible-40ade1f8/original/instruction.md
+  h_4b47e9e4a8b456 1-503
+bench/tasks/implement/ansible__ansible-40ade1f8/original/solution/gold_patch.diff
+  h_4b47e9e4a8b456 1-665
+bench/tasks/implement/ansible__ansible-40ade1f8/original/solution/solve.sh
+  h_4b47e9e4a8b456 1-7
+bench/tasks/implement/ansible__ansible-40ade1f8/original/task.toml
+  h_4b47e9e4a8b456 1-41
+bench/tasks/implement/ansible__ansible-40ade1f8/original/tests/config.json
+  h_4b47e9e4a8b456 1-5
+bench/tasks/implement/ansible__ansible-40ade1f8/original/tests/parser.py
+  h_4b47e9e4a8b456 1-159
+bench/tasks/implement/ansible__ansible-40ade1f8/original/tests/run_script.sh
+  h_4b47e9e4a8b456 1-54
+bench/tasks/implement/ansible__ansible-40ade1f8/original/tests/test.sh
+  h_4b47e9e4a8b456 1-234
+bench/tasks/implement/ansible__ansible-40ade1f8/original/tests/test_patch.patch
+  h_4b47e9e4a8b456 1-1224
+bench/tasks/implement/ansible__ansible-40ade1f8/provenance.json
+  h_4b47e9e4a8b456 1-47
+bench/tasks/implement/ansible__ansible-40ade1f8/public-inputs.json
+  h_4b47e9e4a8b456 1-134
+bench/tasks/implement/ansible__ansible-40ade1f8/qualification-record.json
+  h_4b47e9e4a8b456 1-173
+bench/tasks/implement/ansible__ansible-40ade1f8/qualification/expected-tests.json
+  h_4b47e9e4a8b456 1-50
+bench/tasks/implement/ansible__ansible-40ade1f8/qualify.ts
+  h_4b47e9e4a8b456 1-162
+bench/tasks/implement/ansible__ansible-40ade1f8/requirements-hashed.txt
+  h_4b47e9e4a8b456 1-20
+bench/tasks/implement/ansible__ansible-40ade1f8/task.json
+  h_4b47e9e4a8b456 1-15
+bench/tasks/implement/navidrome__navidrome-69e0a266/adapter.ts
+  h_4b47e9e4a8b456 1-191
+bench/tasks/implement/navidrome__navidrome-69e0a266/calibration.json
+  h_4b47e9e4a8b456 1-6
+bench/tasks/implement/navidrome__navidrome-69e0a266/checks.json
+  h_4b47e9e4a8b456 1-7
+bench/tasks/implement/navidrome__navidrome-69e0a266/controls/short-image-fault.patch
+  h_4b47e9e4a8b456 1-16
+bench/tasks/implement/navidrome__navidrome-69e0a266/copy-ledger.json
+  h_4b47e9e4a8b456 1-62
+bench/tasks/implement/navidrome__navidrome-69e0a266/environment.txt
+  h_4b47e9e4a8b456 1-5
+bench/tasks/implement/navidrome__navidrome-69e0a266/instruction.txt
+  h_4b47e9e4a8b456 1-46
+bench/tasks/implement/navidrome__navidrome-69e0a266/licenses/go-LICENSE
+  h_4b47e9e4a8b456 1-27
+bench/tasks/implement/navidrome__navidrome-69e0a266/licenses/python-LICENSE.txt
+  h_4b47e9e4a8b456 1-279
+bench/tasks/implement/navidrome__navidrome-69e0a266/licenses/source-LICENSE
+  h_4b47e9e4a8b456 1-621
+bench/tasks/implement/navidrome__navidrome-69e0a266/licenses/task-LICENSE
+  h_4b47e9e4a8b456 1-21
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/environment/Dockerfile
+  h_4b47e9e4a8b456 1
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/instruction.md
+  h_4b47e9e4a8b456 1-46
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/solution/gold_patch.diff
+  h_4b47e9e4a8b456 1-325
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/solution/solve.sh
+  h_4b47e9e4a8b456 1-7
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/task.toml
+  h_4b47e9e4a8b456 1-41
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/tests/config.json
+  h_4b47e9e4a8b456 1-5
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/tests/parser.py
+  h_4b47e9e4a8b456 1-171
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/tests/run_script.sh
+  h_4b47e9e4a8b456 1-38
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/tests/test.sh
+  h_4b47e9e4a8b456 1-234
+bench/tasks/implement/navidrome__navidrome-69e0a266/original/tests/test_patch.patch
+  h_4b47e9e4a8b456 1-244
+bench/tasks/implement/navidrome__navidrome-69e0a266/provenance.json
+  h_4b47e9e4a8b456 1-47
+bench/tasks/implement/navidrome__navidrome-69e0a266/public-inputs.json
+  h_4b47e9e4a8b456 1-20
+bench/tasks/implement/navidrome__navidrome-69e0a266/qualification-record.json
+  h_4b47e9e4a8b456 1-157
+bench/tasks/implement/navidrome__navidrome-69e0a266/qualification/expected-tests.json
+  h_4b47e9e4a8b456 1-22
+bench/tasks/implement/navidrome__navidrome-69e0a266/qualify.ts
+  h_4b47e9e4a8b456 1-163
+bench/tasks/implement/navidrome__navidrome-69e0a266/task.json
+  h_4b47e9e4a8b456 1-15
+bench/tasks/implement/tiers.json
+  h_4b47e9e4a8b456 2-15,48-61
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e59fad33437069f280fd96db016cd92f084eb65c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
