@@ -1,0 +1,58 @@
+src/infra/providers/llm/access/availability-store.ts
+  h_4b47e9e4a8b456 256-258,354-358,644-659
+src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.ts
+  h_4b47e9e4a8b456 8,222-227
+src/orchestration/agent-runtime/llm/errors.ts
+  h_4b47e9e4a8b456 37-40,43,45,49
+src/orchestration/agent-runtime/llm/routing/client-factory.ts
+  h_4b47e9e4a8b456 378
+src/orchestration/agent-runtime/llm/routing/failover-client.ts
+  h_4b47e9e4a8b456 62,273-274,306,407,454,557-558,659-661,710-711,718,720,795
+src/orchestration/agent-runtime/llm/routing/provider-availability-types.ts
+  h_4b47e9e4a8b456 146-149,166,176-179,181-183,208,217-220
+src/orchestration/agent-runtime/llm/routing/provider-availability.ts
+  h_4b47e9e4a8b456 47-52,145-148,151-153,155-156,158,331-332,400,410-415,417-420,427-429,431-443,544-548,582,585-586,591-597,629-634,665-667,671-672
+src/orchestration/agent-runtime/llm/stream/provider-failure.ts
+  h_4b47e9e4a8b456 56-58,251-254,321
+src/orchestration/app-service/auth/models/model-assignment-admission.ts
+  h_4b47e9e4a8b456 338-339,343-351,356,361
+src/orchestration/modules/development/benchmark/persona/admission.ts
+  h_4b47e9e4a8b456 152,159
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 376
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+  h_4b47e9e4a8b456 87-88,171,193-199,358-361,366-368,371-372,374,389,391-396,399,418,421-431,679-680
+src/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.ts
+  h_4b47e9e4a8b456 128,131-136,138-140,143-144,148-153,190-196,218-221
+tests/unit/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-error-classification.test.ts
+  h_4b47e9e4a8b456 10,12-13,35-47
+tests/unit/orchestration/agent-runtime/llm/routing/failover-client-failover.test.ts
+  h_4b47e9e4a8b456 278
+tests/unit/orchestration/agent-runtime/llm/routing/failover-client-usage-limit.test.ts
+  h_4b47e9e4a8b456 1-91
+tests/unit/orchestration/agent-runtime/llm/routing/provider-availability-authority.test.ts
+  h_4b47e9e4a8b456 8-11,77-80,657-733
+tests/unit/orchestration/agent-runtime/llm/stream/provider-failure.test.ts
+  h_4b47e9e4a8b456 119,122-123
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 36-38,399,404,407-410,418-420,433-434,466,469-482,485-489,492,494
+tests/unit/orchestration/auth/provider-observations/usage-availability-fold.test.ts
+  h_4b47e9e4a8b456 39,45,54,56
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host.test.ts
+  h_4b47e9e4a8b456 6,8,24-25,37,145,155,179,195-245,247-253,255-256,258,260,262-265,267-271,273-286,293,315,342,355,389
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge/bridge.test.ts
+  h_4b47e9e4a8b456 7,553,577,581-582,585-592,594,596
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.test.ts
+  h_4b47e9e4a8b456 8-10,21,119,156-157,159-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9dad0416ef8d6ca338da4f0df14228fb0abf6060",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
