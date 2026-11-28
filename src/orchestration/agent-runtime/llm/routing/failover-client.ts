@@ -59,7 +59,7 @@ import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedErr
 import type { ModelRefusal } from "../../../../infra/providers/auth/provider-models/provider-model-catalog-store.js";
 import { ThinkingStallError } from "../stream/thinking-stall.js";
 import type { AuthStoreCondition } from "../../../../infra/providers/auth/store/auth-store.js";
-import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure, type ProviderFailure } from "../stream/provider-failure.js";
+import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, RETRY_AFTER_MAX_MS, type FailoverFailure, type ProviderFailure } from "../stream/provider-failure.js";
 import { SAFE_RECHECK_MS } from "./provider-availability.js";
 import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
 import type {
@@ -131,8 +131,6 @@ export interface ProviderChainDeps {
 const CANDIDATE_RETRY_LIMIT = 3;
 const RETRY_BACKOFF_BASE_MS = 1_000;
 const RETRY_BACKOFF_MAX_MS = 30_000;
-/** A provider-declared backoff is honored as stated, up to this bound. */
-const RETRY_AFTER_MAX_MS = 60_000;
 /** Fresh samples one model response gets after its reasoning repeated itself. The attempt after the last resample
  *  runs without reasoning and without detection, so a response is never stopped more than this many times and a
  *  model that keeps looping cannot loop without bound on the attempt that is accepted. */
@@ -272,6 +270,8 @@ export type CandidateReadiness =
 /** The live state that decides candidate readiness. */
 export interface CandidateReadinessInputs {
   readonly availability: ProviderAvailability;
+  /** The canonical model of the request, whose own spent row on an account holds that account back for it. */
+  readonly model?: string;
   readonly family: ModelFamily;
   readonly providerOptions?: ProviderRequestOptions;
   /** Read at each call, so a condition recorded during a walk applies to the candidates after it. */
@@ -303,7 +303,7 @@ export function candidateReadiness(candidate: AccessProviderCandidate, inputs: C
     return refused("unavailable", `unreachable; one request will recheck it at ${new Date(service.exhaustion.resetsAtMs).toISOString()}.`, resetOf(service.exhaustion));
   }
   const admission = spendModeState(candidate, inputs.subscriptionSpendAuthorizationFor, inputs.subscriptionAllowanceFor);
-  const quota = admission.available ? standingQuotaState(candidate, inputs.availability, "plans") : admission;
+  const quota = admission.available ? standingQuotaState(candidate, inputs.availability, "plans", inputs.model) : admission;
   if (!quota.available) return quota.kind === "pending" ? { kind: "pending", pending: quota.pending } : { kind: "refused", state: quota };
   if (service.kind === "recheck_pending") return { kind: "pending", pending: service };
   return { kind: "ready", quotaProbeDue: quota.probeDue === true, serviceProbeDue: service.kind === "probe_due" };
@@ -404,6 +404,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
 
     const readinessInputs: CandidateReadinessInputs = {
       availability,
+      model: deps.model,
       family: deps.family,
       conditions,
       ...(providerOptions === undefined ? {} : { providerOptions }),
@@ -450,7 +451,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
           let handedOff = false;
           try {
             if (mode === "serves" && readiness.quotaProbeDue) {
-              const state = standingQuotaState(candidate, availability, mode);
+              const state = standingQuotaState(candidate, availability, mode, deps.model);
               if (!state.available) {
                 if (state.kind === "pending") {
                   pending.push(state.pending);
@@ -553,8 +554,8 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
         const standing = failure._tag !== "QuotaExhaustedFailure" || failed.attribution.routeKind === "free"
           ? undefined
           : candidateProviderId(failed.candidate) === "chatgpt"
-            ? availability.chatGptStanding(failed.candidate)
-            : availability.genericQuotaStanding(failed.candidate);
+            ? availability.chatGptStanding(failed.candidate, deps.model)
+            : availability.genericQuotaStanding(failed.candidate, deps.model);
         recordSpent({
           candidate: failed.candidate,
           ...(failed.attribution.routeKind === "free" ? { wireModelId: failed.attribution.wireModelId } : {}),
@@ -655,7 +656,9 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
                 ? failure.cause.quotaObservation
                 : undefined;
               if (alreadyRecordedObservation === undefined && attempt.attribution.routeKind !== "free") {
-                if (candidateProviderId(attempt.candidate) === "chatgpt") availability.observeChatGptQuotaExhausted(attempt.candidate, undefined);
+                // A stated wait refused the request's model on the account until it ends, not the account's other models.
+                if (failure.retryAfterMs !== undefined) availability.markQuotaExhausted(attempt.candidate, Date.now() + failure.retryAfterMs, deps.model);
+                else if (candidateProviderId(attempt.candidate) === "chatgpt") availability.observeChatGptQuotaExhausted(attempt.candidate, undefined);
                 else availability.markQuotaExhausted(attempt.candidate);
               }
               walk.recordProviderFailure(attempt, failure);
@@ -704,17 +707,17 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
 
 /** Durable quota suppression is exact to the candidate mode. Once its bound
  * passes, one request per fleet claims the row's probe lease. */
-function standingQuotaState(candidate: AccessProviderCandidate, availability: ProviderAvailability, mode: WalkMode): QuotaState {
-  const standing = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate) : availability.genericQuotaStanding(candidate);
+function standingQuotaState(candidate: AccessProviderCandidate, availability: ProviderAvailability, mode: WalkMode, model: string | undefined): QuotaState {
+  const standing = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate, model) : availability.genericQuotaStanding(candidate, model);
   if (standing.kind === "live") return UNMETERED;
   if (standing.kind === "suppressed") {
     return { available: false, kind: "terminal", reason: "quota", detail: `out of quota until ${new Date(standing.exhaustion.resetsAtMs).toISOString()}.`, reset: resetOf(standing.exhaustion) };
   }
   if (standing.kind === "recheck_pending") return { available: false, kind: "pending", pending: standing };
   if (mode !== "serves") return { available: true, probeDue: true };
-  const probe = availability.claimQuotaProbe(candidate);
+  const probe = availability.claimQuotaProbe(candidate, model);
   if (probe !== undefined) return { available: true, probe };
-  const afterClaim = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate) : availability.genericQuotaStanding(candidate);
+  const afterClaim = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate, model) : availability.genericQuotaStanding(candidate, model);
   if (afterClaim.kind === "recheck_pending") return { available: false, kind: "pending", pending: afterClaim };
   return { available: false, kind: "terminal", reason: "unavailable", detail: "the quota recheck could not be coordinated.", reset: undefined };
 }
@@ -789,7 +792,7 @@ function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[]
   // still a spent limit and a rate limit still a rate limit, and a recheck must not stand in for either.
   const sharedGateReset = (provider: AccessProviderId, entry: SkippedCandidate, cause: ProviderUnavailableCause): CapacityReset => {
     const service = availability.serviceStanding(provider);
-    const quota = provider === "chatgpt" ? availability.chatGptStanding(entry.candidate) : availability.genericQuotaStanding(entry.candidate);
+    const quota = provider === "chatgpt" ? availability.chatGptStanding(entry.candidate, model) : availability.genericQuotaStanding(entry.candidate, model);
     const holds = [service, quota].flatMap((standing) => standing.kind === "suppressed" ? [standing.exhaustion] : []);
     if (holds.length === 0) {
       const observed: CapacityHold = entry.state.reset?.hold ?? (cause === "quota" ? { kind: "usage_limit", stated: false } : { kind: "recheck" });

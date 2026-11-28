@@ -149,13 +149,14 @@ export async function admitBenchmark(
       throw new Error(`Benchmark ${role} setting ${authored} cannot serve: ${selected.kind === "access-pending" ? "model access is still being checked" : "the active profile has no reachable model"}.`);
     }
     const chain = selected.plan;
-    const availability = (deps.providerAvailability ?? peekSharedProviderAvailability())?.forCandidates(capture.connection.profileId, chain.candidates);
+    const availability = (deps.providerAvailability ?? peekSharedProviderAvailability())?.forCandidates(capture.connection.profileId, chain.candidates, () => [chain.model]);
     if (availability) {
       const requestAdmission = await capture.requestAdmission(chain.candidates);
       availability.refreshProjection();
       const inputs = {
         ...requestAdmission,
         availability,
+        model: chain.model,
         family: chain.family,
         providerOptions: selected.role.providerOptions,
         conditions: capture.connection.auth.conditions ?? [],

@@ -2,7 +2,7 @@
 
 This page is generated from the record files in `bench/ab-persona/records/implementer/` and the benchmark catalog (ARCH-DIRECTORIES-023). Do not edit it. Regenerate it with `bun run bench:tables`. Findings documents interpret these results and link this page.
 
-Role: implementer. Mode: implement. Corpus: 14 tasks. Records: 18 campaigns, 426 cells, 23 failed attempts.
+Role: implementer. Mode: implement. Corpus: 16 tasks. Records: 18 campaigns, 426 cells, 23 failed attempts.
 
 ## Ranking
 
@@ -11,39 +11,37 @@ The ranking pools every current, scored cell of the role implementer, so it can 
 ### Judged by gpt-6.2-sol:high
 
 Judge: gpt-6.2-sol:high (other judges in these records: claude-opus-5.5:high 505 scores, gpt-6.1-sol:xhigh 81 scores)
-Corpora: implementer (14 tasks: 1 ranked, 13 floor)
+Corpora: implementer (16 tasks: 1 ranked, 15 floor)
 Persona guidance: implementer 1dfb0b75 (84 cells), implementer 645ae0c6 (323 cells)
 Test quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks.
 Judged quality: the mean over every task of its mean judged score of a change, 100 less 15 per major and 5 per minor finding that the judge reports in the diff; a timed-out cell scores 0. Quality is test quality alone, and judged quality is reported beside it, because the calibration of gpt-6.2-sol:high does not pass: seeded controls 13 of 16 found, clean references 3 of 7 without a major finding, 1 controls not judged (each needs 80%); reviewer agreement unavailable: 20 of 20 sampled cells labeled, 10 of them scored by the judge.
-Filters: quality % >= 90.0, followed false claims % <= 20.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Filters: quality % >= 0.0, followed false claims % <= 0.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
 Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
 | Setting | Family | Tier | quality % | Quality 90% | Test quality | Judged quality | followed false claims % | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
-| gpt-6.2-sol@medium | openai | mid | 100.0 | 100.0 to 100.0 | 100.0 | n/a | 11.11 | $0.203 | 169s | 88.9 | 50.0 to 100.0 | 94% | pass | 57 |
-| gpt-6.2-sol@high | openai | mid | 100.0 | 100.0 to 100.0 | 100.0 | n/a | 10.00 | $0.262 | 320s | 86.1 | 46.6 to 97.7 | 100% | pass | 30 |
-| gemini-4-neon@medium | other | unpriced | 96.6 | 89.8 to 100.0 | 96.6 | n/a | 10.00 | $1.132 | 558s | 74.0 | 34.7 to 87.5 | 100% | pass | 30 |
-| gpt-6.1-sol@medium | openai | mid | 62.5 | 54.5 to 66.7 | 62.5 | n/a | 15.79 | $0.147 | 118s | 49.6 | 7.3 to 71.2 | 72% | quality | 42 |
-| claude-opus-5-5@high | anthropic | powerful | 57.8 | 41.3 to 66.7 | 57.8 | n/a | 15.00 | $0.380 | 89s | 42.9 | 15.5 to 65.4 | 50% | quality | 32 |
-| claude-opus-5-5@medium | anthropic | powerful | 36.1 | -33.3 to 66.7 | 36.1 | n/a | 12.50 | $0.212 | 48s | 28.9 | -40.1 to 65.8 | - | quality | 56 (1 timed out) |
 
 Incomplete (cells to run next):
-- claude-fable-5.2@low: implementer: 4 of 14 tasks
-- claude-opus-5.5@high: implementer: 4 of 14 tasks
-- claude-opus-5.5@medium: implementer: 4 of 14 tasks
-- gemini-3.8-flash@low: implementer: 1 of 14 tasks
-- gpt-6-astra@low: implementer: 4 of 14 tasks
-- gpt-6.1-sol@high: implementer: 4 of 14 tasks
-- gpt-6.1-sol@xhigh: implementer: 4 of 14 tasks
+- claude-fable-5.2@low: implementer: 4 of 16 tasks
+- claude-opus-5-5@high: implementer: 14 of 16 tasks
+- claude-opus-5-5@medium: implementer: 14 of 16 tasks
+- claude-opus-5.5@high: implementer: 4 of 16 tasks
+- claude-opus-5.5@medium: implementer: 4 of 16 tasks
+- gemini-3.8-flash@low: implementer: 1 of 16 tasks
+- gemini-4-hydrogen@high: implementer: 14 of 16 tasks
+- gemini-4-neon@high: implementer: 14 of 16 tasks
+- gemini-4-neon@medium: implementer: 14 of 16 tasks
+- gpt-6-astra@low: implementer: 4 of 16 tasks
+- gpt-6.1-sol@high: implementer: 4 of 16 tasks
+- gpt-6.1-sol@medium: implementer: 14 of 16 tasks
+- gpt-6.1-sol@xhigh: implementer: 4 of 16 tasks
+- gpt-6.2-sol@high: implementer: 14 of 16 tasks
+- gpt-6.2-sol@medium: implementer: 14 of 16 tasks
 
 Cells to retry (failed with no result; a resume runs them again):
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
-
-Not ranked:
-- gemini-4-hydrogen@high: cost unavailable
-- gemini-4-neon@high: cost unavailable
 
 Not pooled:
 
@@ -61,49 +59,45 @@ Policy:
 
 ```
 implementer (ROLE_MODEL_DEFAULTS entry: implementer)
-  named: openai gpt-6.2-sol medium (no quality lead holds in 90% of resamples; the top scorer of the settings that gpt-6.2-sol@medium does not outscore on quality in 90% of resamples: gpt-6.2-sol@medium, gpt-6.2-sol@high, gemini-4-neon@medium)
-  1. openai gpt-6.2-sol medium
-  2. anthropic claude-opus-5-5 high (no setting of this family passes the filters)
-  fallback: mid, medium
+  named: none (no setting passes the filters)
+  fallback: none (no setting passes the filters)
   evidence: implementer-2026-11-13T21-16-42-634Z, implementer-2026-11-13T21-16-44-771Z, implementer-2026-11-24T07-13-03-614Z, implementer-2026-11-24T07-24-16-693Z, implementer-2026-11-24T14-59-24-385Z, implementer-2026-11-24T15-07-31-792Z, implementer-2026-11-24T15-17-18-831Z, implementer-2026-11-24T23-57-38-543Z, implementer-2026-11-26T06-06-30-601Z, implementer-2026-11-26T06-08-53-448Z, implementer-2026-11-26T06-24-57-058Z, implementer-2026-11-26T08-48-39-529Z, implementer-2026-11-26T08-56-29-270Z, implementer-2026-11-26T09-25-40-966Z, implementer-2026-11-26T14-27-47-990Z, implementer-2026-11-26T14-27-49-276Z, implementer-2026-11-26T20-31-14-559Z, implementer-2026-11-27T00-45-28-316Z
 ```
 
 ### Judged by claude-opus-5.5:high
 
 Judge: claude-opus-5.5:high (other judges in these records: gpt-6.1-sol:xhigh 81 scores, gpt-6.2-sol:high 576 scores)
-Corpora: implementer (14 tasks: 1 ranked, 13 floor)
+Corpora: implementer (16 tasks: 1 ranked, 15 floor)
 Persona guidance: implementer 1dfb0b75 (84 cells), implementer 645ae0c6 (277 cells)
 Test quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks.
-Judged quality: the mean over every task of its mean judged score of a change, 100 less 15 per major and 5 per minor finding that the judge reports in the diff; a timed-out cell scores 0. Quality is test quality alone, and judged quality is reported beside it, because the calibration of claude-opus-5.5:high does not pass: seeded controls 13 of 16 found, clean references 7 of 7 without a major finding (each needs 80%); reviewer agreement Spearman 0.37 over 20 cells (needs 0.60).
-Filters: quality % >= 47.8, followed false claims % <= 20.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
+Judged quality: the mean over every task of its mean judged score of a change, 100 less 15 per major and 5 per minor finding that the judge reports in the diff; a timed-out cell scores 0. Quality is the equal-weight mean of test quality and judged quality, because the calibration of claude-opus-5.5:high passes: seeded controls 13 of 16 found, clean references 7 of 7 without a major finding (each needs 80%); reviewer agreement Spearman 0.65 over 20 cells (needs 0.60).
+Filters: quality % >= 0.0, followed false claims % <= 0.00. Score = quality - 1 x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest), over passing settings.
 Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 seeded resamples, which draw tasks with replacement and then each setting's repeats of each drawn task with replacement, and score every setting again. Beats next is the share of resamples in which a setting outscores the setting on the next row.
 
 | Setting | Family | Tier | quality % | Quality 90% | Test quality | Judged quality | followed false claims % | Cost/cell | Median latency | Score | Score 90% | Beats next | Filter | Cells |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
-| claude-opus-5-5@high | anthropic | powerful | 57.8 | 43.0 to 66.7 | 57.8 | n/a | 10.00 | $0.380 | 89s | 47.8 | 15.5 to 65.5 | - | pass | 32 |
 
 Incomplete (cells to run next):
-- claude-fable-5.2@low: implementer: 4 of 14 tasks
-- claude-opus-5-5@medium: implementer: 11 of 14 tasks
-- claude-opus-5.5@high: implementer: 4 of 14 tasks
-- claude-opus-5.5@medium: implementer: 4 of 14 tasks
-- gemini-3.8-flash@low: implementer: 1 of 14 tasks
-- gemini-4-neon@medium: implementer: 11 of 14 tasks
-- gpt-6-astra@low: implementer: 4 of 14 tasks
-- gpt-6.1-sol@high: implementer: 4 of 14 tasks
-- gpt-6.1-sol@medium: implementer: 13 of 14 tasks
-- gpt-6.1-sol@xhigh: implementer: 4 of 14 tasks
-- gpt-6.2-sol@high: implementer: 11 of 14 tasks
-- gpt-6.2-sol@medium: implementer: 11 of 14 tasks
+- claude-fable-5.2@low: implementer: 4 of 16 tasks
+- claude-opus-5-5@high: implementer: 14 of 16 tasks
+- claude-opus-5-5@medium: implementer: 11 of 16 tasks
+- claude-opus-5.5@high: implementer: 4 of 16 tasks
+- claude-opus-5.5@medium: implementer: 4 of 16 tasks
+- gemini-3.8-flash@low: implementer: 1 of 16 tasks
+- gemini-4-hydrogen@high: implementer: 14 of 16 tasks
+- gemini-4-neon@high: implementer: 14 of 16 tasks
+- gemini-4-neon@medium: implementer: 11 of 16 tasks
+- gpt-6-astra@low: implementer: 4 of 16 tasks
+- gpt-6.1-sol@high: implementer: 4 of 16 tasks
+- gpt-6.1-sol@medium: implementer: 13 of 16 tasks
+- gpt-6.1-sol@xhigh: implementer: 4 of 16 tasks
+- gpt-6.2-sol@high: implementer: 11 of 16 tasks
+- gpt-6.2-sol@medium: implementer: 11 of 16 tasks
 
 Cells to retry (failed with no result; a resume runs them again):
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
-
-Not ranked:
-- gemini-4-hydrogen@high: cost unavailable
-- gemini-4-neon@high: cost unavailable
 
 Not pooled:
 
@@ -125,16 +119,15 @@ Policy:
 
 ```
 implementer (ROLE_MODEL_DEFAULTS entry: implementer)
-  named: anthropic claude-opus-5-5 high (its quality exceeds every other passing setting's in 100% of resamples)
-  1. anthropic claude-opus-5-5 high
-  fallback: powerful, high
+  named: none (no setting passes the filters)
+  fallback: none (no setting passes the filters)
   evidence: implementer-2026-11-13T21-16-42-634Z, implementer-2026-11-13T21-16-44-771Z, implementer-2026-11-24T07-13-03-614Z, implementer-2026-11-24T07-24-16-693Z, implementer-2026-11-24T14-59-24-385Z, implementer-2026-11-24T15-07-31-792Z, implementer-2026-11-24T15-17-18-831Z, implementer-2026-11-24T23-57-38-543Z, implementer-2026-11-26T06-06-30-601Z, implementer-2026-11-26T06-08-53-448Z, implementer-2026-11-26T06-24-57-058Z, implementer-2026-11-26T08-48-39-529Z, implementer-2026-11-26T08-56-29-270Z, implementer-2026-11-26T09-25-40-966Z, implementer-2026-11-26T14-27-47-990Z, implementer-2026-11-26T14-27-49-276Z, implementer-2026-11-26T20-31-14-559Z, implementer-2026-11-27T00-45-28-316Z
 ```
 
 ### Judged by gpt-6.1-sol:xhigh
 
 Judge: gpt-6.1-sol:xhigh (other judges in these records: claude-opus-5.5:high 505 scores, gpt-6.2-sol:high 576 scores)
-Corpora: implementer (14 tasks: 1 ranked, 13 floor)
+Corpora: implementer (16 tasks: 1 ranked, 15 floor)
 Persona guidance: implementer 1dfb0b75 (84 cells), implementer 645ae0c6 (2 cells)
 Test quality: the mean core quality over the ranked tasks, less each floor task's mean failed share of core and serious checks divided by the ranked task count, so a floor task that fails every check costs as much as one ranked task at 0. Cost and latency read only cells of ranked tasks.
 Judged quality: the mean over every task of its mean judged score of a change, 100 less 15 per major and 5 per minor finding that the judge reports in the diff; a timed-out cell scores 0. Quality is test quality alone, and judged quality is reported beside it, because the calibration of gpt-6.1-sol:xhigh does not pass: no control results under judge identity quality-641da47d51d141ab (`bun bench/ab-persona/bench.ts --calibrate --judge gpt-6.1-sol:xhigh`); reviewer agreement unavailable: 20 of 20 sampled cells labeled, 0 of them scored by the judge.
@@ -145,15 +138,15 @@ Confidence: each 90% interval spans the 5th to the 95th percentile over 1000 see
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
 
 Incomplete (cells to run next):
-- claude-fable-5.2@low: implementer: 4 of 14 tasks
-- claude-opus-5-5@medium: implementer: 1 of 14 tasks
-- claude-opus-5.5@high: implementer: 4 of 14 tasks
-- claude-opus-5.5@medium: implementer: 4 of 14 tasks
-- gemini-4-hydrogen@high: implementer: 1 of 14 tasks
-- gpt-6-astra@low: implementer: 4 of 14 tasks
-- gpt-6.1-sol@high: implementer: 4 of 14 tasks
-- gpt-6.1-sol@medium: implementer: 4 of 14 tasks
-- gpt-6.1-sol@xhigh: implementer: 4 of 14 tasks
+- claude-fable-5.2@low: implementer: 4 of 16 tasks
+- claude-opus-5-5@medium: implementer: 1 of 16 tasks
+- claude-opus-5.5@high: implementer: 4 of 16 tasks
+- claude-opus-5.5@medium: implementer: 4 of 16 tasks
+- gemini-4-hydrogen@high: implementer: 1 of 16 tasks
+- gpt-6-astra@low: implementer: 4 of 16 tasks
+- gpt-6.1-sol@high: implementer: 4 of 16 tasks
+- gpt-6.1-sol@medium: implementer: 4 of 16 tasks
+- gpt-6.1-sol@xhigh: implementer: 4 of 16 tasks
 
 Cells to retry (failed with no result; a resume runs them again):
 - gemini-4-hydrogen@high hosted-thinking-row-wait #0 (implementer 2026-11-24T23-57-38-543Z): RESOURCE_EXHAUSTED (code 429): Resource has been exhausted (e.g. check quota).
@@ -202,6 +195,7 @@ Each cell lists every recorded repeat, oldest campaign first. Tier: the task's c
 
 | Task | Tier | claude-fable-5.2@low | claude-fable-5.2@low edge | claude-opus-5-5@high | claude-opus-5-5@high edge | claude-opus-5-5@medium | claude-opus-5-5@medium edge | claude-opus-5.5@high | claude-opus-5.5@high edge | claude-opus-5.5@medium | claude-opus-5.5@medium edge | gemini-3.8-flash@low | gemini-3.8-flash@low edge | gemini-4-hydrogen@high | gemini-4-hydrogen@high edge | gemini-4-neon@high | gemini-4-neon@high edge | gemini-4-neon@medium | gemini-4-neon@medium edge | gpt-6-astra@low | gpt-6-astra@low edge | gpt-6.1-sol@high | gpt-6.1-sol@high edge | gpt-6.1-sol@medium | gpt-6.1-sol@medium edge | gpt-6.1-sol@xhigh | gpt-6.1-sol@xhigh edge | gpt-6.2-sol@high | gpt-6.2-sol@high edge | gpt-6.2-sol@medium | gpt-6.2-sol@medium edge |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| ansible__ansible-40ade1f8 | floor | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
 | astropy__astropy-14598 | ranked | - | - | 2/3 2/3 2/3 2/3 | n/a n/a n/a n/a | 2/3 2/3 2/3 2/3 | n/a n/a n/a n/a | - | - | - | - | - | - | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a n/a | 3/3 3/3 | n/a n/a | - | - | - | - | 2/3 2/3 | n/a n/a | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a |
 | ds1000-298 | floor | - | - | (0/1)* (0/1)* 3/3 3/3 | ?* ?* n/a n/a | (0/1)* (0/1)* 3/3 3/3 3/3 3/3 | ?* ?* n/a n/a n/a n/a | - | - | - | - | - | - | (1/1)* (1/1)* (1/1)* 3/3 3/3 | ?* ?* ?* n/a n/a | (1/1)* (1/1)* (1/1)* 3/3 3/3 | ?* ?* ?* n/a n/a | (1/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | - | - | - | - | (1/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | - | - | (0/1)* (1/1)* 3/3 3/3 | ?* ?* n/a n/a | (1/1)* (0/1)* 3/3 3/3 3/3 3/3 | ?* ?* n/a n/a n/a n/a |
 | getmoto__moto-7365 | floor | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a | - | - | - | - | - | - | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 | n/a n/a | - | - | - | - | 1/1 1/1 | n/a n/a | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a |
@@ -209,6 +203,7 @@ Each cell lists every recorded repeat, oldest campaign first. Tier: the task's c
 | httpx-streaming-json-iteration | floor | 88/88 88/88 87/88 | 20/20 20/20 20/20 | 87/88 86/88 | 20/20 20/20 | 88/88 84/88 86/88 87/88 | 20/20 20/20 20/20 20/20 | 86/88 87/88 87/88 | 20/20 20/20 20/20 | 87/88 86/88 87/88 | 20/20 20/20 20/20 | - | - | 86/88 87/88 88/88 | 20/20 20/20 20/20 | 83/88 86/88 84/88 | 20/20 20/20 20/20 | 85/88 85/88 | 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 88/88 88/88 88/88 | 20/20 20/20 20/20 20/20 20/20 | 88/88 88/88 88/88 | 20/20 20/20 20/20 | 88/88 88/88 | 20/20 20/20 | 88/88 88/88 88/88 88/88 | 20/20 20/20 20/20 20/20 |
 | jquense__yup-2305 | floor | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a | - | - | - | - | - | - | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 3/3 | n/a n/a n/a | 3/3 3/3 | n/a n/a | - | - | - | - | 3/3 3/3 | n/a n/a | - | - | 3/3 3/3 | n/a n/a | 3/3 3/3 3/3 3/3 | n/a n/a n/a n/a |
 | metrics-resteer | floor | - | - | 10/10 10/10 | n/a n/a | 10/10 10/10 10/10 10/10 | n/a n/a n/a n/a | - | - | - | - | 10/10 10/10 8/10 | n/a n/a n/a | 10/10 10/10 10/10 | n/a n/a n/a | 10/10 10/10 10/10 | n/a n/a n/a | 10/10 10/10 | n/a n/a | - | - | - | - | 10/10 10/10 | n/a n/a | - | - | 10/10 10/10 | n/a n/a | 10/10 10/10 10/10 10/10 | n/a n/a n/a n/a |
+| navidrome__navidrome-69e0a266 | floor | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
 | psf__requests-6028 | floor | - | - | 2/2 2/2 | n/a n/a | 2/2 2/2 2/2 2/2 | n/a n/a n/a n/a | - | - | - | - | - | - | 2/2 2/2 2/2 | n/a n/a n/a | 2/2 2/2 2/2 | n/a n/a n/a | 2/2 2/2 | n/a n/a | - | - | - | - | 2/2 2/2 | n/a n/a | - | - | 2/2 2/2 | n/a n/a | 2/2 2/2 2/2 2/2 | n/a n/a n/a n/a |
 | recall-punctuated-words | floor | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 15/15 | 8/8 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | - | - | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 15/15 14/15 15/15 | 8/8 8/8 8/8 8/8 8/8 | 15/15 15/15 15/15 | 8/8 8/8 8/8 | 15/15 15/15 | 8/8 8/8 | 15/15 15/15 15/15 15/15 | 8/8 8/8 8/8 8/8 |
 | redis__redis-10068 | floor | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a | - | - | - | - | - | - | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 1/1 | n/a n/a n/a | 1/1 1/1 | n/a n/a | - | - | - | - | 1/1 1/1 | n/a n/a | - | - | 1/1 1/1 | n/a n/a | 1/1 1/1 1/1 1/1 | n/a n/a n/a n/a |
@@ -245,13 +240,21 @@ Judged quality is the mean over the setting's cells that the judge scored of 100
 
 Corpus tasks that a setting has no current cell of:
 
-- claude-fable-5.2@low: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
-- claude-opus-5.5@high: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
-- claude-opus-5.5@medium: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
-- gemini-3.8-flash@low: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, hosted-thinking-row-wait, httpx-streaming-json-iteration, jquense__yup-2305, psf__requests-6028, recall-punctuated-words, redis__redis-10068, regex-chess, rust-react, scheme-metacircular, template-multiphase
-- gpt-6-astra@low: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
-- gpt-6.1-sol@high: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
-- gpt-6.1-sol@xhigh: astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- claude-fable-5.2@low: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, navidrome__navidrome-69e0a266, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- claude-opus-5-5@high: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- claude-opus-5-5@medium: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- claude-opus-5.5@high: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, navidrome__navidrome-69e0a266, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- claude-opus-5.5@medium: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, navidrome__navidrome-69e0a266, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- gemini-3.8-flash@low: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, hosted-thinking-row-wait, httpx-streaming-json-iteration, jquense__yup-2305, navidrome__navidrome-69e0a266, psf__requests-6028, recall-punctuated-words, redis__redis-10068, regex-chess, rust-react, scheme-metacircular, template-multiphase
+- gemini-4-hydrogen@high: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- gemini-4-neon@high: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- gemini-4-neon@medium: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- gpt-6-astra@low: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, navidrome__navidrome-69e0a266, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- gpt-6.1-sol@high: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, navidrome__navidrome-69e0a266, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- gpt-6.1-sol@medium: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- gpt-6.1-sol@xhigh: ansible__ansible-40ade1f8, astropy__astropy-14598, ds1000-298, getmoto__moto-7365, jquense__yup-2305, metrics-resteer, navidrome__navidrome-69e0a266, psf__requests-6028, redis__redis-10068, regex-chess, rust-react, template-multiphase
+- gpt-6.2-sol@high: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
+- gpt-6.2-sol@medium: ansible__ansible-40ade1f8, navidrome__navidrome-69e0a266
 
 Cells to retry (every attempt failed with no result; a resume runs them again):
 

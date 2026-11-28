@@ -5,7 +5,7 @@ import type { ModelInfo } from "../../../../../infra/providers/llm/models/models
 import { toAnthropicMessagesRequest } from "../../conversions/anthropic-messages.js";
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW, classifyQuotaError, ContentFilteredError, ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError } from "../../errors.js";
 import { supportsAdaptiveThinking, supportsEagerToolStreamingOnCopilot, supportsPerTurnEffort } from "../../../../../infra/providers/llm/models/model-compat.js";
-import { isTransientNetworkError } from "../../stream/provider-failure.js";
+import { getRetryAfterMs, isTransientNetworkError, RETRY_AFTER_MAX_MS } from "../../stream/provider-failure.js";
 import { STREAM_TTFT_TIMEOUT_MS } from "../../stream/stream-liveness.js";
 import type { StreamOptions } from "../../types.js";
 import type { ConversationMessage } from "../../../../../infra/providers/llm/conversation/conversation-message.js";
@@ -219,9 +219,12 @@ function classifyAnthropicApiError(err: InstanceType<typeof Anthropic.APIError>)
     return new ModelAccessRefusedError(body.message, { kind: "model" }, { cause: err });
   }
   if (err.status === 429) {
-    const retryAfter = err.headers?.get?.("retry-after");
-    const delayMs = retryAfter ? Number(retryAfter) * 1000 : undefined;
-    return new LlmStreamError(err.message, "rate_limit", Number.isFinite(delayMs) ? delayMs : undefined, { cause: err });
+    // The service states a spent usage window of the request's model as a 429 whose wait is the window's reset, hours
+    // or days away, and throttling as a wait of seconds (observed across every local Claude answer). A wait that no
+    // retry in place can outlast is that model's spent usage on the account.
+    const delayMs = getRetryAfterMs(err);
+    if (delayMs !== undefined && delayMs > RETRY_AFTER_MAX_MS) return new QuotaExhaustedError(err.message, { cause: err, retryAfterMs: delayMs });
+    return new LlmStreamError(err.message, "rate_limit", delayMs, { cause: err });
   }
   if (err.status === 408 || err.status === 409) return new LlmStreamError(err.message, "transient", undefined, { cause: err });
   if (err.status !== undefined && err.status >= 500) return new LlmStreamError(err.message, "overload", undefined, { cause: err });

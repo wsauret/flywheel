@@ -7,9 +7,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, test } from "bun:test";
 import { classifyAnthropicError } from "../../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError } from "../../../../../../../src/orchestration/agent-runtime/llm/errors.js";
+import { classifyProviderFailure } from "../../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 
-function apiError(status: number, message: string): InstanceType<typeof Anthropic.APIError> {
-  return new Anthropic.APIError(status, { error: { message } }, message, new Headers());
+function apiError(status: number, message: string, headers: HeadersInit = {}): InstanceType<typeof Anthropic.APIError> {
+  return new Anthropic.APIError(status, { error: { message } }, message, new Headers(headers));
 }
 
 describe("classifyAnthropicError terminal quota failures", () => {
@@ -29,6 +30,19 @@ describe("classifyAnthropicError terminal quota failures", () => {
     expect(classified).toBeInstanceOf(LlmStreamError);
     if (!(classified instanceof LlmStreamError)) throw new Error("expected LlmStreamError");
     expect(classified.kind).toBe("rate_limit");
+  });
+
+  test("a 429 whose stated wait outlasts the in-place retries is the request's model spent on the account until that wait ends; a shorter or absent wait is throttling", () => {
+    const limit = "This request would exceed your account's rate limit. Please try again later.";
+    const failureOf = (headers: HeadersInit) => classifyProviderFailure(classifyAnthropicError(apiError(429, limit, headers)));
+    // Observed: an account that spent one model's weekly window answers 429 with the reset as its retry-after.
+    expect(failureOf({ "retry-after": "278946" })).toMatchObject({ _tag: "QuotaExhaustedFailure", retryAfterMs: 278_946_000 });
+    expect(failureOf({ "retry-after": new Date(Date.now() + 3_600_000).toUTCString() })._tag).toBe("QuotaExhaustedFailure");
+    // One answer that states both headers is read by the millisecond one, as the shared classifier reads it.
+    expect(failureOf({ "retry-after-ms": "278946000", "retry-after": "7" })).toMatchObject({ _tag: "QuotaExhaustedFailure", retryAfterMs: 278_946_000 });
+    expect(failureOf({ "retry-after-ms": "7000", "retry-after": "278946" })).toMatchObject({ _tag: "RateLimitFailure", retryAfterMs: 7_000 });
+    expect(failureOf({ "retry-after": "60" })).toMatchObject({ _tag: "RateLimitFailure", retryAfterMs: 60_000 });
+    expect(failureOf({})._tag).toBe("RateLimitFailure");
   });
 
   test.each([400, 429])("a %i depleted credit balance is terminal quota exhaustion", (status) => {

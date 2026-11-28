@@ -275,6 +275,7 @@ describe("terminal quota failover recording", () => {
 
     expect(await requestEvents(client)).toEqual([textDelta("openai_api")]);
   });
+
 });
 
 describe("coordination failures stop the request before any provider I/O", () => {

@@ -250,7 +250,6 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   ["provider.claude_sdk.host.frame", { tier: "debug" }],
   ["provider.claude_sdk.host.step_refused", { tier: "info" }],
   ["provider.claude_sdk.host.agent_failed", { tier: "info" }],
-  ["provider.claude_sdk.host.agent_usage_spent", { tier: "info" }],
   // Once per engine version: a hosted agent's stream ended by an SSE error that the engine reports without a key.
   ["provider.claude_sdk.host.stream_error.unattributed", { tier: "info" }],
   ["provider.claude_sdk.host.agent_dispatched", { tier: "info" }],

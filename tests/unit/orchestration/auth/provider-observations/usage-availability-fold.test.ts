@@ -36,12 +36,13 @@ describe("usage availability fold", () => {
     expect(view.genericQuotaStanding(copilot).kind).toBe("live")
   })
 
-  test("a reading taken after a spent mark lifts the mark when no window reads full, for an account whose provider has one quota row", () => {
+  test("a reading taken after a spent mark lifts the mark when no window reads full, for an account whose provider has one quota row, and so does each spent model's row", () => {
     let nowMs = NOW_MS
     const owner = createProviderAvailability({ now: () => nowMs })
     const reset = candidate("claude_agent_sdk", "reset"); const full = candidate("claude_agent_sdk", "full"); const stale = candidate("claude_agent_sdk", "stale"); const unread = candidate("claude_agent_sdk", "unread")
     const view = owner.forCandidates("Personal", [reset, full, stale, unread])
     for (const account of [reset, full, stale, unread]) view.markQuotaExhausted(account, RESET_MS)
+    for (const account of [reset, full]) view.markQuotaExhausted(account, RESET_MS, "fable")
     nowMs = NOW_MS + 60_000
     foldSubscriptionUsageIntoAvailability(owner, published([
       { kind: "supported", account: { providerId: "claude_agent_sdk", instanceId: "reset" }, snapshot: report("claude_agent_sdk", "reset", 0.02, nowMs) },
@@ -50,7 +51,9 @@ describe("usage availability fold", () => {
       { kind: "unsupported", account: { providerId: "claude_agent_sdk", instanceId: "unread" } },
     ]))
     expect(view.genericQuotaStanding(reset)).toEqual({ kind: "live" })
+    expect(view.genericQuotaStanding(reset, "fable")).toEqual({ kind: "live" })
     expect(view.genericQuotaStanding(full).kind).toBe("suppressed")
+    expect(view.genericQuotaStanding(full, "fable").kind).toBe("suppressed")
     expect(view.genericQuotaStanding(stale).kind).toBe("suppressed")
     expect(view.genericQuotaStanding(unread).kind).toBe("suppressed")
   })

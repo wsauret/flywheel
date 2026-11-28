@@ -5,7 +5,10 @@
  *  meter lease two processes contend for is in
  *  `provider-availability-copilot-coordination.test.ts`. */
 
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { DebugLog, type DebugLogRecordInput } from "../../../../../../src/infra/diagnostics/debug-log.js";
+import { Log } from "../../../../../../src/infra/diagnostics/log.js";
+import type { SubscriptionUsageMetric } from "../../../../../../src/infra/providers/llm/usage/subscription-usage.js";
 import { accessProviderCandidateKey } from "../../../../../../src/infra/providers/llm/access/access-provider.js";
 import {
   type AvailabilityAuthority,
@@ -68,6 +71,10 @@ describe("durable availability authority", () => {
     const commits: AvailabilityObservation[] = [];
     const authority: AvailabilityAuthority = {
       snapshotFor: () => {
+        if (failWith) throw failWith;
+        return { incarnation: "test", revision: commits.length, rows: [] };
+      },
+      snapshotForAccount: () => {
         if (failWith) throw failWith;
         return { incarnation: "test", revision: commits.length, rows: [] };
       },
@@ -645,5 +652,82 @@ describe("availability owner disposal", () => {
 
     expect(getSharedProviderAvailability()).not.toBe(first);
     await disposeSharedProviderAvailability();
+  });
+});
+
+describe("a spent model of one account", () => {
+  const CLAUDE = subscription("claude_agent_sdk", "login-a");
+  const OTHER_CLAUDE = subscription("claude_agent_sdk", "login-b");
+  const modelKey = (candidate: typeof CLAUDE, model: string): AvailabilityKey =>
+    ({ scope: "account", profileId: "default", provider: "claude_agent_sdk", candidateKey: accessProviderCandidateKey(candidate), window: `model:${model}` });
+  const records: DebugLogRecordInput[] = [];
+  beforeEach(async () => {
+    records.length = 0;
+    await Log.init({ level: "INFO", forward: (record) => { records.push(record); } });
+  });
+  afterEach(async () => { await DebugLog.close(); });
+  const spentRecords = () => records.filter((record) => record.type === "log.info" && typeof record.payload === "object" && record.payload !== null && "message" in record.payload && record.payload.message === "usage limit spent").map(({ payload }) => payload);
+  const belowFull: SubscriptionUsageMetric[] = [{ metricKey: "seven_day", label: "Weekly", scope: { kind: "account" }, rank: 0, usedFraction: 0.3, timing: { kind: "exact", startMs: 0, endMs: NOW_MS + 86_400_000 } }];
+
+  test("is one row of the account that every process reads with that model only, records one INFO per spent window, and reopens on a newer Usage reading below full", () => {
+    const dbFile = tempDbFile();
+    const writer = harness([], createAvailabilityAuthority({ dbFile }), [CLAUDE]);
+    const written = writer.owner.forCandidates("default", [CLAUDE], () => ["fable"]);
+    // A reset computed from a stated wait is rounded up to a whole millisecond, so every process decodes the row.
+    written.markQuotaExhausted(CLAUDE, NOW_MS + 1_000.4, "fable");
+    written.markQuotaExhausted(CLAUDE, NOW_MS + 1_000.4, "fable");
+
+    const reader = harness([], createAvailabilityAuthority({ dbFile }), [CLAUDE]).owner.forCandidates("default", [CLAUDE], () => ["fable", "opus"]);
+    reader.refreshProjection();
+    expect(reader.genericQuotaStanding(CLAUDE, "fable")).toEqual({ kind: "suppressed", exhaustion: { exhaustedAtMs: NOW_MS, resetsAtMs: NOW_MS + 1_001, hold: { kind: "usage_limit", stated: true } } });
+    expect(reader.genericQuotaStanding(CLAUDE, "opus")).toEqual({ kind: "live" });
+    expect(reader.genericQuotaStanding(CLAUDE)).toEqual({ kind: "live" });
+    expect(spentRecords()).toEqual([expect.objectContaining({ service: "provider-availability", provider: "claude_agent_sdk", candidateKey: accessProviderCandidateKey(CLAUDE), window: "model:fable", resetsAtMs: NOW_MS + 1_001 })]);
+
+    // The same refusal after the reset passed is a new spent window.
+    writer.advance(2_000);
+    written.markQuotaExhausted(CLAUDE, NOW_MS + 90_000, "fable");
+    expect(spentRecords()).toHaveLength(2);
+
+    // A reset that no row can hold falls back to the safe recheck.
+    const unbounded = writer.owner.forCandidates("default", [OTHER_CLAUDE], () => ["fable"]);
+    expect(unbounded.markQuotaExhausted(OTHER_CLAUDE, Number.MAX_SAFE_INTEGER * 2, "fable").reportedResetAtMs).toBeUndefined();
+    // A safe integer past the latest moment that a date holds is no reset either: every reader formats the reset.
+    expect(unbounded.markQuotaExhausted(OTHER_CLAUDE, 9_000_000_000_000_000, "opus").reportedResetAtMs).toBeUndefined();
+    const other = createAvailabilityAuthority({ dbFile });
+    expect(other.snapshotFor([modelKey(OTHER_CLAUDE, "fable")]).rows).toEqual([expect.objectContaining({ state: "exhausted", nextProbeAtMs: NOW_MS + 2_000 + SAFE_RECHECK_MS })]);
+
+    // An owner that never bound the model finds its row, and a reading below full taken after the mark reopens it.
+    harness([], createAvailabilityAuthority({ dbFile }), [CLAUDE]).availability.observeUsage(CLAUDE, belowFull, NOW_MS + 3_000);
+    expect(other.snapshotFor([modelKey(CLAUDE, "fable")]).rows).toEqual([expect.objectContaining({ state: "live", source: "usage-report" })]);
+    expect(other.snapshotFor([modelKey(OTHER_CLAUDE, "fable")]).rows).toEqual([expect.objectContaining({ state: "exhausted" })]);
+  });
+
+  test("a model's recheck that succeeds leaves the account row's recheck to the request that claimed it", () => {
+    const dbFile = tempDbFile();
+    const a = harness([], createAvailabilityAuthority({ dbFile }), [CLAUDE]);
+    const b = harness([], createAvailabilityAuthority({ dbFile }), [CLAUDE]);
+    const fable = a.owner.forCandidates("default", [CLAUDE], () => ["fable"]);
+    fable.markQuotaExhausted(CLAUDE);
+    fable.markQuotaExhausted(CLAUDE, undefined, "fable");
+    a.advance(SAFE_RECHECK_MS + 1);
+    b.advance(SAFE_RECHECK_MS + 1);
+
+    // An Opus request in another process claims the account row's recheck, then a Fable request claims its model's.
+    const opus = b.owner.forCandidates("default", [CLAUDE]);
+    opus.refreshProjection();
+    const accountProbe = opus.claimQuotaProbe(CLAUDE);
+    const modelProbe = fable.claimQuotaProbe(CLAUDE, "fable");
+    expect([accountProbe?.window, modelProbe?.window]).toEqual(["account", "model:fable"]);
+    if (accountProbe === undefined || modelProbe === undefined) return;
+
+    expect(fable.markQuotaLive(CLAUDE, modelProbe)).toBe(true);
+    const reader = createAvailabilityAuthority({ dbFile });
+    const accountRow = { scope: "account", profileId: "default", provider: "claude_agent_sdk", candidateKey: accessProviderCandidateKey(CLAUDE), window: "account" } as const;
+    expect(reader.snapshotFor([accountRow]).rows).toEqual([expect.objectContaining({ state: "exhausted", fence: accountProbe.fence, leaseExpiresAtMs: expect.any(Number) })]);
+    expect(reader.snapshotFor([accountRow]).rows[0]?.leaseExpiresAtMs).toBeGreaterThan(0);
+    // The Opus request concludes its own recheck under its lease.
+    expect(opus.markQuotaLive(CLAUDE, accountProbe)).toBe(true);
+    expect(reader.snapshotFor([accountRow]).rows).toEqual([expect.objectContaining({ state: "live", leaseExpiresAtMs: 0 })]);
   });
 });

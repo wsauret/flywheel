@@ -373,7 +373,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
           started.phase = { kind: "gone" };
         },
         refused: () => { started.phase = { kind: "gone" }; },
-      });
+      }, config.wireModelId);
       try {
         await awaitWithAbortSignal(dispatch, signal);
       } catch (error) {
