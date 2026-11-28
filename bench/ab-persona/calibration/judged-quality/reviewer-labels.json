@@ -12,15 +12,6 @@
           "severity": "major",
           "file": "astropy/io/fits/card.py",
           "line": 864,
-          "claim": "The final parse moves a slash suffix from the value into the comment after rejoining CONTINUE cards.",
-          "evidence": "The first physical card ends with the escaped quotes and the next starts with `/tail`. `_split()` preserves both fragments. The final `_value_NFSC_RE` match treats the last escaped quote as the closing delimiter and `/tail` as the start of a comment. Anchoring the physical-card matcher fixes the earlier space case but does not fix this failure. The final matcher must distinguish a doubled quote from a closing delimiter.",
-          "scenario": "Build `fits.Card('TEST', 'x' * 63 + \"''/tail\")` and read its image with `fits.Card.fromstring(card.image)`. The returned value ends in `''` instead of `''/tail`, and its comment is `tail' /` instead of empty."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "astropy/io/fits/card.py",
-          "line": 864,
           "claim": "A quote pair followed by a space still truncates the value during a CONTINUE round trip.",
           "evidence": "The change removes the extra unescape but still accepts a partial string-field match. The matcher treats an escaped quote before the space as the closing delimiter and drops the remaining text before this line runs. The fault control has the same executable edit and returns only the prefix and two quotes. Matching the whole field preserves the suffix. The added tests do not cover a space after the quotes.",
           "scenario": "Build `fits.Card('TEST', 'x' * 100 + \"'' xxx\")` and parse its image with `fits.Card.fromstring(card.image)`. The returned value ends in `''` instead of `'' xxx`."
@@ -43,14 +34,6 @@
       "repeat": 0,
       "findings": [
         {
-          "kind": "wrong-abstraction",
-          "severity": "minor",
-          "file": "moto/dynamodb/models/dynamo_type.py",
-          "line": 103,
-          "claim": "Single Source of Truth: the patch sets DynamoDB precision in the expression operators but leaves legacy numeric ADD with a separate arithmetic policy.",
-          "evidence": "UpdateExpression ADD calls DynamoType.__add__, while AttributeUpdates ADD does its own Decimal addition in Item.update_with_attribute_updates using the ambient context. A Boto3 probe confirmed that adding 1 to 10^29 returns 100000000000000000000000000001 through UpdateExpression, but returns 10^29 through AttributeUpdates. This drift predates the patch. Give numeric ADD one arithmetic implementation and keep request parsing in the two callers."
-        },
-        {
           "kind": "missed-defect",
           "severity": "major",
           "file": "moto/dynamodb/models/dynamo_type.py",
@@ -58,15 +41,6 @@
           "claim": "The new string format makes a later numeric condition fail after a valid integer update.",
           "evidence": "The candidate stores the exact carry as 1.0000000000000000000000000000000000000E+38. AttributePath.expr calls cast_value, which parses exponent notation as a float. That float is smaller than the 38-digit comparison operand. The pinned Moto baseline and DynamoDB Local both accepted the condition. The candidate returned ConditionalCheckFailedException. Compare numeric operands without losing precision when the stored value uses exponent notation.",
           "scenario": "Store amount as 38 nines, then run ADD amount :one with :one = 1. Run a second update with ConditionExpression amount > :floor, where :floor is the original 38-digit integer. The condition must pass."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "moto/dynamodb/models/dynamo_type.py",
-          "line": 103,
-          "claim": "The arithmetic context silently stores results that DynamoDB rejects.",
-          "evidence": "The Boto3 probe returned HTTP 200 and stored 1E+38 for 1E+38 + 1, 1.0E+126 for 1E+125 + 9E+125, and -1E-131 for 1E-130 - 1.1E-130. DynamoDB Local returned ValidationException and left the original value intact for all three. Validate exact results against the significant-digit and exponent limits before storing them. Preserve exact carries that only remove trailing zeros.",
-          "scenario": "Store 10^38 and add 1 with ADD amount :one. Each operand is valid, but the exact result requires 39 significant digits. The candidate reports success and discards the increment rather than rejecting the update."
         },
         {
           "kind": "convention-break",
@@ -85,14 +59,6 @@
       "task": "hosted-thinking-row-wait",
       "repeat": 0,
       "findings": [
-        {
-          "kind": "wrong-abstraction",
-          "severity": "minor",
-          "file": "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts",
-          "line": 84,
-          "claim": "Give row polling its own cadence instead of starting a new race whenever either input advances.",
-          "evidence": "Every chunk that wins the race starts another timer and triggers another synchronous file stat through rows.read(). Every timer that wins adds another reaction to the same pending chunk. A Bun probe observed 1,002 row reads in a 6 ms burst and 11 reactions on one chunk after a 220 ms gap. Keep one scheduled poll and one wakeup for the pending chunk."
-        },
         {
           "kind": "convention-break",
           "severity": "minor",
@@ -147,15 +113,6 @@
           "kind": "missed-defect",
           "severity": "minor",
           "file": "httpx/_decoders.py",
-          "line": 609,
-          "claim": "Suffix matching accepts a malformed Content-Type as an application JSON media type.",
-          "evidence": "The email parser preserves an interior space in the subtype, and the prefix and suffix checks do not validate the subtype token. A real HTTP response labeled application/not json+json yielded 1. Validate the subtype token before accepting the suffix.",
-          "scenario": "A server returns Content-Type: application/not json+json and body [1]. The iterator yields 1 instead of raising DecodingError."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_decoders.py",
           "line": 621,
           "claim": "An invalid charset name can raise ValueError before the body is read.",
           "evidence": "The header parser decodes RFC 2231 parameters before codec lookup. An embedded NUL then makes lookup raise ValueError, but the constructor only catches LookupError. Normalize rejected codec names to DecodingError at decoder construction, separately from content decoding.",
@@ -189,42 +146,6 @@
         },
         {
           "kind": "missed-defect",
-          "severity": "major",
-          "file": "httpx/_decoders.py",
-          "line": 538,
-          "claim": "Fragmented large records cause quadratic parsing work.",
-          "evidence": "NDJSON repeatedly concatenates and scans the entire unfinished line, and JSON sequences do the same at line 567. The JSON document path copies the entire pending item at line 430 despite retaining a scan cursor. In the probe, 16-byte fragments of a valid NDJSON string took about 1.3 seconds at 100 KB, 5.0 at 200 KB, and 22.6 at 400 KB. Scan each fragment once and join a pending value only when it is complete.",
-          "scenario": "A server streams a large valid NDJSON value, sequence record, or JSON array element in small chunks before sending its delimiter."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "httpx/_models.py",
-          "line": 1049,
-          "claim": "The existing aiter_bytes method now rejects raw iterators that matched its previous contract.",
-          "evidence": "Previously aiter_bytes only used async for over aiter_raw. The new finally block unconditionally calls aclose, and the diff narrows the public async iterator return types. An override returning a plain AsyncIterator yielded b'abc' on the pinned baseline and raised AttributeError on the candidate. Keep the existing contract and limit explicit generator cleanup to iterators that provide it.",
-          "scenario": "A Response subclass returns a standard AsyncIterator without aclose from aiter_raw. An existing async for over aiter_bytes now raises at exhaustion."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "httpx/_decoders.py",
-          "line": 648,
-          "claim": "Malformed bodies can leak codec exceptions instead of raising httpx.DecodingError.",
-          "evidence": "The decode path catches only UnicodeDecodeError, and decoder construction accepts registry entries that are not byte-to-text codecs. UTF-16 and UTF-32 without a BOM raised bare UnicodeError. A base64 charset returned bytes and caused TypeError in the parser. Validate the text codec and normalize its decoding errors at the byte-to-text boundary.",
-          "scenario": "A server declares application/json; charset=utf-16 but sends BOM-less UTF-16LE JSON. Code handling httpx.DecodingError misses the actual UnicodeError."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_decoders.py",
-          "line": 637,
-          "claim": "Charset detection delays complete values even when the initial bytes already identify UTF-8.",
-          "evidence": "The decoder always waits for four bytes or EOF before feeding text to the parser. A probe showed that a first chunk of b'1\n' for NDJSON or b'[1,' for a JSON document triggered a second read without a charset, but yielded 1 immediately with explicit UTF-8. Wait only while the received prefix is ambiguous.",
-          "scenario": "An NDJSON server sends b'1\n' and pauses before the next event. The caller cannot receive the first event until more bytes arrive or the stream ends."
-        },
-        {
-          "kind": "missed-defect",
           "severity": "minor",
           "file": "httpx/_decoders.py",
           "line": 476,
@@ -236,36 +157,10 @@
           "kind": "missed-defect",
           "severity": "minor",
           "file": "httpx/_decoders.py",
-          "line": 620,
-          "claim": "An explicit UTF-8 signature codec bypasses the media-specific BOM rules.",
-          "evidence": "The autodetection path preserves the marker for the framing parser, but explicit utf-8-sig removes one before framing. The probe accepted two leading BOMs in a JSON document and accepted a BOM before the first RS in a JSON sequence. Apply the same marker policy to detected and declared UTF-8 encodings.",
-          "scenario": "application/json; charset=utf-8-sig with two consecutive UTF-8 BOMs and then [1] yields 1, although the task permits only one optional BOM."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_decoders.py",
-          "line": 552,
-          "claim": "NDJSON accepts a BOM after whitespace rather than only at the start of the first nonblank line.",
-          "evidence": "The sole call to _skip_bom strips leading whitespace before looking for the BOM. The probe accepted a first line made of an ASCII space, a BOM, and 1. Check for the marker at the start of the original line.",
-          "scenario": "An application/ndjson response starts its first nonblank line with a space followed by a UTF-8 BOM and 1."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_decoders.py",
           "line": 567,
           "claim": "JSON sequence framing buffers an invalid preamble until a separator or EOF.",
           "evidence": "decode only validates pieces that end in RS. With no RS, even a known-invalid prefix is retained and the iterator requests more data. The probe with b'not-a-record' confirmed the second read. Discard leading whitespace and validate the first nonwhitespace character before buffering a record.",
           "scenario": "A streaming application/json-seq response starts with b'not-a-record' and pauses. The iterator waits despite already having enough information to report the framing error."
-        },
-        {
-          "kind": "convention-break",
-          "severity": "minor",
-          "file": "httpx/_models.py",
-          "line": 962,
-          "claim": "The new iterator adds a second path for extracting a charset from a response Content-Type.",
-          "evidence": "Response.charset_encoding already delegates to the file's email.message-based parser. The candidate creates another Message and decodes the charset separately. The existing accessor preserves both absent and explicitly empty values for normal inputs. Share header parsing while preserving the new requirement to reject malformed declared charsets."
         },
         {
           "kind": "convention-break",
@@ -293,39 +188,12 @@
       "repeat": 0,
       "findings": [
         {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "src/array.ts",
-          "line": 90,
-          "claim": "An array or tuple transform can erase the raw element value from the cast callback.",
-          "evidence": "Both cast paths pass the container returned by `super._cast` as `originalParent`, even when the original input was already an array. A probe with a length-preserving trim transform saw cast callbacks receive `originalValue: 'a'` but nested validation callbacks receive `originalValue: ' a '` for the same element. Use the corresponding raw slot for the original value when the input already has that slot.",
-          "scenario": "Add `.transform(items => items.map(value => value.trim()))` to `array().of(item)` or `tuple([item])` and cast `[' a ']`, where `item.when` examines `opts.originalValue`."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "src/schema.ts",
-          "line": 561,
-          "claim": "Targeted validation omits element metadata and can reject an element that full validation accepts.",
-          "evidence": "The new metadata construction runs in `asNestedTest`, but `validateAt` and `validateSyncAt` walk the path and call the element schema directly with only `parent` and `path`. Both probed schema types accepted the full input and failed on the same valid element when targeted. Pass the resolved array position and raw element value through the targeted validation path too.",
-          "scenario": "Use `string().when([], (_, schema, opts) => schema.oneOf([opts.parent[opts.index]]))` as the item schema and call `validateSyncAt('[0]', ['a'])` on the array or tuple."
-        },
-        {
           "kind": "wrong-abstraction",
           "severity": "minor",
           "file": "src/array.ts",
           "line": 89,
           "claim": "Single Source of Truth: the shared helper requires callers to pass the parent path twice.",
           "evidence": "The new array and tuple cast calls and the existing nested-test producers all pass `parentPath` as a copy of `options.path`. The helper then uses the separate copy to build the child path. Derive the child path from the parent options instead of requiring callers to keep two inputs in sync."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "src/schema.ts",
-          "line": 411,
-          "claim": "Casting an object element can give a missing field's default thunk the containing object as its value.",
-          "evidence": "The spread order fixes only `resolve()`. `Schema.cast` still calls `_cast` with the incoming options, and `ObjectSchema._cast` carries the array element's `options.value` into each field's cast. `Schema.getDefault` passes those options to the default thunk. The base probe returned `[{field: 'missing'}]`; the candidate returned `[{field: 'not missing'}]`. Normalize the value for the cast as well as for resolution.",
-          "scenario": "Cast `[{}]` with `array().of(object({field: string().default(opts => opts?.value === undefined ? 'missing' : 'not missing')}))`."
         },
         {
           "kind": "missed-defect",
@@ -344,15 +212,6 @@
           "claim": "Validation after container normalization can report a cast element as its original value.",
           "evidence": "The fallback uses the container returned by `super._validate`, which has already cast its elements. With numeric coercion after JSON parsing, the probe saw `originalValue` change from string `\"42\"` during cast to number `42` during validation. The tuple branch uses the same fallback. Preserve the normalized element before element casting instead of substituting the final value.",
           "scenario": "Validate the JSON text `[\"42\"]` with `array().json().of(number().when([], (_, schema, opts) => { record(opts.originalValue); return schema; }))`."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "test/array.ts",
-          "line": 221,
-          "claim": "TypeScript consumers cannot use the new callback fields without bypassing the types.",
-          "evidence": "The new tests type the callback argument as `any`. The public `ConditionBuilder` still uses `ResolveOptions`, which declares neither `index` nor `originalValue`. An ordinary consumer failed with TS2339 for both fields. Declare the contextual fields as optional on the callback options and exercise them without `any`.",
-          "scenario": "Write `string().when([], (_, schema, opts) => opts.parent[opts.index] === opts.originalValue ? schema.required() : schema)` in a TypeScript project."
         },
         {
           "kind": "missed-defect",
@@ -379,14 +238,6 @@
           "line": 222,
           "claim": "The cast-and-validation tests record metadata they never read.",
           "evidence": "The array test and its tuple counterpart at line 118 assert the metadata inside the callback. Their outer assertions use only the recorded indices, and exact array equality already checks the length. Record just the indices and compare their sequences."
-        },
-        {
-          "kind": "needless-code",
-          "severity": "minor",
-          "file": "src/array.ts",
-          "line": 126,
-          "claim": "The original-parent selection normalizes the same fallback twice.",
-          "evidence": "The new `Array.isArray` branch already substitutes `value` for every falsy original value. The preceding `originalValue = originalValue || value` cannot affect the selected parent because `value` has passed the array type check. Remove the assignment and keep the original input binding constant."
         }
       ]
     },
@@ -397,14 +248,6 @@
       "task": "metrics-resteer",
       "repeat": 0,
       "findings": [
-        {
-          "kind": "needless-code",
-          "severity": "minor",
-          "file": "reader.ts",
-          "line": 19,
-          "claim": "The reader sorts the entire retained bucket even though the only result is the newest rollup.",
-          "evidence": "The query allocates a filtered array, orders it, and reads only index zero. One public report call over 1,024 out-of-order retained rollups made 8,908 sort comparisons. A single scan can preserve the cutoff and keep the first entry on equal timestamps without allocating or sorting."
-        },
         {
           "kind": "missed-defect",
           "severity": "major",
@@ -448,23 +291,6 @@
       "repeat": 0,
       "findings": [
         {
-          "kind": "convention-break",
-          "severity": "minor",
-          "file": "tests/test_lowlevel.py",
-          "line": 424,
-          "claim": "The new low-level proxy test hard-codes HTTP and leaves HTTPS CONNECT from the bug report untested.",
-          "evidence": "The existing low-level proxy test parameterizes HTTP and HTTPS destinations. The added test passed after the proxy observed only a GET. A separate loopback probe observed CONNECT with no Proxy-Authorization on the baseline and with Proxy-Authorization on the candidate. Add a CONNECT case that asserts the wire header before TLS starts, using the existing Server fixture."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "requests/utils.py",
-          "line": 977,
-          "claim": "Joining the auth and netloc before handling an absent netloc changes a public proxy validation error to TypeError on supported urllib3 versions.",
-          "evidence": "Requests permits urllib3 1.21.1, which returns auth 'user:pass' and netloc None for the hostless proxy. The join rejects None before HTTPAdapter.get_connection can raise InvalidProxyURL. Normalize the absent netloc before joining so the adapter can reject the missing host.",
-          "scenario": "With urllib3 1.21.1, call requests.get('https://example.org/', proxies={'https': 'http://user:pass@'}). The baseline raises requests.exceptions.InvalidProxyURL; the candidate raises TypeError before it can connect."
-        },
-        {
           "kind": "needless-code",
           "severity": "minor",
           "file": "tests/test_lowlevel.py",
@@ -496,15 +322,6 @@
           "line": 359,
           "claim": "The revised hyphen test does not protect phrase matching in a search request.",
           "evidence": "It bypasses buildFtsMatch and supplies a hard-coded MATCH expression. With the test's two rows, Bun SQLite returned the same hit for the new quoted phrase and the old OR expression. Extend the transcript search test with the raw query `feature-flag` and a distractor such as `flag the feature for rollout`, which the OR expression matches but the phrase excludes."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "src/orchestration/session/conversation-recall.ts",
-          "line": 246,
-          "claim": "An embedded NUL makes the new MATCH expression and its fallback fail. Normalize NUL before constructing the expression.",
-          "evidence": "The new map emits an opening quote before the NUL. Bun SQLite FTS5 stops parsing at the NUL and reports `unterminated string`; the retry fails for the same reason. The baseline expression still matched `kafka`.",
-          "scenario": "With an indexed entry containing `kafka`, submit a transcript search request or recall tool call with query `kafka\\u0000ignored` (a JSON NUL escape). Both supported request schemas admit the string."
         },
         {
           "kind": "missed-defect",
@@ -572,14 +389,6 @@
           "line": 141,
           "claim": "Separate pawn movement from promotion instead of defining each movement direction twice.",
           "evidence": "Lines 141 to 146 repeat each of the three pawn offsets with opposite rank guards. A legal input cannot already contain a white pawn on rank eight, so one rule can promote any white pawn that lands there. Three movement rules plus one rank-eight promotion rule preserved the exact output lists, including 288 queen promotions and 58 promotion captures."
-        },
-        {
-          "kind": "needless-code",
-          "severity": "minor",
-          "file": "re.json",
-          "line": 183,
-          "claim": "Remove the redundant black king checks when updating black castling rights.",
-          "evidence": "Lines 183 and 184 each check for a black king on e8. A legal input with either black castling right already guarantees that placement, and the white-move rules never move or capture the black king. Removing just those lookaheads preserved the exact output lists, including 41 kingside and 29 queenside rights removals."
         }
       ]
     },
@@ -641,15 +450,6 @@
       "findings": [
         {
           "kind": "missed-defect",
-          "severity": "major",
-          "file": "eval.scm",
-          "line": 37,
-          "claim": "One wide application can exhaust the host stack before the primitive runs.",
-          "evidence": "ev-arguments builds the argument list recursively, retaining a call for each operand. The host collects operands in a loop. For a single addition with 2,500 operands, direct execution printed 2500, while the candidate reached the recursion limit in the operand evaluator's symbol? check.",
-          "scenario": "Run a file whose only value-producing form displays an addition of 2,500 literal ones."
-        },
-        {
-          "kind": "missed-defect",
           "severity": "minor",
           "file": "eval.scm",
           "line": 104,
@@ -678,37 +478,10 @@
           "kind": "missed-defect",
           "severity": "major",
           "file": "eval.scm",
-          "line": 181,
-          "claim": "The evaluator cannot read a valid string that spans two source lines.",
-          "evidence": "The host CLI tokenizes the whole source, but its fread tokenizes each line separately without carrying string state. Wrapping the source in one list does not change that. The direct run printed both lines of the string; the candidate reported an undefined variable instead.",
-          "scenario": "Run a .scm file with a display call whose quoted string contains an actual newline before its closing quote."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "eval.scm",
           "line": 174,
           "claim": "An unreadable source causes repeated NUL writes instead of a source-open error.",
           "evidence": "Host fopen returns False on open failure and fgetchr(False) returns False, not the -1 that ev-copy treats as EOF. Host fputchr converts False to NUL and the copy continues. A bounded probe wrote an opening parenthesis and 31 NULs before the file size cap stopped it.",
           "scenario": "Supply a filename that does not exist while the temporary buffer directory is writable."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "eval.scm",
-          "line": 31,
-          "claim": "A flat source file can exhaust the host call stack without containing any recursion.",
-          "evidence": "ev-main evaluates the entire program through ev-sequence, which keeps one host frame per expression. The original CLI uses a loop. A differential probe with 1,800 empty expressions and a final display printed the marker directly but reached the recursion limit through the candidate.",
-          "scenario": "Run a file with 1,800 separate lines containing () followed by (display \"finished\")."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "eval.scm",
-          "line": 21,
-          "claim": "Application silently accepts invalid argument counts for both closures and fixed-arity primitives.",
-          "evidence": "ev-bind stops when names run out and fills missing values through permissive car/cdr. The adapters at lines 90-95 likewise drop extras or forward an empty-list value. The host instead checks closure arity or rejects the primitive call. In probes the candidate printed 7 and (1), respectively, where direct execution reported errors.",
-          "scenario": "Define (f x) as x and call (display (f 7 8)), or run (display (cons 1))."
         },
         {
           "kind": "missed-defect",
@@ -738,15 +511,6 @@
           "scenario": "Pipe a valid pathname with printf '%s' into eval.scm for a program that needs no further stdin."
         },
         {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "eval.scm",
-          "line": 137,
-          "claim": "Interpreted programs can see the file handles consumed by evaluator housekeeping.",
-          "evidence": "fopen returns a symbol with a sequential file number. The candidate forwards the host opener after consuming three IDs for the source and buffer. A probe printed file_1 directly and file_4 through the candidate.",
-          "scenario": "Run a program whose first file operation opens an existing file and prints the returned handle."
-        },
-        {
           "kind": "convention-break",
           "severity": "minor",
           "file": "test/eval_test.py",
@@ -772,30 +536,12 @@
       "repeat": 0,
       "findings": [
         {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "tokenizer.ts",
-          "line": 33,
-          "claim": "The tokenizer accepts an embedded opening delimiter as part of a path instead of reporting a malformed tag. Reject embedded openers at the shared tag boundary.",
-          "evidence": "The scanner takes the first closing delimiter regardless of a second opener. Both the variable and block path patterns then accept embedded `{{`. Bun tokenized `first{{second` as a path in escaped variables, raw variables, and block openings.",
-          "scenario": "Render `Before {{first{{second}} After` with `{ second: \"valid\", \"first{{second\": true } }`. Rendering returns `Before true After` instead of throwing a `TemplateError` at offset 7 for the malformed opening tag."
-        },
-        {
           "kind": "convention-break",
           "severity": "minor",
           "file": "render.test.ts",
           "line": 67,
           "claim": "The tokenizer's unknown-tag case does not assert the opening offset named by the test. Check `TemplateError.position` directly, as the parser tests do.",
           "evidence": "The assertion checks only the error class. Changing only the invalid-tag branch to report offset 999 left the test green for `x{{#with a}}`, whose opening offset is 1."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "render.ts",
-          "line": 31,
-          "claim": "Valid deep nesting exhausts the JavaScript stack. Use an explicit render stack so valid templates do not depend on call-stack depth.",
-          "evidence": "Each truthy block recurses through `renderNodes`, its `map` callback, and `renderNode`. In Bun, the stack-based parser accepted 16,384 levels, but the public renderer threw `RangeError: Maximum call stack size exceeded`.",
-          "scenario": "Render `\"{{#if value}}\".repeat(16384) + \"x\" + \"{{/if}}\".repeat(16384)` with `{ value: true }`. The valid template should render `x`."
         },
         {
           "kind": "missed-defect",
@@ -840,15 +586,6 @@
       "repeat": 0,
       "findings": [
         {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "astropy/io/fits/card.py",
-          "line": 862,
-          "claim": "A slash after literal quotes in a long value is still turned into a FITS comment.",
-          "evidence": "The segment parser mistakes the last escaped quote for the closing delimiter. It captures the slash suffix as a comment, and _split combines that false comment with the reconstructed value. Both candidate and reference consume the full segment and corrupt the value and comment, so anchoring the match does not fix this case. Recognize the separator only after the true closing delimiter.",
-          "scenario": "Parse Card.fromstring(str(Card(\"CONFIG\", \"x\" * 100 + \"''/xxx\"))). The candidate returns a value of \"x\" * 100 + \"''\" and a comment of \"xxx'\". The original value includes /xxx and has no comment."
-        },
-        {
           "kind": "convention-break",
           "severity": "minor",
           "file": "astropy/io/fits/tests/test_header.py",
@@ -883,48 +620,12 @@
       "repeat": 0,
       "findings": [
         {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "moto/dynamodb/models/dynamo_type.py",
-          "line": 107,
-          "claim": "A successful ADD can make a numeric secondary-index lookup miss the item.",
-          "evidence": "The changed arithmetic stores 1.50 where base Moto stored 1.5. Global secondary-index partition lookup uses DynamoType equality, which compares raw strings. Boto3 returned zero matches on patched Moto and one match on both base Moto and DynamoDB Local.",
-          "scenario": "Store amount as N:\"1.00\" on an item with a numeric global secondary index on amount. ADD N:\"0.50\", then query that index for N:\"1.5\"."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "moto/dynamodb/models/dynamo_type.py",
-          "line": 390,
-          "claim": "A failed legacy numeric ADD can leave earlier changes from the same request committed.",
-          "evidence": "The legacy loop edits the stored item before the changed line can fail. Boto3 read status=\"changed\" after the patched update failed. DynamoDB Local rejected the same update and retained status=\"old\". Translating the exception alone would not undo the write.",
-          "scenario": "Store status as S:\"old\" and amount as S:\"5\". Send one AttributeUpdates request that puts status=\"changed\" before adding N:\"1\" to amount, then read the item."
-        },
-        {
           "kind": "wrong-abstraction",
           "severity": "minor",
           "file": "moto/dynamodb/models/dynamo_type.py",
           "line": 117,
           "claim": "The arithmetic methods define the same DynamoDB decimal policy independently.",
           "evidence": "Addition and subtraction each build a separate Context(prec=38). The operators differ, but their precision, exponent limits, and traps belong to one policy. Correcting that policy currently requires editing both branches."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "moto/dynamodb/models/dynamo_type.py",
-          "line": 106,
-          "claim": "The arithmetic accepts unrepresentable results instead of rejecting the update.",
-          "evidence": "The new Decimal context silently rounds excess precision and leaves DynamoDB's exponent limits unenforced. Its subtraction counterpart has the same policy. DynamoDB Local returned ValidationException for excess precision, overflow, and underflow without changing the item. Patched Moto reported success in all three cases.",
-          "scenario": "Store 12345678901234567890123456789012345678 and add 0.1. Moto silently discards the increment. Adding 9E+125 to 9E+125 stores 1.8E+126, and subtracting 1E-130 from 1.1E-130 stores 1E-131."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "moto/dynamodb/models/dynamo_type.py",
-          "line": 107,
-          "claim": "A valid zero ADD can omit the target attribute from UPDATED_NEW.",
-          "evidence": "Decimal preserves the input's trailing zeros, so the result has the same raw AttributeValue as the prior value. The response code compares raw values to select updated attributes. Patched Moto returned empty Attributes, while base Moto and DynamoDB Local both returned amount.",
-          "scenario": "Store amount as N:\"1.00\", add N:\"0\" with UpdateExpression, and request ReturnValues=\"UPDATED_NEW\"."
         },
         {
           "kind": "missed-defect",
@@ -959,14 +660,6 @@
           "line": 135,
           "claim": "Exercise the real adapter and hosted transport callback instead of recreating their watchdog wiring in the test.",
           "evidence": "The test supplies its own callback and manually starts and completes reasoning in lines 135 to 137. It does not call the changed hosted bridge or the Anthropic adapter, so disconnecting the callback at agent-bridge.ts:449 would leave this test unchanged even though held chunks would no longer reset the production deadline."
-        },
-        {
-          "kind": "wrong-abstraction",
-          "severity": "minor",
-          "file": "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.test.ts",
-          "line": 91,
-          "claim": "Assert that held events resume before stop once their signed rows become available, not just that the final event order is correct.",
-          "evidence": "The test collects the whole stream before inspecting any output. Its only in-flight assertion checks that the final answer has not settled. An in-memory mutation that held both signatures until stop passed every existing assertion in this case, whereas the candidate emitted both before stop."
         },
         {
           "kind": "missed-defect",
@@ -1030,33 +723,6 @@
         {
           "kind": "missed-defect",
           "severity": "minor",
-          "file": "httpx/_json.py",
-          "line": 136,
-          "claim": "JSON framing accepts an extra U+FEFF in UTF-16 and UTF-32 as if it were a UTF-8 BOM.",
-          "evidence": "The UTF-16 and UTF-32 codecs already consume the byte-order signature. The document framer strips the next decoded U+FEFF regardless of encoding, and the NDJSON framer does the same at line 100.",
-          "scenario": "Encode U+FEFF followed by [1] as UTF-16 with charset=utf-16. The stream starts with the encoding signature and then contains U+FEFF as data. The iterator yields 1, while the standard JSON parser rejects the extra character. UTF-32 reproduces the same result."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_json.py",
-          "line": 50,
-          "claim": "An explicit UTF-16 charset rejects valid big-endian JSON without a byte-order mark.",
-          "evidence": "The implementation selects CPython's generic incremental UTF-16 codec immediately, which requires a BOM. RFC 2781 section 4.3 specifies big-endian interpretation in its absence. The same bytes succeed in the candidate's auto-detection path.",
-          "scenario": "Serve [1] encoded as UTF-16BE without a BOM and label the body application/json; charset=utf-16. The candidate raises DecodingError instead of yielding 1."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_json.py",
-          "line": 119,
-          "claim": "The parser accepts NaN and Infinity as JSON values.",
-          "evidence": "Both final parse paths use json.loads without a parse_constant handler. Python accepts these literals as extensions, while RFC 8259 excludes them from the JSON grammar.",
-          "scenario": "Iterate an application/json response containing [NaN,Infinity,-Infinity]. The candidate yields three floats instead of raising DecodingError. The NDJSON and JSON-seq paths also accept NaN."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
           "file": "httpx/_models.py",
           "line": 1026,
           "claim": "Async byte iteration loses request attribution when a raw reader fails to open.",
@@ -1070,15 +736,6 @@
           "line": 107,
           "claim": "The test matrices rerun every synchronous case under both async backends.",
           "evidence": "The five AnyIO test functions cross an asynchronous boolean with AnyIO's asyncio and Trio fixtures. The false branch only calls sync HTTPX methods. The cross product adds 101 duplicate sync case instances, including three skips. The gzip test also repeats its synchronous assertion on both backends."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "httpx/_models.py",
-          "line": 1027,
-          "claim": "The change breaks the existing async iterator contract by requiring an aclose method on every returned iterator.",
-          "evidence": "The previous aiter_bytes used async for on the AsyncIterator returned by aiter_raw. The candidate accesses raw_iterator.aclose before reading it, and line 1084 makes the same assumption about aiter_bytes in aiter_json.",
-          "scenario": "A Response subclass returns a custom AsyncIterator without aclose from aiter_raw. The base aiter_bytes yields bytes; the candidate raises AttributeError. An equivalent aiter_bytes override also fails in aiter_json."
         },
         {
           "kind": "missed-defect",
@@ -1111,28 +768,10 @@
           "kind": "missed-defect",
           "severity": "minor",
           "file": "httpx/_models.py",
-          "line": 962,
-          "claim": "Closing a JSON iterator leaves a directly supplied content generator suspended.",
-          "evidence": "For Response(content=generator), the HTTPX byte-stream adapters retain the generator and inherit no-op close methods. Closing the response or its wrapper iterator does not close the underlying generator. The added test uses a custom stream that explicitly closes its producer.",
-          "scenario": "Supply a sync or async generator with a finally block, read the first value, and explicitly close the JSON iterator. The response reports closed, but the generator's finally block runs only when the producer itself is closed."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_models.py",
           "line": 957,
           "claim": "JSON iteration mislabels errors from the byte producer as malformed response data.",
           "evidence": "The ValueError and LookupError handler covers advancement of iter_bytes as well as JSON decoding. The async handler at line 1090 does the same.",
           "scenario": "A sync or async content iterator sends the first array element, then raises ValueError because its source fails. The matching byte iterator propagates ValueError, but the JSON iterator raises DecodingError."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "httpx/_json.py",
-          "line": 26,
-          "claim": "The Content-Type check accepts malformed application subtypes.",
-          "evidence": "The email parser preserves spaces inside the subtype. The prefix and suffix checks then accept the string without verifying that the subtype is a valid media-type token.",
-          "scenario": "A response with Content-Type application/not valid+json and body [1] yields 1 instead of raising DecodingError."
         },
         {
           "kind": "wrong-abstraction",
@@ -1159,15 +798,6 @@
       "task": "jquense__yup-2305",
       "repeat": 0,
       "findings": [
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "src/schema.ts",
-          "line": 411,
-          "claim": "A missing object property receives the enclosing array or tuple item's value in its default callback.",
-          "evidence": "The helper adds the object item as options.value. ObjectSchema._cast forwards that field in its property options. The new spread order replaces value for resolve(), but _cast() still receives the inherited options. The default callback reads those options. Replace the value when object casting descends to a property, so both condition resolution and default evaluation use the property's input.",
-          "scenario": "Use object({ optional: string().default(opts => opts?.value == null ? 'missing' : 'present') }) as an array or tuple item. For [{}], both cast and validate return [{ optional: 'present' }] in the candidate and [{ optional: 'missing' }] in the baseline."
-        },
         {
           "kind": "needless-code",
           "severity": "minor",
@@ -1196,24 +826,6 @@
         {
           "kind": "missed-defect",
           "severity": "major",
-          "file": "src/schema.ts",
-          "line": 172,
-          "claim": "Validation still indexes a non-array source when casting produced an array or tuple.",
-          "evidence": "The new casting callers fall back to the processed container, but the validation callers still pass options.originalValue ?? _value to the shared helper. The helper treats undefined as indexable and indexes a JSON string by character. Make the cast and validation paths agree on the element's original value after a non-array input becomes a container.",
-          "scenario": "Validating undefined against an array or tuple with a nonempty default throws TypeError after a successful cast. An array with .json() validated against '[\"word\"]' supplies 'word' as originalValue during cast but '[' during nested validation, so a condition that checks that field can reject the same input."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
-          "file": "src/schema.ts",
-          "line": 561,
-          "claim": "Lazy elements resolve their conditions before nested validation applies the element options.",
-          "evidence": "Lazy.asNestedTest calls _resolve with inherited options plus value and parent, then delegates to Schema.asNestedTest. By the time the new helper sets index and originalValue, a .when() on the schema returned by lazy() has already resolved. Construct the element options before that lazy resolution.",
-          "scenario": "Wrap an element condition that applies number().min(10) only when opts.index is 0 in lazy(() => item). Both array and tuple isValid([1]) returned true in the probe. Both returned false with the same item schema used directly."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "major",
           "file": "src/array.ts",
           "line": 81,
           "claim": "A container transform can attach another element's original value to the item being cast.",
@@ -1228,15 +840,6 @@
           "claim": "The cast path rereads the current item instead of using the element value it already has.",
           "evidence": "Array casting already receives the element as v from map, but the helper separately reads parent[k] and originalParent[k]. Tuple casting also rereads the same slot after calling the helper. Capture the item once and reuse that snapshot when the source and processed array are the same.",
           "scenario": "Cast an ordinary one-element array with an indexed getter that returns an incrementing number. The baseline read the slot once. The candidate reads it three times and passes value 1 and originalValue 3 to .when() even though the container has no transform."
-        },
-        {
-          "kind": "missed-defect",
-          "severity": "minor",
-          "file": "src/schema.ts",
-          "line": 172,
-          "claim": "TypeScript callers cannot read the new callback fields without a cast.",
-          "evidence": "The helper supplies index and originalValue at runtime, but ConditionBuilder still types its third argument as ResolveOptions, which declares neither field. The new tests bypass that contract with opts: any. Expose the fields as optional on the callback options because they are not available outside indexed nesting.",
-          "scenario": "A TypeScript user who writes string().when([], (_, schema, opts) => opts.index === 0 && opts.originalValue ? schema.required() : schema) gets TS2339 on both properties."
         },
         {
           "kind": "needless-code",
