@@ -1,0 +1,124 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 234,236
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 409
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 284
+docs/architecture-intent/substrate.md
+  h_4b47e9e4a8b456 78,80,201,203
+scripts/aggregate-read-allowlist.ts
+  h_4b47e9e4a8b456 49-51
+src/infra/substrate/events/notification-episode.ts
+  h_4b47e9e4a8b456 32-40,45-47,51,66-68
+src/orchestration/agent-runtime/llm/routing/client-factory.ts
+  h_4b47e9e4a8b456 62-63
+src/orchestration/app-service/account/account-project-registry.ts
+  h_4b47e9e4a8b456 15,58-61,231
+src/orchestration/app-service/account/projects/account-module-services.ts
+  h_4b47e9e4a8b456 21,157
+src/orchestration/app-service/account/projects/project-control-runtime.ts
+  h_4b47e9e4a8b456 381-382,390,493
+src/orchestration/app-service/auth/auth-runtime.ts
+  h_4b47e9e4a8b456 201,266-267
+src/orchestration/app-service/auth/publication/auth-attention-publisher.ts
+  h_4b47e9e4a8b456 19-20,22-27,65-66,133,135-136,202-203
+src/orchestration/app-service/executor/execution/module-service-host.ts
+  h_4b47e9e4a8b456 6,32-46,71-75
+src/orchestration/app-service/executor/execution/project-execution-runtime.ts
+  h_4b47e9e4a8b456 333-335
+src/orchestration/auth/subscription-spend-consent/notification-materializer.ts
+  h_4b47e9e4a8b456 6,50-54,116-127,129,131-133,136,143
+src/orchestration/modules/project-notifications/journal.ts
+  h_4b47e9e4a8b456 5-6,22-25,32-33,38,41-42,50-51,61,75,81,108,131,145-146
+src/orchestration/modules/project-notifications/module.ts
+  h_4b47e9e4a8b456 6,23
+src/orchestration/modules/project-notifications/profile-journals.ts
+  h_4b47e9e4a8b456 1-68
+src/orchestration/modules/project-notifications/projection.ts
+  h_4b47e9e4a8b456 9-12,15-25,28-37,41-42,47-51,53,55,61-62,64,67-68,70-74,77-79,82-83
+src/orchestration/modules/project-notifications/protocol.ts
+  h_4b47e9e4a8b456 15,17-19,26
+src/orchestration/modules/project-notifications/publisher.ts
+  h_4b47e9e4a8b456 4,9,11-12,35-38,43,66-69,71-75,81,89,97,105-108
+src/orchestration/modules/project-notifications/recovery.ts
+  h_4b47e9e4a8b456 3-6,14-15,19-35,38,41-48,54
+src/orchestration/modules/project-notifications/service.ts
+  h_4b47e9e4a8b456 1,3-5,8-11,17-22,24-29,35-36,41,44-124,126-141,146,148-155
+src/orchestration/modules/project-notifications/sink.ts
+  h_4b47e9e4a8b456 20-27,33-34,37,39,43,48,50-67,69-70
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 136
+src/orchestration/modules/subscription-usage/notification-materializer.ts
+  h_4b47e9e4a8b456 57
+src/tui/modules/project-notifications/presence.ts
+  h_4b47e9e4a8b456 8-12,15-16,24-25,28-30,34
+tests/helpers/module-kernel.ts
+  h_4b47e9e4a8b456 3,20-24,106-107
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts
+  h_4b47e9e4a8b456 111
+tests/integration/orchestration/modules/provider-google-antigravity/_client.ts
+  h_4b47e9e4a8b456 70
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 112
+tests/unit/orchestration/agent-resilience-notice.test.ts
+  h_4b47e9e4a8b456 178-179
+tests/unit/orchestration/agent-runtime/llm/adapters/chat-completions/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 545
+tests/unit/orchestration/agent-runtime/llm/history/provider-history.test.ts
+  h_4b47e9e4a8b456 90
+tests/unit/orchestration/agent-runtime/request-golden.test.ts
+  h_4b47e9e4a8b456 89
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 109
+tests/unit/orchestration/app-service/auth/auth-status-projection.test.ts
+  h_4b47e9e4a8b456 28-32,39,212,241,243-245,330-401,431,438,451,454,475-476
+tests/unit/orchestration/app-service/auth/publication/auth-attention-publisher.test.ts
+  h_4b47e9e4a8b456 22-23,32,50-68,75,114,136,155,174
+tests/unit/orchestration/auth/subscription-spend-consent/notification-materializer.test.ts
+  h_4b47e9e4a8b456 4,11,29,63,78-79,81,175,177-184,186-189,191-194
+tests/unit/orchestration/chat/lifecycle/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 70
+tests/unit/orchestration/modules/module-service.test.ts
+  h_4b47e9e4a8b456 19,68
+tests/unit/orchestration/modules/project-notifications/journal.test.ts
+  h_4b47e9e4a8b456 85,112-113,128-129,146-147,158,169,182,185,194
+tests/unit/orchestration/modules/project-notifications/projection.test.ts
+  h_4b47e9e4a8b456 1,4,14-15,23,29-31,39-40,44,56,70-77,82-101
+tests/unit/orchestration/modules/project-notifications/protocol.test.ts
+  h_4b47e9e4a8b456 69-71,73,79,84,86
+tests/unit/orchestration/modules/project-notifications/publisher.test.ts
+  h_4b47e9e4a8b456 7,15,20,22,28,32,37,41,43,46,63,65,67-68,71,75,77-79,86,103-129
+tests/unit/orchestration/modules/project-notifications/recovery.test.ts
+  h_4b47e9e4a8b456 5,8,41,48-107
+tests/unit/orchestration/modules/project-notifications/service.test.ts
+  h_4b47e9e4a8b456 5-6,8,13-17,20,23-246,255-257,267-269,274,279,281,286
+tests/unit/orchestration/modules/project-notifications/sink.test.ts
+  h_4b47e9e4a8b456 7-8,13-14,34-35,72-73,99-100
+tests/unit/orchestration/modules/provider-anthropic-api/module.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/orchestration/modules/provider-google-antigravity/module.test.ts
+  h_4b47e9e4a8b456 174
+tests/unit/orchestration/modules/provider-google-vertex/module.test.ts
+  h_4b47e9e4a8b456 142
+tests/unit/orchestration/modules/reclaim-storage/service.test.ts
+  h_4b47e9e4a8b456 2,31-33
+tests/unit/orchestration/modules/remote/remote-access-ownership.test.ts
+  h_4b47e9e4a8b456 2,69
+tests/unit/orchestration/modules/remote/service.test.ts
+  h_4b47e9e4a8b456 16,70,77-78
+tests/unit/tui/modules/project-notifications/presence.test.ts
+  h_4b47e9e4a8b456 60-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f40d307c0913886136c28398d8287252ff75e4e7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
