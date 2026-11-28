@@ -656,7 +656,7 @@ On every client (terminal, desktop web, phone web, editor), a surface stays moun
 
 ## PI-INTERACTION-098: The reader's place holds while content changes
 
-When content above the reader changes size or older history loads, the row the reader looks at stays at the same place on the screen.
+When content above the reader changes size or older history loads, the row the reader looks at stays at the same place on the screen. A list at its top stays at its top while its selected row stays in view, so a row that moves in above the selection, such as a chat that moves into Needs you, shows.
 
 ## PI-INTERACTION-063: A background read that fails is not announced on its own
 

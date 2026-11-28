@@ -10,9 +10,12 @@ export function useListSelectionReveal(deps: {
   revision: Accessor<number>
   layout: Accessor<unknown>
   fixedKeys?: Accessor<readonly string[]>
-  /** The fixed key of the selected line. When a data change moves the
-   *  selected line while it is in view, it keeps its screen line, so the
-   *  selection never leaves the screen; else the top line keeps its place. */
+  /** The fixed key of the selected line. A list at its top stays at its top
+   *  while the selected line stays in view, so lines that a data change adds
+   *  above the selection show, such as a chat that moves into the first
+   *  group. Otherwise, when a data change moves the selected line while it
+   *  is in view, it keeps its screen line, so the selection never leaves the
+   *  screen; else the top line keeps its place. */
   selectedKey?: Accessor<string | undefined>
   elements: (viewport: ScrollBoxRenderable) => readonly Renderable[]
   reveal: (viewport: ScrollBoxRenderable) => boolean
@@ -70,6 +73,7 @@ export function useListSelectionReveal(deps: {
         const selected = deps.selectedKey?.()
         const selectedLine = selected === undefined ? -1 : oldKeys.indexOf(selected)
         const inView = selectedLine >= line && selectedLine < line + viewport.viewport.height && keys.includes(selected ?? "")
+        if (line === 0 && (!inView || keys.indexOf(selected ?? "") < viewport.viewport.height)) return
         const anchorLine = inView ? selectedLine : line
         const key = oldKeys[anchorLine]
         const index = key === undefined ? -1 : keys.indexOf(key)
