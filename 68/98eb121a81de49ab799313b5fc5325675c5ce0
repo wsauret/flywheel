@@ -1,0 +1,18 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 659
+src/tui/components/modal/scroll/use-list-selection-reveal.ts
+  h_4b47e9e4a8b456 13-18,76
+tests/unit/tui/modals/session-picker/session-picker-scroll.test.tsx
+  h_4b47e9e4a8b456 110-140,188-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6898eb121a81de49ab799313b5fc5325675c5ce0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
