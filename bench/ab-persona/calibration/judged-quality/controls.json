@@ -196,14 +196,14 @@
       "task": "httpx-streaming-json-iteration",
       "patch": "controls/httpx-streaming-json-iteration--clean.patch",
       "summary": "Implemented the requested change and ran the task's tests.",
-      "description": "The task's reference patch, unchanged."
+      "description": "The task's reference patch, with one repair: the JSON document parser waits for more data before it decodes a number that reaches the end of the buffer, so a number split across chunks, such as [1 then 2], is decoded whole."
     },
     {
       "id": "recall-punctuated-words--clean",
       "task": "recall-punctuated-words",
       "patch": "controls/recall-punctuated-words--clean.patch",
       "summary": "Implemented the requested change and ran the task's tests.",
-      "description": "The change of claude-opus-5-5@high in campaign 2026-11-24T15-17-18-831Z, which passed every essential and edge check with no broken test, unchanged."
+      "description": "The task's reference patch, unchanged."
     },
     {
       "id": "httpx-streaming-json-iteration--needless-code",
@@ -214,7 +214,7 @@
       "seeded": {
         "kind": "needless-code",
         "file": "httpx/_json_stream.py",
-        "line": 21
+        "line": 22
       }
     },
     {
@@ -238,7 +238,7 @@
       "seeded": {
         "kind": "needless-code",
         "file": "src/orchestration/session/conversation-recall.ts",
-        "line": 247
+        "line": 242
       }
     }
   ]

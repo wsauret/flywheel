@@ -1,0 +1,378 @@
+{
+  "judge": {
+    "model": "claude-opus-5.5",
+    "effort": "high"
+  },
+  "identity": "quality-641da47d51d141ab",
+  "controls": [
+    {
+      "id": "astropy__astropy-14598--clean",
+      "input": "f1c81a769587cc250c4cea9aa99a70851a53249feb6832ca79a54f6df0deb62d",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "astropy__astropy-14598--missed-defect",
+      "input": "ae0ef912aad0fbd382fc63e012ff17087e31a92ec79d8d708c96cddbddb1181a",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "astropy/io/fits/card.py",
+          "line": 862,
+          "claim": "Changing `rstrip()` to `strip()` drops leading whitespace from each CONTINUE chunk of a long-string card, and leading blanks in FITS string values are significant.",
+          "evidence": "value = value.strip()  (was value.rstrip(); only the `.replace(\"''\", \"'\")` needed removing)",
+          "scenario": "card1 = fits.Card('CONFIG', '   ' + 'x' * 80); card2 = fits.Card.fromstring(str(card1)); card2.value loses the three leading spaces, so card1.value != card2.value. The same happens to any CONTINUE segment whose text starts with blanks."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "astropy__astropy-14598--needless-code",
+      "input": "eba974ce1de2bcc446dd59df7ebf28dc580df94446ba2e985732d76216684663",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "astropy/io/fits/card.py",
+          "line": 862,
+          "claim": "The added `if value is None` check can never be true, because the line before it already turns None into an empty string with `or \"\"`.",
+          "evidence": "value = m.group(\"strg\") or \"\"\n                if value is None:\n                    value = \"\""
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "astropy__astropy-14598--wrong-abstraction",
+      "input": "27787da331d40d3edede49a409efce9369fbbe3ef7e326003cdf30adfc3fc01a",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "astropy/io/fits/card.py",
+          "line": 70,
+          "claim": "The new `_strg_comment_RE_end` regex has no references and is an exact copy of the updated `_strg_comment_RE`, so it is dead code.",
+          "evidence": "_strg_comment_RE_end = re.compile(f\"({_strg})? *{_comm_field}?$\") is identical to the line above it and is never used."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--clean",
+      "input": "c3cbb3106cbce793944dc5ec4d6a2ca02d33e82e88e0c2fc17639f9cdddb0afb",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--convention-break",
+      "input": "a8eabbf5299b2243dd62440776e99c54a65e9150db01530d20034d4cd5924f07",
+      "findings": [
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 109,
+          "claim": "The local variable is named in PascalCase (`TotalSum`), which breaks the snake_case naming used for locals throughout this file and PEP 8.",
+          "evidence": "TotalSum = self_value + other_value\nreturn DynamoType({DDBType.NUMBER: f\"{TotalSum}\"})"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--missed-defect",
+      "input": "8205524bad4ec6d241b209f6a3aeb31dde1cb6784cfbbdc2e9791f34ed14ccfb",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 391,
+          "claim": "The default for a missing numeric attribute changed from \"0\" to \"1\", so an ADD on an attribute that does not exist yet now stores the added value plus one.",
+          "evidence": "existing = self.attrs.get(attribute_name, DynamoType({\"N\": \"1\"}))",
+          "scenario": "Call update_item with AttributeUpdates={'amount': {'Action': 'ADD', 'Value': {'N': '5'}}} on an item that has no 'amount' attribute. The stored value is 6 instead of 5."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--needless-code",
+      "input": "30c8f4e5a2101e32836c25d23e79463a50235e0fed694b0369acad6badc987a7",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 112,
+          "claim": "The `total is None` check can never be true and is dead defensive code.",
+          "evidence": "`total = self_value + other_value` adds two Decimal/int values, which always returns a Decimal or int and never None; the following `if total is None: raise TypeError(\"The sum of two numbers is missing\")` can never run."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--wrong-abstraction",
+      "input": "aaa3b8f99cba427bc25c7cbf97cb55b77dcf31fb713e421498141743ea6ffd82",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "major",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 110,
+          "claim": "`__add__` now saves the sum on the left operand as `last_total`, but nothing reads that attribute, so the line only adds a hidden side effect to an arithmetic operator.",
+          "evidence": "self.last_total = f\"{total}\"\n            return DynamoType({DDBType.NUMBER: f\"{total}\"})"
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "httpx-streaming-json-iteration--clean",
+      "input": "160b47fad889c3db54645b82e1bc233e255e1122312831ce563cf05005715de5",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 337,
+          "claim": "The nested `if self._started:` branch raises the same `DecodingError(\"Malformed JSON.\")` as the fall-through, so the condition has no effect and can be deleted.",
+          "evidence": "if final:\n    if self._started:\n        raise DecodingError(\"Malformed JSON.\")\n    raise DecodingError(\"Malformed JSON.\")"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "httpx-streaming-json-iteration--needless-code",
+      "input": "d631575bd358c889b07c87894e83ccccf6e02ce140f486a394d563173bf006bb",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 22,
+          "claim": "This None check can never be true, so the branch is dead code.",
+          "evidence": "`media_type = parts[0].lower()` always yields a `str`, so `if media_type is None: media_type = \"\"` cannot run."
+        },
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 339,
+          "claim": "Both branches of this conditional raise the same error, so the `_started` check (and the `_started` attribute, which nothing else reads) can be deleted without changing behavior.",
+          "evidence": "`if self._started: raise DecodingError(\"Malformed JSON.\")` is followed directly by `raise DecodingError(\"Malformed JSON.\")`."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "jquense__yup-2305--clean",
+      "input": "41e382d0c304d02c7a3a3d91e63dcce99424cbd373a4085905089dae5c8cd9cd",
+      "findings": [
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "src/array.ts",
+          "line": 91,
+          "claim": "The change adds a stray blank line inside the options object literal and a whitespace-only line after the call; the surrounding code and the tuple.ts counterpart have neither.",
+          "evidence": "`index: idx,` followed by an empty line before `});`, then a line containing only spaces before `if (castElement !== v) {`"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "jquense__yup-2305--needless-code",
+      "input": "1bbe884f54750320981dc0ec82a2f9089c77a298ec8beb670fa0fa33451cfc09",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/array.ts",
+          "line": 92,
+          "claim": "The guard `if (idx < 0) return v;` is dead code: the index passed to the `Array.prototype.map` callback can never be negative, so deleting it changes nothing.",
+          "evidence": "value.map((v, idx) => { const castElement = this.innerType!.cast(v, {...}); if (idx < 0) return v; ..."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--clean",
+      "input": "08cfecdd1f199988ef9d999532750a0f368c15fbcad15aed093f31b2d470b6b0",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--convention-break",
+      "input": "06722a6a1c2740767c6efe99e0d1b3cd7da077464e44e7ee8a70a9fc3561a060",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 980,
+          "claim": "The temporary variable `authNetloc` is assigned and then copied straight into `netloc`, so it adds a line without changing behavior.",
+          "evidence": "authNetloc = '@'.join([auth, netloc])\n        netloc = authNetloc"
+        },
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 980,
+          "claim": "The camelCase name `authNetloc` breaks the snake_case naming that requests/utils.py uses everywhere else.",
+          "evidence": "authNetloc = '@'.join([auth, netloc])"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--missed-defect",
+      "input": "3d921eb823993c5b341d2c6f9509f2a64a6cef8ec6fe6ac5c93f8a546a73f18a",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "requests/utils.py",
+          "line": 977,
+          "claim": "The extra `scheme is not None` guard silently drops proxy credentials whenever the proxy URL has no scheme, so those users still get the 407 this change is meant to fix.",
+          "evidence": "`if auth and scheme is not None:` re-adds auth only for schemed URLs. Right after, `if scheme is None: scheme = new_scheme` rebuilds the URL from a netloc that no longer contains the auth.",
+          "scenario": "proxies={'https': 'user@proxy.local:3128'} or '//user:pass@proxy.local:3128': urllib3's parse_url returns auth='user' (or 'user:pass') and scheme=None. prepend_scheme_if_needed(url, 'http') then returns 'http://proxy.local:3128' with no credentials, so get_auth_from_url finds none and no Proxy-Authorization header is sent, giving a 407."
+        },
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 977,
+          "claim": "The `scheme is not None` condition adds a special case nothing asks for. Whether auth belongs in the netloc does not depend on whether a scheme was present.",
+          "evidence": "`if auth and scheme is not None:` versus the plain `if auth:`, which is all the stated comment ('parse_url doesn't provide the netloc with auth') justifies."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--needless-code",
+      "input": "3d35bef2c3ded25e4760cb97dbdb3bdf78349c0749adcb60cf722ad9a6bf53a4",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 981,
+          "claim": "The `elif auth is None: pass` branch does nothing, so deleting it would not change behavior.",
+          "evidence": "elif auth is None:\n        pass"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "recall-punctuated-words--clean",
+      "input": "949a24e4b151edc87f7e5a99c48c02668f2e6c497601262232665db9211a5104",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "minor",
+          "file": "src/orchestration/session/conversation-recall.ts",
+          "line": 237,
+          "claim": "The new contract comment says FTS5 rejects the empty string that a blank query produces and that callers must not search with it, yet the same diff removes the only guard that caught that error, and the recall caller still passes `buildFtsMatch(raw)` straight into the search with no visible empty check.",
+          "evidence": "`A blank query yields an empty string, which FTS5 rejects, so a caller must not search with it.` together with `match: buildFtsMatch(raw),` (unchanged call site) and the deletion of `runWithFtsFallback` / `isFtsMatchParseError`. The old comment said the empty match string is one 'which the search treats as no hits'.",
+          "scenario": "An agent calls recall (or a user runs transcript search) with a whitespace-only query such as \"   \". `buildFtsMatch` returns \"\", and `match $match` runs with \"\". Before this change, a rejection there fell back to a quoted phrase and returned no hits. Now, if FTS5 rejects it as the comment claims, the SQLiteError reaches the caller. If FTS5 does not reject it, the new comment is wrong and pushes a false obligation onto callers."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "recall-punctuated-words--needless-code",
+      "input": "ee8a214bc9cdd85d4f6b6e5be14f9b1372797c5221a3d2a63efad2009d2ed157",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/orchestration/session/conversation-recall.ts",
+          "line": 242,
+          "claim": "The `typeof word === \"string\"` filter is a defensive check on data the program produced itself, and it can never remove anything.",
+          "evidence": ".split(/\\s+/)\n    .filter((word) => typeof word === \"string\")  // String.prototype.split always returns string[]"
+        },
+        {
+          "kind": "missed-defect",
+          "severity": "minor",
+          "file": "src/orchestration/session/conversation-recall.ts",
+          "line": 237,
+          "claim": "A blank or whitespace-only query still yields an empty MATCH string, and the safety net is gone: the new doc says FTS5 rejects it, the quoted-phrase fallback that used to absorb it is deleted, and the visible callers pass `buildFtsMatch(raw)` straight to the search with no blank guard.",
+          "evidence": "\" A blank query yields an empty string, which FTS5 rejects, so a caller must not search with it.\" while conversation-recall.ts passes `match: buildFtsMatch(raw)` and transcript-search.ts builds `{ upperPosition, match, ... }` without a guard, and runWithFtsFallback is removed",
+          "scenario": "An agent or user submits a recall or transcript search whose query is \"   \" (only whitespace). buildFtsMatch returns \"\", and the search runs `match $match` with an empty expression. The old code fell back to the quoted phrase `\"   \"`; now nothing catches the error, which breaks the criterion that no query text can produce an FTS5 syntax error."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--clean",
+      "input": "b3e2fe25290d02c51c313e4ea52c0005e3a6ce234d9d413718af1c2d91113252",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--convention-break",
+      "input": "8a19d613b19eccdf60163ef32b6ec46b04a3538c122d4b1d1dcf08c4b6854daf",
+      "findings": [
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "src/t_stream.c",
+          "line": 800,
+          "claim": "ms_delta is declared as `long long`, while every other widened lpGetInteger result in this change uses `int64_t`, which is also lpGetInteger's return type.",
+          "evidence": "`long long ms_delta = lpGetInteger(p);` sits next to `int64_t flags`, `int64_t to_skip` and `int64_t seq_delta = lpGetInteger(p);`"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--missed-defect",
+      "input": "0f3dc5faafdc58fe8fd2aa86296e6829bae91984e3ce1afc77bb8605f50a931a",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/t_stream.c",
+          "line": 1138,
+          "claim": "The `(int)` cast truncates the int64_t return value to int before widening it again, so it undoes the point of the type change and misleads readers about the intended width.",
+          "evidence": "int64_t lp_count = (int)lpGetInteger(si->lp_ele);"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--needless-code",
+      "input": "9bc99b3063ac3428ed5938a6675f12a29b60dea99b31956f8f8b88df081bc429",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/t_stream.c",
+          "line": 1278,
+          "claim": "The added clamp can never trigger, because no int64_t value is less than INT64_MIN, so the line is dead code and its comment describes something that never happens.",
+          "evidence": "int64_t flags = lpGetInteger(si->lp_flags);\n+    if (flags < INT64_MIN) flags = INT64_MIN; /* clamp the flags */"
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    }
+  ]
+}

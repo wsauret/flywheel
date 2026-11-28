@@ -1,0 +1,426 @@
+{
+  "judge": {
+    "model": "gpt-6.2-sol",
+    "effort": "high"
+  },
+  "identity": "quality-641da47d51d141ab",
+  "controls": [
+    {
+      "id": "astropy__astropy-14598--clean",
+      "input": "f1c81a769587cc250c4cea9aa99a70851a53249feb6832ca79a54f6df0deb62d",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "astropy__astropy-14598--missed-defect",
+      "input": "ae0ef912aad0fbd382fc63e012ff17087e31a92ec79d8d708c96cddbddb1181a",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "astropy/io/fits/card.py",
+          "line": 862,
+          "claim": "Parsing a long FITS string now silently drops significant spaces at the start of a continuation segment.",
+          "evidence": "`value.strip()` removes leading spaces from each quoted segment before the segments are joined; `value.rstrip()` preserved them.",
+          "scenario": "`fits.Card.fromstring(\"CONFIG  = 'first&'\".ljust(80) + \"CONTINUE  '  second'\".ljust(80)).value` returns `'firstsecond'` instead of `'first  second'`."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "astropy__astropy-14598--needless-code",
+      "input": "eba974ce1de2bcc446dd59df7ebf28dc580df94446ba2e985732d76216684663",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "astropy/io/fits/card.py",
+          "line": 862,
+          "claim": "Remove the unreachable `None` check and its assignment.",
+          "evidence": "`value = m.group(\"strg\") or \"\"` already turns `None` into an empty string, so `if value is None:` can never succeed."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "astropy__astropy-14598--wrong-abstraction",
+      "input": "27787da331d40d3edede49a409efce9369fbbe3ef7e326003cdf30adfc3fc01a",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "astropy/io/fits/card.py",
+          "line": 70,
+          "claim": "Remove the unused `_strg_comment_RE_end` attribute; the existing `_strg_comment_RE` already provides the anchored pattern.",
+          "evidence": "Lines 69 and 70 compile the same `$`-anchored pattern, and the diff adds no use of `_strg_comment_RE_end`."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--clean",
+      "input": "c3cbb3106cbce793944dc5ec4d6a2ca02d33e82e88e0c2fc17639f9cdddb0afb",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 104,
+          "claim": "A follow-up ADD can fail on a valid number produced by the preceding ADD.",
+          "evidence": "The addition stores the Decimal result as a string, which can be `1E-7`; line 104 sees no decimal point and calls `int('1E-7')`, raising ValueError.",
+          "scenario": "Store `Decimal('0.0000011')`, ADD `Decimal('-0.0000010')` to produce `1E-7`, then ADD `Decimal('1')` to the same attribute."
+        },
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 109,
+          "claim": "ADD can silently round an exact result that fits within DynamoDB's 38-digit precision.",
+          "evidence": "`self_value + other_value` uses the active Decimal context, which defaults to 28 significant digits.",
+          "scenario": "With the default Decimal context, store `Decimal('1234567890123456789012345678')` and ADD `Decimal('0.1')`; the stored value is unchanged instead of becoming `1234567890123456789012345678.1`."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--convention-break",
+      "input": "a8eabbf5299b2243dd62440776e99c54a65e9150db01530d20034d4cd5924f07",
+      "findings": [
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 109,
+          "claim": "Rename `TotalSum` to `total` to match the method's lowercase naming convention for local variables.",
+          "evidence": "`TotalSum = self_value + other_value` introduces a PascalCase local alongside the snake_case locals `self_value` and `other_value`."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--missed-defect",
+      "input": "8205524bad4ec6d241b209f6a3aeb31dde1cb6784cfbbdc2e9791f34ed14ccfb",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 391,
+          "claim": "Legacy numeric ADD stores one more than the supplied value when the attribute is absent.",
+          "evidence": "The fallback changed from DynamoType({\"N\": \"0\"}) to DynamoType({\"N\": \"1\"}), and the next line adds the supplied value to that fallback.",
+          "scenario": "On an existing item without an amount attribute, call update_item with AttributeUpdates={\"amount\": {\"Action\": \"ADD\", \"Value\": {\"N\": \"2.5\"}}}. The update stores 3.5 instead of 2.5."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--needless-code",
+      "input": "30c8f4e5a2101e32836c25d23e79463a50235e0fed694b0369acad6badc987a7",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 110,
+          "claim": "The `None` check is unreachable and can be removed without changing behavior.",
+          "evidence": "Both operands are built-in `Decimal` or `int` values, so `self_value + other_value` returns a number or raises before reaching the check."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "getmoto__moto-7365--wrong-abstraction",
+      "input": "aaa3b8f99cba427bc25c7cbf97cb55b77dcf31fb713e421498141743ea6ffd82",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "moto/dynamodb/models/dynamo_type.py",
+          "line": 110,
+          "claim": "Remove the unused `last_total` assignment so addition does not mutate its left operand.",
+          "evidence": "`self.last_total = f\"{total}\"` stores a duplicate of the result string; the next line constructs the returned `DynamoType` directly from `total` without reading the attribute."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "httpx-streaming-json-iteration--needless-code",
+      "input": "d631575bd358c889b07c87894e83ccccf6e02ce140f486a394d563173bf006bb",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "httpx/_json_stream.py",
+          "line": 221,
+          "claim": "Parsing many short NDJSON lines from one chunk takes quadratic time.",
+          "evidence": "After each LF, the parser copies the entire unprocessed suffix and searches it again for a CR; a cursor could process the chunk without moving the suffix after every line.",
+          "scenario": "Iterate an in-memory application/ndjson response whose body is b'0\\n' * 4_000_000."
+        },
+        {
+          "kind": "missed-defect",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 20,
+          "claim": "Splitting on every semicolon can mistake text inside a quoted parameter for a charset parameter.",
+          "evidence": "The split runs before quote handling, so a semicolon inside a quoted value starts a new parameter.",
+          "scenario": "Use Content-Type: application/json; note=\"x;charset=not-a-codec;y\" with body b'{}'; the iterator raises DecodingError even though no charset was specified."
+        },
+        {
+          "kind": "missed-defect",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 77,
+          "claim": "The charset check accepts binary transform codecs that cannot decode JSON text.",
+          "evidence": "codecs.lookup() accepts base64, whose incremental decoder returns bytes; the parser then appends those bytes to a str buffer and raises TypeError rather than DecodingError.",
+          "scenario": "Iterate an application/json response with charset=base64 and body b'MQ=='."
+        },
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 22,
+          "claim": "The None check cannot change the parsed media type.",
+          "evidence": "media_type is the result of calling str.lower() on a string returned by str.split(), so it cannot be None."
+        },
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 339,
+          "claim": "The document parser's _started flag does not affect its behavior.",
+          "evidence": "Its only read selects between two paths that raise the same DecodingError with the same message."
+        },
+        {
+          "kind": "wrong-abstraction",
+          "severity": "minor",
+          "file": "httpx/_json_stream.py",
+          "line": 362,
+          "claim": "Completed scalar values and completed arrays should enter the same trailing-data state.",
+          "evidence": "The single_trailing and array_trailing handlers both skip the same whitespace, raise the same error on extra data, and otherwise return."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "jquense__yup-2305--clean",
+      "input": "41e382d0c304d02c7a3a3d91e63dcce99424cbd373a4085905089dae5c8cd9cd",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "src/object.ts",
+          "line": 184,
+          "claim": "Moving the property read outside the field branch invokes getters on unknown properties that should be stripped without being read.",
+          "evidence": "The new `let inputValue = value[prop]` runs before either the `if (field)` or the `!strip` guard; previously a stripped unknown property also skipped the final read because the existence comparison short-circuited.",
+          "scenario": "Call `object({ name: string() }).cast({ name: 'Cash', get extra() { throw new Error('unexpected read'); } }, { stripUnknown: true })`; casting now throws instead of omitting `extra`."
+        },
+        {
+          "kind": "missed-defect",
+          "severity": "minor",
+          "file": "src/tuple.ts",
+          "line": 118,
+          "claim": "Tuple casting can report an `originalValue` different from the element actually passed to the child schema.",
+          "evidence": "`type.cast(value[idx], ...)` reads the element once, then `originalValue: value[idx]` reads it again instead of reusing the first result.",
+          "scenario": "Cast a one-position tuple whose string schema has a `.when([], callback)` condition, using an array with a getter at index 0 that returns a different string on every access; the callback receives different strings in `opts.value` and `opts.originalValue`."
+        },
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/schema.ts",
+          "line": 87,
+          "claim": "The new `key` property expands the public casting options without serving the array or tuple fix.",
+          "evidence": "`CastOptions` adds `key?: string`, but neither changed element-casting call supplies it; both identify the position with `index`."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "jquense__yup-2305--needless-code",
+      "input": "1bbe884f54750320981dc0ec82a2f9089c77a298ec8beb670fa0fa33451cfc09",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/array.ts",
+          "line": 92,
+          "claim": "Remove the unreachable negative-index guard.",
+          "evidence": "`idx` is supplied by `Array.prototype.map`, which only passes nonnegative indices, so `if (idx < 0) return v;` never runs."
+        }
+      ],
+      "scopeOk": false,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--clean",
+      "input": "08cfecdd1f199988ef9d999532750a0f368c15fbcad15aed093f31b2d470b6b0",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--convention-break",
+      "input": "06722a6a1c2740767c6efe99e0d1b3cd7da077464e44e7ee8a70a9fc3561a060",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 981,
+          "claim": "Assign the join result directly to `netloc` instead of introducing a temporary.",
+          "evidence": "`netloc = authNetloc` is the only use of the temporary created on the preceding line."
+        },
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 980,
+          "claim": "The new local variable uses camelCase instead of the function's snake_case convention.",
+          "evidence": "`authNetloc` contrasts with the existing `new_scheme` parameter."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--missed-defect",
+      "input": "3d921eb823993c5b341d2c6f9509f2a64a6cef8ec6fe6ac5c93f8a546a73f18a",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "requests/utils.py",
+          "line": 977,
+          "claim": "Proxy URLs without an explicit scheme still lose their credentials, so authenticated proxies reject the request.",
+          "evidence": "The `scheme is not None` guard skips adding `auth` back to `netloc` for schemeless URLs, even though the next branch supplies the default scheme.",
+          "scenario": "Call `requests.get('https://example.org/', proxies={'https': 'proxy_user:password@proxy.example:8080'})` with a proxy that requires those credentials. The proxy receives a CONNECT request without `Proxy-Authorization` and rejects it with 407."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "psf__requests-6028--needless-code",
+      "input": "3d35bef2c3ded25e4760cb97dbdb3bdf78349c0749adcb60cf722ad9a6bf53a4",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "requests/utils.py",
+          "line": 981,
+          "claim": "Remove the `elif auth is None` branch because it does not change behavior.",
+          "evidence": "The branch body is only `pass`, so execution reaches the scheme check with the same values whether or not the branch is present."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "recall-punctuated-words--clean",
+      "input": "949a24e4b151edc87f7e5a99c48c02668f2e6c497601262232665db9211a5104",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "src/orchestration/session/conversation-recall.ts",
+          "line": 243,
+          "claim": "An embedded NUL in a query word still causes an FTS5 parse error.",
+          "evidence": "The literal builder doubles quotes but leaves NUL bytes intact. FTS5 stops parsing at the first NUL, before the closing quote, and reports an unterminated string.",
+          "scenario": "Submit a transcript search for `foo\u0000bar`, with an actual NUL between `foo` and `bar`."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "recall-punctuated-words--needless-code",
+      "input": "ee8a214bc9cdd85d4f6b6e5be14f9b1372797c5221a3d2a63efad2009d2ed157",
+      "findings": [
+        {
+          "kind": "missed-defect",
+          "severity": "major",
+          "file": "src/orchestration/session/conversation-recall.ts",
+          "line": 244,
+          "claim": "An embedded NUL still makes the MATCH expression fail to parse.",
+          "evidence": "The literal builder escapes only double quotes, so it leaves the NUL inside the literal; FTS5 treats the NUL as the end of the expression and reports an unterminated string before reaching the closing quote.",
+          "scenario": "Submit a transcript search with the JSON query value \"foo\\u0000bar\", which decodes to a string containing an actual NUL."
+        },
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/orchestration/session/conversation-recall.ts",
+          "line": 242,
+          "claim": "The type filter cannot remove any elements.",
+          "evidence": "The preceding split on /\\s+/ returns only strings, and the next filter already removes empty strings."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--clean",
+      "input": "b3e2fe25290d02c51c313e4ea52c0005e3a6ce234d9d413718af1c2d91113252",
+      "findings": [],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--convention-break",
+      "input": "8a19d613b19eccdf60163ef32b6ec46b04a3538c122d4b1d1dcf08c4b6854daf",
+      "findings": [
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "src/t_stream.c",
+          "line": 800,
+          "claim": "Declare `ms_delta` as `int64_t` to match the adjacent `seq_delta`.",
+          "evidence": "Both deltas are read from the same listpack with `lpGetInteger`, but the patch declares `ms_delta` as `long long` and `seq_delta` as `int64_t`."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--missed-defect",
+      "input": "0f3dc5faafdc58fe8fd2aa86296e6829bae91984e3ce1afc77bb8605f50a931a",
+      "findings": [
+        {
+          "kind": "convention-break",
+          "severity": "minor",
+          "file": "src/t_stream.c",
+          "line": 1138,
+          "claim": "Assign the listpack count directly to `int64_t`, as the other widened reads do, instead of narrowing it to `int` first.",
+          "evidence": "`int64_t lp_count = (int)lpGetInteger(si->lp_ele);` still converts the 64-bit result to `int` before storing it, so the wider declaration does not preserve any additional range."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    },
+    {
+      "id": "redis__redis-10068--needless-code",
+      "input": "9bc99b3063ac3428ed5938a6675f12a29b60dea99b31956f8f8b88df081bc429",
+      "findings": [
+        {
+          "kind": "needless-code",
+          "severity": "minor",
+          "file": "src/t_stream.c",
+          "line": 1278,
+          "claim": "Remove the flags clamp because its condition can never be true.",
+          "evidence": "`flags` is an `int64_t`, so it cannot be less than `INT64_MIN`; deleting the branch leaves the subsequent deleted-bit update unchanged."
+        }
+      ],
+      "scopeOk": true,
+      "discarded": 0
+    }
+  ]
+}
