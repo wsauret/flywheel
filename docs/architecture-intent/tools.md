@@ -271,3 +271,7 @@ Not: Cutting the head and tail of an oversized read at the tool-output boundary.
 
 A call to a short-form tool with no arguments returns the tool's full contract and does nothing. Any other call coerces and validates its input against the full schema at the shared dispatch boundary. An invalid call returns its problems with the full contract and does nothing, and a valid call runs. No state records which contracts an agent has read.
 Not: a first call that always returns the contract.
+
+## ARCH-TOOLS-060: The runtime reminds an agent of each worktree it left
+
+The command analyzer records each Git worktree that a session's commands create. When that session ends its turn or hands off while such a worktree still exists, the runtime gives the agent one reminder that names each one. The owner then removes it or states why it stays.

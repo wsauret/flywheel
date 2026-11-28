@@ -242,7 +242,9 @@ describe("bundled skill packages", () => {
     expect(lifecycle?.body).toContain("Keep integration and cleanup ownership in the parent");
     expect(lifecycle?.body).not.toContain("load the `ship` skill");
     expect(lifecycle?.body).not.toContain("session scratch");
-    expect(lifecycle?.body).not.toContain("worktree remove --force");
+    // Force removes only a check-only worktree whose every change is published or in the shared checkout (ARCH-DIRECTORIES-016).
+    expect(lifecycle?.body).toContain("byte-identical to the published commit or to the shared checkout; remove that worktree only with `git worktree remove --force <path>`");
+    expect(lifecycle?.body).toContain("Remove every worktree you created before you hand off or report");
     expect(lifecycle?.body).not.toMatch(/git (?:checkout --|reset --hard|stash|clean)/);
     expect(ship?.body).toContain("Leave uncommitted edits outside the supplied list untouched");
     expect(ship?.body).toContain("never use `--autostash`");

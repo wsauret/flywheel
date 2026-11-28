@@ -84,9 +84,9 @@ The definition-override baseline manifest lives under the account data root so t
 
 A benchmark trial maps both the project root and the execution directory to the workspace that the benchmark harness supplies for that trial, and its settings, persistent processes included, come from the trial's Flywheel config. A trial never runs in the live checkout: its workspace holds a copy of the task's fixture source. That source is a pinned commit limited to an explicit list of paths, the files inside the task, or an empty tree. The trial's store is exported as evidence only after the headless host settles, and that export is a copy, not another durable authority.
 
-## ARCH-DIRECTORIES-016: The parent that makes a worktree owns its lifecycle
+## ARCH-DIRECTORIES-016: The agent that makes a worktree owns its lifecycle
 
-A Git worktree changes execution placement only and never changes the directory authorities. The parent agent that creates or adopts a worktree owns its verification, durable publication, integration proof, and cleanup, and a child given the worktree owns only its assigned edits and verification. Cleanup preserves a dirty or unintegrated worktree.
+A Git worktree changes execution placement only and never changes the directory authorities. The agent that creates or adopts a worktree owns its verification, durable publication, integration proof, and cleanup, and a child given the worktree owns only its assigned edits and verification. The owner removes the worktree before it hands off or reports, and never passes it to a parent or the person. Only a worktree that holds unpublished work stays, and the report says why. A worktree whose every change matches a published commit or the shared checkout is integrated.
 
 Because: No lost diffs is stronger than unconditional removal.
 

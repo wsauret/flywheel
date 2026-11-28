@@ -97,6 +97,7 @@ export async function runManagedShell(options: ManagedShellExecutionOptions & Ex
     throw error;
   }
   foregroundHold?.running();
+  if (options.onExited) void owned.exited.then(options.onExited, options.onExited);
   const processId = `bash-bg-${scriptId}`;
   const startedAtMs = Date.now();
   const toolUseId = context.toolUseId;

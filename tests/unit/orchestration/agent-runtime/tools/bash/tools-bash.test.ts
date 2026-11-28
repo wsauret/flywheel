@@ -21,6 +21,7 @@ import type { RuntimeToolInput } from "../../../../../../src/orchestration/agent
 import { bashExecution, commandOutputOps, dispatchTool as dispatch, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { makeContext } from "../_fixtures.js";
 import { createPrivateCopyPool } from "../../../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-pool.js";
+import { createCreatedWorktrees } from "../../../../../../src/orchestration/agent-runtime/tools/bash/git/created-worktrees.js";
 
 /** The search path of an environment, under the name it keeps: Windows spells it `Path`. */
 const pathOf = (env: { readonly [name: string]: string | undefined }) => Object.entries(env).find(([name]) => name.toUpperCase() === "PATH")?.[1];
@@ -268,6 +269,54 @@ describe("bash tool: execution output bounds", () => {
   });
 });
 
+describe("bash tool: worktrees that a command creates", () => {
+  const directory = temporaryDirectories();
+
+  /** A repository in which `register` adds a linked worktree as Git writes its metadata, so no Git process runs. */
+  function repository() {
+    const base = fs.realpathSync(directory("bash-worktrees-"));
+    const project = path.join(base, "project");
+    fs.mkdirSync(path.join(project, ".git"), { recursive: true });
+    const register = (name: string): string => {
+      const metadata = path.join(project, ".git", "worktrees", name);
+      const worktree = path.join(base, name);
+      fs.mkdirSync(metadata, { recursive: true });
+      fs.mkdirSync(worktree, { recursive: true });
+      fs.writeFileSync(path.join(metadata, "gitdir"), path.join(worktree, ".git"));
+      fs.writeFileSync(path.join(metadata, "commondir"), "../..");
+      fs.writeFileSync(path.join(worktree, ".git"), `gitdir: ${metadata}\n`);
+      return worktree;
+    };
+    return { project, register };
+  }
+
+  /** Runs `command` in `project`, where `git` does what `onLaunch` does, and answers the session's record. */
+  async function recordAfter(command: string, project: string, onLaunch: () => void) {
+    const execution = bashExecution();
+    const spawn = ownedSpawnProbe(() => { onLaunch(); return makeMockOwnedProcess(); });
+    const result = await dispatch(createBashDefinition({ ...execution, operations: makeMockOps(), postExitDrainGraceMs: 0, executionOutputThrottleMs: 0 }), { command }, makeContext({ executionCwd: project, projectRoot: project, spawnOwned: spawn.spawnOwned, effectiveBundledSkillIds: new Set(["worktree-lifecycle"]) }));
+    expect(result.outcome).toBe("ok");
+    return execution.shell.worktrees;
+  }
+
+  it("records each worktree that the run registers, however the command spells its path", async () => {
+    for (const command of ['DIR=../wt; git worktree add "$DIR" > add.log 2>&1', "bash -c 'git worktree add ../wt' | tee add.log"]) {
+      const { project, register } = repository();
+      let created = "";
+      const worktrees = await recordAfter(command, project, () => { created = register("wt"); });
+      expect({ command, named: worktrees.unreminded() }).toEqual({ command, named: [created] });
+      expect(worktrees.unreminded()).toEqual([]);
+    }
+  });
+
+  it("records nothing for an add that registers no worktree, such as one of a worktree that exists", async () => {
+    const { project, register } = repository();
+    register("existing");
+    const worktrees = await recordAfter("git worktree add ../existing", project, () => {});
+    expect(worktrees.unreminded()).toEqual([]);
+  });
+});
+
 describe("bash tool: timeout bounds", () => {
   const mockContext = () => makeContext({ executionCwd: "/scratch", spawnOwned: ownedSpawnProbe().spawnOwned });
 
@@ -279,6 +328,7 @@ describe("bash tool: timeout bounds", () => {
       shell: {
         run: async options => { timeout = options.timeoutSec; return { content: "done", outcome: "ok" }; },
         privateCopies: createPrivateCopyPool(),
+        worktrees: createCreatedWorktrees(),
         hasActiveCommands: () => false,
       },
     });

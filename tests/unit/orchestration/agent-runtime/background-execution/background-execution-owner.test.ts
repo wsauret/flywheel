@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "bun:test"
-import { existsSync } from "node:fs"
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 import { Effect } from "effect"
 
 import { handoverChannelAddress } from "../../../../../src/infra/supervision/launch/command-handover"
@@ -13,6 +14,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/s
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/session/control/background-work/background-work-types"
 import { bridgeExternalPromise } from "../../../../../src/orchestration/agent-runtime/external-promise-bridge"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, commandHandoversOfAsync, retireCommandHandover, type CommandCompletion, type CommandHandoverRow } from "../../../../../src/orchestration/session/command-handover"
+import { CREATED_WORKTREES_IN_FLIGHT_KIND } from "../../../../../src/orchestration/agent-runtime/background-execution/worktree-handover"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-background-notifications"
 import type { PrivateCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash/execution/shell-runtime-types"
 import { temporaryDirectories } from "../../../../helpers/directories"
@@ -301,7 +303,7 @@ function handoverOwner(input: { readonly heard?: boolean; readonly stopping?: bo
     deliver: async (completion) => { delivered.push(completion) },
   }, { adoptionRetryFirstMs: 5 })
   const heldCompletions = () => store.readInFlight(SESSION, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND).map((row) => ({ key: row.key, conversationId: row.payload.conversationId, text: String(row.payload.text) }))
-  return { dir, store, writer, events, owner, tasks, notifications, delivered, heldCompletions }
+  return { dir, store, writer, authority, events, owner, tasks, notifications, delivered, heldCompletions }
 }
 
 /** Launches one background command through the owner's shell runtime. */
@@ -647,6 +649,34 @@ describe("BackgroundExecutionOwner command handover", () => {
     expect(fixture.tasks.activeTaskCount()).toBe(0)
     expect(fixture.store.readInFlight(SESSION, COMMAND_HANDOVER_IN_FLIGHT_KIND)).toHaveLength(1)
     await fixture.owner.close()
+    fixture.store.close()
+  })
+
+  it("carries the record of the worktrees its commands created to its conversation's host in the next build, which names each one once", async () => {
+    const fixture = handoverOwner()
+    // A repository whose add registers one linked worktree as Git writes its metadata.
+    const project = join(realpathSync(fixture.dir), "project")
+    const metadata = join(project, ".git", "worktrees", "wt")
+    const worktree = join(realpathSync(fixture.dir), "wt")
+    mkdirSync(join(project, ".git"), { recursive: true })
+    const exited = fixture.owner.shell.worktrees.track("git worktree add ../wt", project)
+    mkdirSync(metadata, { recursive: true })
+    mkdirSync(worktree)
+    writeFileSync(join(metadata, "gitdir"), join(worktree, ".git"))
+    writeFileSync(join(metadata, "commondir"), "../..")
+    writeFileSync(join(worktree, ".git"), `gitdir: ${metadata}\n`)
+    exited?.()
+
+    await fixture.owner.close()
+    const successor = createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }), {
+      authority: fixture.authority, sessionId: SESSION, conversationId: CONVERSATION, holder: "conversation", deliver: async () => {},
+    })
+    await successor.adoptHandedOver()
+
+    expect(fixture.store.readInFlight(SESSION, CREATED_WORKTREES_IN_FLIGHT_KIND)).toEqual([])
+    expect(successor.shell.worktrees.unreminded()).toEqual([worktree])
+    expect(successor.shell.worktrees.unreminded()).toEqual([])
+    await successor.close()
     fixture.store.close()
   })
 })

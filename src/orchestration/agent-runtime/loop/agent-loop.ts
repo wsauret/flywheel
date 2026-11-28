@@ -33,6 +33,7 @@ import type { AgentLoopOptions, AgentLoopTerminal } from "../agent-loop-types.js
 import { createReplyNudge, SILENT_REPLY_NUDGE } from "./reply-nudge.js";
 import { createTurnContext } from "../request/prompt/agent-loop-turn-context.js";
 import { createRunEndProcessNotice } from "./nudges/run-end-process-notice.js";
+import { worktreeReminder } from "./nudges/worktree-reminder.js";
 import { createContextAdmission } from "../compaction/compaction-policy.js";
 import type { ToolCall } from "../llm/types.js";
 import { repairContentRefusal } from "../llm/history/content-repair.js";
@@ -102,7 +103,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let startPrefixHold = options.promptPrefixHold;
   const handoffRequired = handoff !== undefined;
   const budgetNudge = createBudgetNudge(maxLLMCalls, handoffRequired);
-  const handoffTracker = createHandoffTracker({ background: options.background?.tasks, onStarted: lifecycle?.onHandoffStarted });
+  const handoffTracker = createHandoffTracker({ background: options.background?.tasks, reminder: () => worktreeReminder(options.background?.shell.worktrees, options.providerSessionKey), onStarted: lifecycle?.onHandoffStarted });
   const contentFilter = createContentFilterRecovery({ providerSessionKey: options.providerSessionKey, pushUser, onSystemMessage: options.onSystemMessage });
   const pendingWorkNudge = createPendingWorkNudge({ providerSessionKey: options.providerSessionKey, pushUser });
   const runEndProcessNotice = createRunEndProcessNotice();
@@ -221,10 +222,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       // A rejected admission reads as a refusal, as the shell reads it.
       const persistable = await Promise.resolve(toolContext.admitPersistentProcess?.()).catch(() => false) === true;
       const notice = persistable ? runEndProcessNotice(options.background?.tasks.processRecords() ?? [], options.providerSessionKey) : undefined;
-      if (notice) {
-        await pushUser(notice);
-        return "continue";
-      }
+      if (notice) { await pushUser(notice); return "continue"; }
       if (options.completeOnIdle?.seal?.(finalReplyText(preparation.messages)) === false) return (await awaitNextLoopInput(false, waitSignal)) === "continue" ? "continue" : inputClosedTerminal(signal?.aborted);
       return { kind: "completed" };
     }
@@ -310,6 +308,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       return "continue";
     }
     closeSpentWait();
+    // Like the reply nudge, the reminded request settles the same input, so it runs inside the logical turn.
+    // A turn that waits on its own work has not ended.
+    const worktrees = turnSignal.aborted || state.wait ? undefined : worktreeReminder(options.background?.shell.worktrees, options.providerSessionKey);
+    if (worktrees) { await pushUser(worktrees); return "continue"; }
     if (!state.wait || closureMode !== "handoff") await endCompletedTurn(contentRefused);
     return resolveTurnEnd(turnSignal);
   };

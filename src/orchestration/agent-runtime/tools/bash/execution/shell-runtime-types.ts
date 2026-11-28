@@ -4,6 +4,7 @@ import type { CommandHandoverHost } from "../../../background-execution/command-
 import type { ForegroundBashHoldController } from "../../../../session/control/background-work/foreground-bash-hold.js";
 import type { ForegroundView } from "./bash-output-tail.js";
 import type { PrivateCopyPool } from "../private-copy/bash-private-copy-pool.js";
+import type { CreatedWorktrees } from "../git/created-worktrees.js";
 import type { RuntimePlatform } from "../bash-script.js";
 import type { ShellEnvironment } from "../shell-environment.js";
 import type { BashOperations, ToolContext, ToolResult } from "../../types.js";
@@ -47,6 +48,9 @@ export type ManagedShellExecutionOptions = ShellCommandHold & {
   persistable?: boolean;
   /** How long settlement waits after the exit for the parent-side stderr to end. */
   postExitDrainGraceMs?: number;
+  /** Called once when the launched process exits, in the foreground or in
+   *  the background, before a foreground result exists. */
+  onExited?: () => void;
   onForegroundSettled?: (settled: { readonly foreground: ForegroundView; readonly executionOutputTail: string }) => void;
 };
 
@@ -96,6 +100,8 @@ export interface ShellRuntimeClient {
   run(options: ManagedShellExecutionOptions): Promise<ToolResult>;
   /** The idle private copies this session's mutating commands reuse. */
   readonly privateCopies: PrivateCopyPool;
+  /** The worktrees this host's commands created, which the turn-end and handoff reminder reads. */
+  readonly worktrees: CreatedWorktrees;
 }
 
 export interface ShellRuntime {

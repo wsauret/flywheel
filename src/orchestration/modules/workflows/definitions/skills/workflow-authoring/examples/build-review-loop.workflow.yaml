@@ -55,13 +55,14 @@ phases:
   - phase: build
     persona: implementer
     subagents: [implementer]
-    brief: Deliver the unit that the design at design_path states. Size it by the sizing rule of the implementation skill; your output accounts for the whole unit, including each part that you delegate. Everything below its intent is design that you may revise; record each revision as a deviation. Escalate a choice that belongs to the person, or evidence that contradicts the Design intent, to your parent. Search the tests for each symbol, field, and text that you remove or rename, and update each hit. Before handoff, run every command of gates and fix each failure in a file that you changed.
+    brief: Deliver the unit that the design at design_path states. Size it by the sizing rule of the implementation skill; your output accounts for the whole unit, including each part that you delegate. Everything below its intent is design that you may revise; record each revision as a deviation. Escalate a choice that belongs to the person, or evidence that contradicts the Design intent, to your parent. Search the tests for each symbol, field, and text that you remove or rename, and update each hit. Before handoff, run every command of gates and fix each failure in a file that you changed. Remove each worktree that you created before handoff.
     output:
       summary: "What changed, each warning, and each file that needs a careful review."
       fields:
         criteria: { type: list, of: { type: string }, description: "One entry for each criterion id: done with its evidence, replaced by named work, or deviated with the reason and risk." }
         deviations: { type: list, of: { type: string }, description: "Each material deviation: the original choice, the evidence, the replacement, and its verification. Also each material choice that the brief left open, with the option taken and why." }
         files: { type: list, of: { type: string }, description: "Every repository file that the unit changed or created." }
+        worktrees: { type: list, of: { type: string }, description: "Each worktree that you created: removed, or kept and why." }
   - phase: review
     reads: [build]
     agents:
@@ -116,7 +117,7 @@ phases:
     if: triage.causes
     persona: implementer
     reads: [build]
-    brief: Resolve each cause that you receive, from the triage or from the open items of the verify before you, and fix each cause once. The build is background, not work to repeat. Escalate a cause whose fix would change the Design intent to your parent. Before handoff, run every command of gates. Return the latest criteria, deviations, and files, from the verify before you or else from the build, updated with this repair.
+    brief: Resolve each cause that you receive, from the triage or from the open items of the verify before you, and fix each cause once. The build is background, not work to repeat. Escalate a cause whose fix would change the Design intent to your parent. Before handoff, run every command of gates, and remove each worktree that you created. Return the latest criteria, deviations, and files, from the verify before you or else from the build, updated with this repair.
     output:
       summary: "What the repair changed, each cause left open and why, and each file that needs a careful review."
       fields:
@@ -124,6 +125,7 @@ phases:
         deviations: { type: list, of: { type: string } }
         files: { type: list, of: { type: string }, description: "Every file that the build and each repair changed." }
         resolved: { type: list, of: { type: string }, description: "Each site that this repair resolved, with how." }
+        worktrees: { type: list, of: { type: string }, description: "Each worktree that you created: removed, or kept and why." }
   - repeat: { while: verify.open, max: 2 }
     phases:
       - phase: verify
@@ -142,6 +144,7 @@ phases:
               max: 20
               of: { type: string }
               description: "Each unresolved cause, each new defect in a file that the repair changed, and each gate failure in a file of this unit, with its site and evidence. Empty when every check passes."
+            worktrees: { type: list, of: { type: string }, description: "Each worktree that you created: removed, or kept and why." }
       - phase: refix
         runs: fix
         persona: implementer

@@ -52,6 +52,8 @@ interface HandoffTracker {
 
 export function createHandoffTracker(options?: {
   background?: Pick<BackgroundWorkRegistry, "assertHandoffReady" | "stopAdmission">;
+  /** A reminder that refuses this handoff, such as the worktree reminder, which names each worktree once; undefined admits it. */
+  reminder?(): string | undefined;
   onStarted?(): void;
 }): HandoffTracker {
   let consecutiveFailures = 0;
@@ -64,16 +66,22 @@ export function createHandoffTracker(options?: {
     get isHandingOff() { return isHandingOff(); },
     request() {
       const calls = new Map<string, ToolResult | null>();
+      // A reminder names each worktree once, so it refuses every handoff of
+      // the request it reached: the model must read it before a handoff runs.
+      let reminded: ToolResult | undefined;
       const key = (call: Pick<ToolCall, "id" | "modelRequestId">) => JSON.stringify([call.modelRequestId, call.id]);
       const start = (call: Pick<ToolCall, "id" | "modelRequestId">): void => {
         const id = key(call);
         if (calls.has(id)) return;
         if (calls.size === 0) requests.push(calls);
         if ([...calls.values()].some((verdict) => verdict === null)) { calls.set(id, ended()); return; }
+        if (reminded) { calls.set(id, reminded); return; }
         const alreadyAdmitted = isHandingOff();
         const block = alreadyAdmitted ? null : options?.background?.assertHandoffReady();
-        calls.set(id, block ? { content: blockedHandoffMessage(block), outcome: "blocked" } : null);
-        if (!block && !alreadyAdmitted) {
+        const reminder = alreadyAdmitted || block ? undefined : options?.reminder?.();
+        if (reminder) reminded = { content: `handoff blocked.\n${reminder}\nThen call handoff again.`, outcome: "blocked" };
+        calls.set(id, block ? { content: blockedHandoffMessage(block), outcome: "blocked" } : reminded ?? null);
+        if (!block && !reminder && !alreadyAdmitted) {
           options?.background?.stopAdmission();
           options?.onStarted?.();
         }

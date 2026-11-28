@@ -293,9 +293,11 @@ export function createBashDefinition(options: BashAdvertisement & {
       executionOutputThrottleMs,
       rawOutput: raw,
     };
+    const recordWorktrees = shell.worktrees.track(command, context.executionCwd);
     const launch = (isolated?: MutationExecution): Promise<ToolResult> => shell.run({
       ...execution,
       ...isolated,
+      ...(recordWorktrees ? { onExited: recordWorktrees } : {}),
       ...(held ? { foreground: true as const, foregroundBashHold } : { foreground: false as const }),
       persistable: persistentProcesses,
       postExitDrainGraceMs,

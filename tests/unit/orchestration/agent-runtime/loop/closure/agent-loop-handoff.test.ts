@@ -52,6 +52,19 @@ describe("createHandoffTracker", () => {
     expect([reads, admissions]).toEqual([2, 1]);
   });
 
+  test("a reminder refuses every handoff of its request without starting one, and a handoff of a later request starts", () => {
+    const reminders = ["[worktree reminder] - /wt"];
+    let admissions = 0;
+    const tracker = createHandoffTracker({ reminder: () => reminders.shift(), onStarted() { admissions++; } });
+    const request = tracker.request();
+    const refusals = [handoffCall(), handoffCall()].map((call) => request.refuse(call));
+    expect(refusals.map((refusal) => refusal?.outcome)).toEqual(["blocked", "blocked"]);
+    expect(refusals.every((refusal) => String(refusal?.content).includes("- /wt"))).toBe(true);
+    expect([tracker.isHandingOff, admissions]).toEqual([false, 0]);
+    expect(tracker.request().refuse(handoffCall())).toBeUndefined();
+    expect([tracker.isHandingOff, admissions]).toEqual([true, 1]);
+  });
+
   test("the exhaustion message includes the last handoff error text", () => {
     const tracker = createHandoffTracker();
     for (let i = 0; i < 2; i++) {

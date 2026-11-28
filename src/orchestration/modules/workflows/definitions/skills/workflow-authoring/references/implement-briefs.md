@@ -32,6 +32,7 @@ The brief wires the phase. It does not teach the method. The `implementation` sk
 - **Shape.** Default to one agent for one bounded unit. For several units with disjoint files, stream the build over the units and end with one verify loop (Skeleton). For many independent sites, use the Migrate shape with a check per site (SKILL.md section 3). The `implementation` skill owns the verification of each unit.
 {{end}}
 - **Shared tree.** Agents of one run share one checkout with each other and with other work in it. When units run at the same time, give each an `owns` list of files in its brief. A unit edits its own files and any file that no other unit owns, and returns a change that it needs in another unit's file in a `handed_over` output field, which a later phase or the chat applies. Keep edits to a shared registry, index, or README in one phase or in the chat, so the units stay file-disjoint and can run at the same time.
+- **Worktrees.** An agent that creates a Git worktree, for example a check-only one to run gates apart from concurrent work, removes it before handoff. Give each build, repair, and verify output a `worktrees` list field: each worktree that the agent created, with removed, or kept and why.
 - **Base.** If HEAD moved since you explored, read each site that your notes name again before you launch, and pass the commit at launch as `base`. File and line notes are implementation design: an agent that finds a target moved locates it in the current tree and records a deviation, and escalates only when the move contradicts the Design intent.
 {{if:type:reviewer-uat}}
 - **Live-only units.** A unit that needs only a live check and no source edit goes to `reviewer-uat`. Defects it finds are follow-up work.
@@ -91,6 +92,7 @@ phases:
         deviations: { type: list, of: { type: string } }
         files: { type: list, of: { type: string } }
         handed_over: { type: list, of: { type: string } }
+        worktrees: { type: list, of: { type: string }, description: "Each worktree that you created: removed, or kept and why." }
   - repeat: { while: verify.open, max: 2 }
     phases:
       - phase: verify
@@ -101,6 +103,7 @@ phases:
           summary: "The result of each check, and each failure in a file that no unit changed, which the chat handles."
           fields:
             open: { type: list, max: 20, of: { type: string }, description: "Each gate failure in a file that a unit changed, or open handover, with its site and evidence. Empty when every check passes." }
+            worktrees: { type: list, of: { type: string }, description: "Each worktree that you created: removed, or kept and why." }
       - phase: integrate
 {{if:type:implementer}}
         persona: implementer
@@ -108,5 +111,8 @@ phases:
         dependencies: [implementation]
 {{end}}
         reads: [build]
-        brief: Resolve each open item that you receive across the units' files, and apply each handed_over change. Run every command of gates.
+        brief: Resolve each open item that you receive across the units' files, and apply each handed_over change. Run every command of gates, and remove each worktree that you created before handoff.
+        output:
+          fields:
+            worktrees: { type: list, of: { type: string }, description: "Each worktree that you created: removed, or kept and why." }
 ```

@@ -11,6 +11,8 @@ A worktree is temporary isolation, not disposable work. Preserve ownership, dest
 
 Start with create or adopt action, canonical path, branch or base, intended destination, integration method, and owner. Record these before mutation. Require Bash and Git before mutation, use a stable sibling path, and never overwrite existing work or place a worktree in disposable session storage.
 
+A check-only worktree is detached at one commit and exists only to run gates, for example when the shared checkout cannot build. You may copy uncommitted files into it. It holds no work of its own, so its creator removes it before handoff.
+
 ## Method
 
 1. Create or adopt the worktree and keep its ownership record current. Create a new worktree from a freshly fetched destination tip. In a new worktree, install dependencies from the lockfile before the first gate. Post the full absolute path of the worktree to the user as soon as it exists, so that they can open it in a file manager and inspect its files and diffs.
@@ -28,12 +30,12 @@ Start with create or adopt action, canonical path, branch or base, intended dest
 {{end}}
 6. Consume fresh verification evidence. Run only lifecycle-specific clean-state and destination-containment proofs here.
 7. Prove ancestry where applicable with `git merge-base --is-ancestor <commit> <destination>`.
-8. Remove only the owned worktree after integration proof and a clean safety check, using `git worktree remove <path>` without force.
+8. Remove only the owned worktree after integration proof and a clean safety check, using `git worktree remove <path>` without force. A check-only worktree is integrated when every path that `git status --porcelain` lists in it is byte-identical to the published commit or to the shared checkout; remove that worktree only with `git worktree remove --force <path>`.
 
 ## Stop and result
 
-Stop after safe cleanup or a durable handoff that transfers explicit ownership. Report the full absolute path, branch, owner, destination, publication or handoff state, integration proof, cleanup state, and remaining action.
+Remove every worktree you created before you hand off or report. Never pass one to a parent or the person. Keep a worktree only when it holds unpublished work, and then state in the report why it stays. Report the full absolute path, branch, owner, destination, publication or handoff state, integration proof, cleanup state, and remaining action.
 
 ## Failure and recovery
 
-Missing Bash or Git blocks before mutation. Any uncommitted work, uncertain owner, publication failure, or missing integration proof preserves the worktree and branch. Never force removal, reset, stash, clean, or use checkout-based recovery. After restart, rediscover the path, branch, and commit, then resume the first incomplete lifecycle step.
+Missing Bash or Git blocks before mutation. Any uncommitted work, uncertain owner, publication failure, or missing integration proof preserves the worktree and branch. Never reset, stash, clean, or use checkout-based recovery, and never force removal of a worktree other than an integrated check-only one. After restart, rediscover the path, branch, and commit, then resume the first incomplete lifecycle step.
