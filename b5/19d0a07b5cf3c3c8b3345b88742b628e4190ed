@@ -1,0 +1,14 @@
+bench/ab-persona/tables/implementer.md
+  h_4b47e9e4a8b456 5,14,18,25-39,62-63,70,73-74,81-95,122-123,130,141-149,198,206,243-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b519d0a07b5cf3c3c8b3345b88742b628e4190ed",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
