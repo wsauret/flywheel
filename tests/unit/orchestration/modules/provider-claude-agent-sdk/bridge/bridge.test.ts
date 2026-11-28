@@ -4,6 +4,7 @@ import type { BetaRefusalStopDetails } from "@anthropic-ai/sdk/resources/beta/me
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages.js";
 import { ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { classifyProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
+import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
@@ -549,7 +550,7 @@ describe("the bridge request machine", () => {
     expect(queries).toHaveLength(1);
   }));
 
-  test("a spent allowance marks the account until the reset that the query's rejected rate-limit event named, and the error carries that mark for the walk, while the same text without a rejected usage window is a rate limit that marks nothing", () => withBridge(async ({ ops, queries, quotaMarks }) => {
+  test("a spent allowance of the whole account marks the account until the reset that the query's rejected rate-limit event named, and the error carries that mark for the walk, while the same text after a rejected window of one model, or of no usage window, is the service's own answer and marks nothing", () => withBridge(async ({ ops, queries, quotaMarks }) => {
     const limited = refused("rate_limit", 429, "You've hit your session limit · resets 10:59pm");
     const first = await send(ops, request([U1]));
     queries[0]?.emit(init);
@@ -573,19 +574,26 @@ describe("the bridge request machine", () => {
     for (const [index, report] of reports.entries()) {
       const throttled = await send(ops, request([U1]));
       queries[index + 1]?.emit(init, report, ...refused("rate_limit", 429, GENERIC_USAGE_LIMIT_TEXT));
-      expect(await throttled.error).toBeInstanceOf(Anthropic.RateLimitError);
+      expect(classifyProviderFailure(classifyAnthropicError(await throttled.error))).toMatchObject({ _tag: "RateLimitFailure", status: 429 });
     }
     expect(quotaMarks).toEqual([1_791_525_709_000]);
 
-    // A spent window of one model holds the whole account only until the safe recheck: the account key carries no
-    // model, and the account still serves its other models.
+    // A spent window of one model marks no account: the account still serves its other models. The service's 429
+    // states the window's reset, which the shared classifier reads as that model's spent usage on the account.
     for (const [index, rateLimitType] of (["seven_day_opus", "seven_day_sonnet", "seven_day_overage_included"] as const).entries()) {
       const modelOnly = await send(ops, request([U1]));
-      queries[index + 3]?.emit(init, rateLimitReport({ status: "rejected", rateLimitType, resetsAt: 1_791_530_128 }),
+      queries[index + 3]?.emit(init);
+      await settle();
+      logLines(queries[index + 3], [
+        ...modelRequest(), ...responseBlock("error", 429, { "request-id": "req_1", "retry-after": "278946" }),
+        apiErrorLine(429, '{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit."}}'),
+      ]);
+      await settle();
+      queries[index + 3]?.emit(rateLimitReport({ status: "rejected", rateLimitType, resetsAt: 1_791_530_128 }),
         ...refused("rate_limit", 429, "You've hit your Opus limit · resets 12:15am"));
-      expect(await modelOnly.error).toMatchObject({ quotaObservation: { reportedResetAtMs: undefined } });
+      expect(classifyProviderFailure(classifyAnthropicError(await modelOnly.error))).toMatchObject({ _tag: "QuotaExhaustedFailure", retryAfterMs: 278_946_000 });
     }
-    expect(quotaMarks).toEqual([1_791_525_709_000, undefined, undefined, undefined]);
+    expect(quotaMarks).toEqual([1_791_525_709_000]);
   }));
 
   test("a spent allowance whose mark the account's row does not take fails the request with the coordination error, as native", () => withBridge(async ({ ops, queries, quotaMarks }) => {

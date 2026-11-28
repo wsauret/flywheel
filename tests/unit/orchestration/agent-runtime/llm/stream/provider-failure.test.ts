@@ -116,9 +116,11 @@ describe("classifyProviderFailure classification table", () => {
     expect(isProviderAttributedFailure(failure)).toBe(true);
   });
 
-  test("429 carries retry-after headers, preferring millisecond resolution", () => {
+  test("429 carries retry-after headers, preferring millisecond resolution, and stays throttling however long its wait", () => {
     expect(retryAfterMs(statusError(429, { "retry-after": "3" }))).toBe(3_000);
     expect(retryAfterMs(statusError(429, { "retry-after-ms": "250", "retry-after": "3" }))).toBe(250);
+    // Only a provider adapter that knows its service states a spent window as a long wait reads it as spent usage.
+    expect(classifyProviderFailure(statusError(429, { "retry-after": "120" }))).toMatchObject({ _tag: "RateLimitFailure", retryAfterMs: 120_000 });
   });
 
   test("x-should-retry false below 500 is a terminal request defect", () => {

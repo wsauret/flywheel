@@ -53,7 +53,9 @@ class ModelAccessFailure extends Schema.TaggedError<ModelAccessFailure>()("Model
 /** The candidate's route cannot run on this machine, such as a provider whose local program is missing. Nothing
  *  reached the provider, so nothing retries on this candidate and nothing marks; the walk tries the next one. */
 class RouteUnavailableFailure extends Schema.TaggedError<RouteUnavailableFailure>()("RouteUnavailableFailure", failureFields) {}
-/** Quota, credit, or plan entitlement is spent: retrying cannot pay for it. */
+/** Quota, credit, or plan entitlement is spent: retrying cannot pay for it. `retryAfterMs` is present only when the
+ *  provider refused the request's model on the account until that moment (`QuotaExhaustedError.retryAfterMs`), and
+ *  the account's other models are not affected. */
 class QuotaExhaustedFailure extends Schema.TaggedError<QuotaExhaustedFailure>()("QuotaExhaustedFailure", failureFields) {}
 /** The account's availability could not be coordinated across processes:
  *  retrying would spend an account the other processes are still metering. */
@@ -246,6 +248,10 @@ export function isTransientNetworkError(error: unknown): boolean {
   return NETWORK_ERROR_PATTERN.test(error.message);
 }
 
+/** A provider-declared backoff is honored in place up to this bound. A provider adapter that knows its service
+ *  states a spent window's reset as a longer wait reads such an answer as spent usage, not throttling. */
+export const RETRY_AFTER_MAX_MS = 60_000;
+
 /** The provider's backoff hint, in milliseconds, from the `retry-after-ms` or `retry-after` response header of
  *  `error`, or undefined when it has no headers or no usable hint. */
 export function getRetryAfterMs(error: unknown): number | undefined {
@@ -312,7 +318,7 @@ export function classifyProviderFailure(error: unknown): ProviderFailure {
     return new RouteUnavailableFailure({ message: error.message, cause: error });
   }
   if (error instanceof QuotaExhaustedError) {
-    return new QuotaExhaustedFailure({ message: error.message, cause: error });
+    return new QuotaExhaustedFailure({ message: error.message, ...(error.retryAfterMs === undefined ? {} : { retryAfterMs: error.retryAfterMs }), cause: error });
   }
   if (error instanceof QuotaCoordinationError) {
     return new QuotaCoordinationFailure({ message: error.message, cause: error });

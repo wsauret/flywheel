@@ -16,7 +16,7 @@ import { EngineCannotStartError } from "../login-observations.js";
 import { observeEngine } from "../engine/observed-engine.js";
 import type { EngineValues } from "../query/query-engine.js";
 import type { CliUserFrame, HostLaunch, LaunchedHost } from "../engine/query-launcher.js";
-import { classifySdkMessage, cliFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../query/sdk-events.js";
+import { classifySdkMessage, cliFailure, quotaFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../query/sdk-events.js";
 import { wireFailure, type WireFailure } from "../engine/service-requests.js";
 import { bridgeSessionId } from "../engine/session-id.js";
 import { stepGateFailure, type PluginGateServer } from "../engine/step-gate.js";
@@ -84,8 +84,8 @@ export interface AgentHost {
   admit(agentId: string, values: StepValues, sink: AgentStepSink): Promise<AgentAdmission>;
   /** Starts or resumes the agent from its file through the next dispatch frame. Resolves when the engine started the
    *  agent's task; rejects when the dispatcher's request failed, the dispatch was withdrawn, or the agent missed
-   *  `DELIVERY_TRIES` frames. */
-  dispatch(agentId: string, listener: AgentListener): Promise<void>;
+   *  `DELIVERY_TRIES` frames. `wireModelId` is the model of the agent's request. */
+  dispatch(agentId: string, listener: AgentListener, wireModelId: string): Promise<void>;
   /** The hidden requests for the agent's next transport record (ARCH-CONTEXT-008): the dispatcher's requests that no
    *  record holds yet, which the next record of any agent of the host takes, and the requests that the agent sent
    *  without an admitted step (`HostedRequests.takeHidden`). The host adds a frame's requests when the frame ends, so
@@ -168,6 +168,7 @@ export interface AgentHostConfig {
 
 interface Pending {
   readonly agentId: string;
+  readonly wireModelId: string;
   readonly listener: AgentListener;
   readonly started: PromiseWithResolvers<void>;
   tries: number;
@@ -187,6 +188,13 @@ interface Frame {
   report: CliErrorReport | undefined;
   /** The frame's stall deadline, armed from its turn's open until its turn result. */
   watchdog: ReturnType<typeof setTimeout> | undefined;
+}
+
+/** Whether the service's answer `failure` states that the login spent the usage of its request's model until a reset,
+ *  as the native classification reads that answer. */
+function statesSpentUsage(failure: Error): boolean {
+  const classified = classifyAnthropicError(failure);
+  return classified instanceof QuotaExhaustedError && classified.retryAfterMs !== undefined;
 }
 
 /** Opens one host. The engine starts at once; the first dispatch frame waits for nothing but the engine.
@@ -347,19 +355,23 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
 
   /** Moves the coordinator off its model after its request failed with the service's answer `wire`, when the failure
    *  is one of the model or the login's use of it, as the native classification reads that answer: the service refuses
-   *  the model (`ModelAccessRefusedError`) or refuses the login the model (403). A rate limit is `undefined`: it is
-   *  throttling of the whole login that clears as other requests finish (PI-MODEL-060), so the frame's agents fail with
-   *  the service's answer and its retry delay, and the failover client's retry owns the wait. The failure
+   *  the model (`ModelAccessRefusedError`), refuses the login the model (403), or states that the login spent the
+   *  model's usage (`statesSpentUsage`), which no agent's model shares by necessity. Any other rate limit is
+   *  `undefined`: it is throttling of the whole login that clears as other requests finish (PI-MODEL-060), so the
+   *  frame's agents fail with the service's answer and its retry delay, and the failover client's retry owns the wait. The failure
    *  is the coordinator's alone, so neither the login nor the account's quota is marked, and no agent's model is
    *  refused. A model that the service refuses is recorded as one that the login refuses, so later hosts skip it. The
    *  coordinator goes to its next model (`demoted`), and the frame's agents go into the next frame. When no model
    *  remains (`exhausted`), the frame's agents fail as transient, so their requests retry and then fail over, and the
-   *  coordinator starts again at its first model, so a host that outlives a short outage recovers. Any other failure,
+   *  coordinator starts again at its first model, so a host that outlives a short outage recovers. Only an agent on
+   *  the model whose usage the login spent fails with the service's answer instead, so its walk records that model's
+   *  spent usage until the stated reset (`frameFailed`). Any other failure,
    *  such as a 404 of another resource, is `undefined`. `report` adds the engine's error kind to the record only. */
   const demote = (wire: WireFailure, report: CliErrorReport | undefined): "demoted" | "exhausted" | undefined => {
-    const classified = classifyAnthropicError(wireFailure(wire));
+    const failure = wireFailure(wire);
+    const classified = classifyAnthropicError(failure);
     const refused = classified instanceof ModelAccessRefusedError;
-    if (!refused && wire.status !== 403) return undefined;
+    if (!refused && wire.status !== 403 && !statesSpentUsage(failure)) return undefined;
     if (refused && classified.refusal.kind === "model") config.recordModelRefusal(coordinator.wireModelId, classified.refusal);
     const evidence = { sessionId, from: coordinator.model, error: report?.error ?? classified.name, ...(wire.status === undefined ? {} : { status: wire.status }) };
     const next = fallbacks.shift();
@@ -374,6 +386,24 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
     return "demoted";
   };
 
+  /** The quota failure of each agent request whose spent answer widened to the login, so the login is marked once. */
+  const spentRequests = new WeakMap<Error, Error>();
+  /** The failure of an agent's request, as the walk reads it: the service's own answer, which the Claude adapter's
+   *  classification (`classifyAnthropicError`) decides. A 429 whose stated wait outlasts the retries in place is that
+   *  model's spent usage on the login, and any other 429 is throttling (PI-MODEL-060). The engine's last rejected
+   *  report only widens a spent answer to the whole login, with the reset of the login's window that it names,
+   *  because every model of the login gets that refusal. It never decides the class: one host serves agents of every
+   *  model, and its last report can be another agent's. */
+  const agentFailure = (failure: Error): Error => {
+    const rejection = reports.limitRejection;
+    if (rejection?.scope !== "account" || !statesSpentUsage(failure)) return failure;
+    const known = spentRequests.get(failure);
+    if (known !== undefined) return known;
+    const spent = quotaFailure(failure.message, () => config.markQuotaExhausted(rejection.resetsAtMs));
+    spentRequests.set(failure, spent);
+    return spent;
+  };
+
   /** Decides a frame whose turn the engine ended with an error, from the service's answer to the frame's first failed
    *  request (`HostedRequests.frameFailure`). A refusal for the login's spent usage (`reportsSpentUsage`), which the
    *  engine reports as a rate limit with its usage-limit text, belongs to the login and not to the model: every
@@ -385,10 +415,20 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
     if (reportsSpentUsage(done.report?.text ?? result.text, reports.limitRejection)) frameEnded(done, cliFailure(done.report, result, config.markQuotaExhausted, reports.limitRejection));
     else if (wire === undefined) frameEnded(done, result.status === null ? cliFailure(done.report, result, config.markQuotaExhausted, reports.limitRejection) : requests.drifted("record-incomplete"));
     else {
+      const spentModel = coordinator.wireModelId;
       const moved = demote(wire, done.report);
       if (moved === "demoted") frameEnded(done, undefined, true);
-      else if (moved === "exhausted") frameEnded(done, new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host found no coordinator model that the service serves`, "transient"));
-      else frameEnded(done, wireFailure(wire));
+      else if (moved === "exhausted") {
+        const failure = wireFailure(wire);
+        if (statesSpentUsage(failure)) {
+          for (const pending of done.batch) {
+            if (pending.wireModelId !== spentModel || inFlight.get(pending.agentId) !== pending) continue;
+            inFlight.delete(pending.agentId);
+            fail(pending, failure);
+          }
+        }
+        frameEnded(done, new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host found no coordinator model that the service serves`, "transient"));
+      } else frameEnded(done, wireFailure(wire));
     }
   };
 
@@ -636,8 +676,8 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
       // The stop chunk ends a complete response, whose usage report the engine then owes.
       return gate.admit(agentId, values, { item: (item) => { if (item.kind === "stop") reports.served(); sink.item(item); }, done: () => { sink.done(); } });
     },
-    dispatch(agentId, listener) {
-      const pending: Pending = { agentId, listener, started: Promise.withResolvers(), tries: 0 };
+    dispatch(agentId, listener, wireModelId) {
+      const pending: Pending = { agentId, wireModelId, listener, started: Promise.withResolvers(), tries: 0 };
       if (closed) pending.started.reject(new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host closed`, "transient"));
       else {
         listeners.set(agentId, listener);
@@ -648,7 +688,7 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
     },
     takeHiddenRequests: (agentId) => requests.takeHidden(agentId),
     released: (agentId) => { requests.released(agentId); },
-    requestFailure: (agentId) => requests.failure(agentId),
+    requestFailure: async (agentId) => agentFailure(await requests.failure(agentId)),
     settled: async (agentId) => { await running.get(agentId)?.promise; },
     stopTask: stop,
     close: (reason, error) => close(reason, error),

@@ -33,6 +33,9 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/substrate/store/e
 import { accessProviderRegistry } from "../../../../src/orchestration/config/models/access-provider-registry.js"
 import { createProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/routing/provider-availability.js"
 import { createAvailabilityAuthority } from "../../../../src/infra/providers/llm/access/availability-store.js"
+import { countStateRequests } from "../../../helpers/state-requests.js"
+import { isRecord } from "../../../../src/infra/guards/record.js"
+import { accessProviderCandidateKey } from "../../../../src/infra/providers/llm/access/access-provider.js"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
@@ -393,15 +396,18 @@ test("a save says when its saved model cannot serve and that its agents wait, na
   }
 })
 
-test("each model row names the provider that would serve now, read afresh from the shared availability authority", async () => {
+test("each model row names the provider that would serve now, read afresh from the shared availability authority in one read for every model, which a spent model on an account moves off that account alone", async () => {
   const dir = temporaryDirectory("flywheel-serving-provider-")
   const directories = isolatedDirectories(dir)
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath: join(dir, "flywheel.toml"), watch: false })
   const model = "gpt-6.1-sol"
+  const otherModel = "gpt-6.1-luna"
   const keyed = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
   const accounts = ["account-a", "account-b"].map((instanceId) => ({ kind: "subscription", providerId: "chatgpt", instanceId, spendMode: "included" } as const))
-  const offerings = new Map([[model, [{ wireModelId: model, metadata: null, dataUse: "standard", transport: "openai-responses", resolvedMetadata: modelInfo("openai", model, "gpt", 5, 30, "2026-04-01") } as const]]])
-  const catalog = { catalog: new Set([model]), curatedDefault: new Set([model]), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set([model]) }
+  // The API key offers one model, and the ChatGPT accounts offer both.
+  const offeringsOf = (ids: readonly string[]) => new Map(ids.map((id) => [id, [{ wireModelId: id, metadata: null, dataUse: "standard", transport: "openai-responses", resolvedMetadata: modelInfo("openai", id, "gpt", 5, 30, "2026-04-01") } as const]]))
+  const catalogOf = (ids: readonly string[]) => ({ catalog: new Set(ids), curatedDefault: new Set(ids), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set(ids) })
+  const modelsOf = (account: { readonly providerId: string }) => account.providerId === "openai_api" ? [model] : [model, otherModel]
   const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id, allowTrainingRoutes: () => false,
     persist: async () => { throw new Error("unused") },
@@ -409,9 +415,9 @@ test("each model row names the provider that would serve now, read afresh from t
   })
   const eligibility = preferences.prepare({
     profileId: "default", inputRevision: { auth: "auth", preferences: "preferences" },
-    catalogs: new Map([["openai_api", catalog], ["chatgpt", catalog]]),
-    accountCatalogs: new Map([keyed, ...accounts].map((account) => [accessProviderAccountKey(account), catalog])),
-    inventoryCandidates: new Map([keyed, ...accounts].map((account) => [accessProviderAccountKey(account), { candidate: account, configured: true, currentConnection: true, enabledOfferings: offerings, inventoryOfferings: offerings, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } }])),
+    catalogs: new Map([["openai_api", catalogOf(modelsOf(keyed))], ["chatgpt", catalogOf([model, otherModel])]]),
+    accountCatalogs: new Map([keyed, ...accounts].map((account) => [accessProviderAccountKey(account), catalogOf(modelsOf(account))])),
+    inventoryCandidates: new Map([keyed, ...accounts].map((account) => [accessProviderAccountKey(account), { candidate: account, configured: true, currentConnection: true, enabledOfferings: offeringsOf(modelsOf(account)), inventoryOfferings: offeringsOf(modelsOf(account)), catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } }])),
     releaseDates: new Map(),
   })
   const auth = testAuthContext({ apiKeys: { openai_api: "test-key" } })
@@ -424,7 +430,8 @@ test("each model row names the provider that would serve now, read afresh from t
   // The picker and another process each own an availability authority on one file, as two runtimes do.
   const dbFile = join(temporaryDirectory("flywheel-serving-availability-"), "availability-authority.sqlite")
   const authorities = [createAvailabilityAuthority({ dbFile }), createAvailabilityAuthority({ dbFile })] as const
-  const picker = createProviderAvailability({ authority: authorities[0] })
+  const reads = countStateRequests(authorities[0])
+  const picker = createProviderAvailability({ authority: reads.reader })
   const other = createProviderAvailability({ authority: authorities[1] }).forCandidates("default", [keyed, ...accounts])
   const service = createAdmittedModelAssignmentService({
     capacityWaits: { recheck: () => {} },
@@ -456,19 +463,35 @@ test("each model row names the provider that would serve now, read afresh from t
       },
     }),
   })
+  /** The provider that serves each model now, and the availability reads that one listing made. */
   const serving = async () => {
     const rows = await service.listModelOptions({ scope: { kind: "defaults" }, slot: roleSlot("chat") })
-    const row = rows.find((entry) => entry.model === model)
-    expect(row?.providers.map(({ name, shortName }) => [name, shortName])).toEqual([["ChatGPT Subscription", "ChatGPT"], ["OpenAI API Key", "OpenAI"]])
-    return row?.providers.filter((provider) => provider.serving).map((provider) => provider.name)
+    const served = [model, otherModel].map((id) => {
+      const row = rows.find((entry) => entry.model === id)
+      expect(row?.providers.map(({ name, shortName }) => [name, shortName])).toEqual([["ChatGPT Subscription", "ChatGPT"], ...(id === model ? [["OpenAI API Key", "OpenAI"]] : [])])
+      return row?.providers.filter((provider) => provider.serving).map((provider) => provider.name)
+    })
+    // One snapshot of every account's rows and the own rows of the models that each account can serve, not of every
+    // model on every account.
+    const snapshots = reads.take().filter(({ method }) => method.startsWith("snapshot"))
+    expect(snapshots.map(({ method }) => method)).toEqual(["snapshotFor"])
+    const [keys] = snapshots[0]?.args ?? []
+    const modelRows = (Array.isArray(keys) ? keys : []).flatMap((key) => isRecord(key) && typeof key.window === "string" && key.window.startsWith("model:") ? [{ candidateKey: key.candidateKey, model: key.window.slice("model:".length) }] : [])
+    expect(modelRows.filter(({ candidateKey }) => candidateKey === accessProviderCandidateKey(keyed))).toEqual([{ candidateKey: accessProviderCandidateKey(keyed), model }])
+    for (const account of accounts) expect(modelRows).toContainEqual({ candidateKey: accessProviderCandidateKey(account), model: otherModel })
+    return served
   }
   try {
-    expect(await serving()).toEqual(["ChatGPT Subscription"])
+    expect(await serving()).toEqual([["ChatGPT Subscription"], ["ChatGPT Subscription"]])
+    // A 429 that states its reset spent one model on both ChatGPT accounts; the other model still serves there.
+    const spentModel = createProviderAvailability({ authority: authorities[1] }).forCandidates("default", accounts, () => [model])
+    for (const account of accounts) spentModel.markQuotaExhausted(account, Date.now() + 3_600_000, model)
+    expect(await serving()).toEqual([["OpenAI API Key"], ["ChatGPT Subscription"]])
     const resetsAtSeconds = Math.floor(Date.now() / 1000) + 3_600
     for (const account of accounts) other.observeChatGptQuotaExhausted(account, resetsAtSeconds)
-    expect(await serving()).toEqual(["OpenAI API Key"])
+    expect(await serving()).toEqual([["OpenAI API Key"], []])
     other.markQuotaExhausted(keyed, Date.now() + 3_600_000)
-    expect(await serving()).toEqual([])
+    expect(await serving()).toEqual([[], []])
   } finally {
     await picker.dispose()
     for (const authority of authorities) await authority.dispose()

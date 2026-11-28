@@ -375,7 +375,7 @@ function buildChainClient(
     return built;
   };
   const chain = (admission: ProviderRequestAdmission, { eligibility, allowTrainingRoutes }: RequestCapture): ModelClient => {
-    const availability = owner.forCandidates(connection.profileId, admission.candidateAttributions.map(({ candidate }) => candidate));
+    const availability = owner.forCandidates(connection.profileId, admission.candidateAttributions.map(({ candidate }) => candidate), () => [plan.model]);
     const affordability = new Map<AccessProviderId, ProviderAffordabilityCapability>();
     for (const [provider, create] of options.providers.affordability) {
       const capability = create(connection);

@@ -34,14 +34,19 @@ export class OutputLengthExceededError extends Error {
 }
 
 /** The account cannot pay for the request: quota, credit, or plan entitlement
- *  is exhausted. Terminal - only a plan or billing change clears it. */
+ *  is exhausted. Terminal - only a plan or billing change clears it.
+ *  `retryAfterMs` is the provider's stated wait when it refused the request's
+ *  model on the account until a reset that lies past the in-place retries:
+ *  that model alone is spent there, for that long. */
 export class QuotaExhaustedError extends Error {
   readonly quotaObservation: QuotaExhaustionObservation | undefined;
+  readonly retryAfterMs: number | undefined;
 
-  constructor(message = "Provider quota exhausted", options?: { cause?: unknown; quotaObservation?: QuotaExhaustionObservation }) {
+  constructor(message = "Provider quota exhausted", options?: { cause?: unknown; quotaObservation?: QuotaExhaustionObservation; retryAfterMs?: number }) {
     super(message, options);
     this.name = "QuotaExhaustedError";
     this.quotaObservation = options?.quotaObservation;
+    this.retryAfterMs = options?.retryAfterMs;
   }
 }
 

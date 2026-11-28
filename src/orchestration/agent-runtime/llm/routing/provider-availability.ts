@@ -44,6 +44,12 @@ const log = Log.create({ service: "provider-availability" });
  *  share one canonical window key. */
 const GENERIC_QUOTA_WINDOW = "account";
 
+/** A spent allowance of one model on the account, beside the account's own windows: the provider refused that model
+ *  until its reset and still serves the account's other models. The window names the canonical model id, so the
+ *  request walk and the model picker read the same row. */
+const MODEL_WINDOW_PREFIX = "model:";
+const modelWindow = (model: string): string => `${MODEL_WINDOW_PREFIX}${model}`;
+
 /** Service health is its own row per provider, beside the quota windows: an
  *  outage says the service cannot answer, not that the account cannot pay,
  *  and the two facts recover on different evidence. The recheck after an
@@ -136,13 +142,20 @@ function chatGptWindowObservation(headers: Headers, prefix: string, observedAtMs
   return terminalSuppression(observedAtMs, resetsAtSeconds === undefined ? undefined : resetsAtSeconds * 1000);
 }
 
+/** The latest moment that a `Date` holds, which every reader of a suppression formats. It lies within the safe integer
+ *  range that a row's decoder accepts. */
+const LATEST_DATE_MS = 8_640_000_000_000_000;
+
 /** A suppression that holds to the provider-reported reset, or to a bounded
  *  safe recheck moment when the provider reported none: a suppression always
- *  states when it ends. */
+ *  states when it ends. A reset computed from a stated wait is rounded up to a
+ *  whole millisecond, and a reset that no row or date can hold is treated as none, so
+ *  every process decodes the row. */
 function terminalSuppression(observedAtMs: number, resetsAtMs: number | undefined): DurableObservation {
-  return resetsAtMs === undefined
+  const reset = resetsAtMs === undefined ? undefined : Math.ceil(resetsAtMs);
+  return reset === undefined || !(reset >= 1 && reset <= LATEST_DATE_MS)
     ? { state: "exhausted", nextProbeAtMs: observedAtMs + SAFE_RECHECK_MS }
-    : { state: "exhausted", resetsAtMs };
+    : { state: "exhausted", resetsAtMs: reset };
 }
 
 
@@ -315,7 +328,8 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
    * exhaustion window. Reset-only updates do not claim again. */
   function suppress(provider: AccessProviderId, key: AvailabilityKey, observation: Observation): QuotaExhaustionObservation {
     const known = rows.get(rowKey(key));
-    let wasExhausted = known?.state === "exhausted";
+    // A suppression whose bound passed holds nothing back, so a new one is a new exhaustion window.
+    let wasExhausted = known !== undefined && suppressedUntilMs(known) !== undefined;
     let result: ObservationResult;
     try {
       result = observe(key, observation, true);
@@ -383,7 +397,7 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
   }
 
 
-  function forCandidates(profileId: string, candidates: readonly AccessProviderCandidate[]): ProviderAvailability {
+  function forCandidates(profileId: string, candidates: readonly AccessProviderCandidate[], modelsOf: (candidate: AccessProviderCandidate) => readonly string[] = () => []): ProviderAvailability {
     const candidateKey = (candidate: AccessProviderCandidate): string => accessProviderCandidateKey(candidate);
     const accountKey = (candidate: AccessProviderCandidate, window: string): Extract<AvailabilityKey, { scope: "account" }> => ({
       scope: "account",
@@ -393,23 +407,40 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
       window,
     });
     const serviceKey = (provider: AccessProviderId): AvailabilityKey => ({ scope: "provider", provider, window: SERVICE_WINDOW });
+    /** The rows that decide whether `candidate` serves `model`: the model's own row first, so the fleet's recheck of
+     *  a spent model claims that row, and then the account's windows. */
+    const windowKeysFor = (candidate: AccessProviderCandidate, model?: string): readonly AvailabilityKey[] => [
+      ...(model === undefined ? [] : [accountKey(candidate, modelWindow(model))]),
+      ...(candidateProviderId(candidate) === "chatgpt" ? CHATGPT_WINDOWS : [GENERIC_QUOTA_WINDOW]).map((window) => accountKey(candidate, window)),
+    ];
     const boundKeys: readonly AvailabilityKey[] = [
-      ...candidates.flatMap((candidate) => {
-        const provider = candidateProviderId(candidate);
-        const windows = provider === "chatgpt" ? CHATGPT_WINDOWS : [GENERIC_QUOTA_WINDOW];
-        return windows.map((window) => accountKey(candidate, window));
-      }),
+      ...candidates.flatMap((candidate) => [
+        ...windowKeysFor(candidate),
+        ...modelsOf(candidate).map((model) => accountKey(candidate, modelWindow(model))),
+      ]),
       ...[...new Set(candidates.map(candidateProviderId))].map(serviceKey),
     ];
     const coordinatedProviders = authority === undefined ? [] : [...new Set(candidates.map(candidateProviderId))];
     let revision = 0;
     let initialized = false;
 
-    const windowKeysFor = (candidate: AccessProviderCandidate): readonly AvailabilityKey[] =>
-      (candidateProviderId(candidate) === "chatgpt" ? CHATGPT_WINDOWS : [GENERIC_QUOTA_WINDOW]).map((window) => accountKey(candidate, window));
+    function standingFor(candidate: AccessProviderCandidate, model?: string): QuotaStanding {
+      return standingOver(windowKeysFor(candidate, model));
+    }
 
-    function standingFor(candidate: AccessProviderCandidate): QuotaStanding {
-      return standingOver(windowKeysFor(candidate));
+    /** The keys of the spent-model rows that the account states, read in one range read of the account's rows. */
+    function statedModelKeys(candidate: AccessProviderCandidate): readonly AvailabilityKey[] {
+      const account = accountKey(candidate, GENERIC_QUOTA_WINDOW);
+      const stated = authority === undefined
+        ? [...rows.values()]
+        : (() => {
+          const snapshot = authority.snapshotForAccount(account);
+          for (const row of snapshot.rows) fold(row, snapshot.revision);
+          return snapshot.rows;
+        })();
+      return stated.flatMap((row) => row.scope === "account" && row.profileId === profileId && row.candidateKey === account.candidateKey && row.window.startsWith(MODEL_WINDOW_PREFIX)
+        ? [availabilityKey(row)]
+        : []);
     }
 
     function standingOver(keys: readonly AvailabilityKey[]): QuotaStanding {
@@ -509,11 +540,12 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
         if (candidate.spendMode !== "included") return;
         sync();
         if (candidateProviderId(candidate) !== "chatgpt") {
-          const key = accountKey(candidate, GENERIC_QUOTA_WINDOW);
-          const known = rows.get(rowKey(key));
-          if (known?.state !== "exhausted" || known.source !== "terminal-quota-error" || known.observedAtMs >= observedAtMs) return;
           if (metrics.length === 0 || metrics.some((metric) => metric.usedFraction === undefined || metric.usedFraction >= 1)) return;
-          observeBestEffort(key, { observedAtMs, source: "usage-report", state: "live" });
+          for (const key of [accountKey(candidate, GENERIC_QUOTA_WINDOW), ...statedModelKeys(candidate)]) {
+            const known = rows.get(rowKey(key));
+            if (known?.state !== "exhausted" || known.source !== "terminal-quota-error" || known.observedAtMs >= observedAtMs) continue;
+            observeBestEffort(key, { observedAtMs, source: "usage-report", state: "live" });
+          }
           return;
         }
         for (const window of CHATGPT_WINDOWS) {
@@ -547,14 +579,22 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
 
       chatGptStanding: standingFor,
 
-      markQuotaExhausted(candidate, resetsAtMs) {
+      markQuotaExhausted(candidate, resetsAtMs, model) {
         const provider = candidateProviderId(candidate);
         const exhaustedAtMs = now();
-        return suppress(provider, accountKey(candidate, GENERIC_QUOTA_WINDOW), {
+        const key = accountKey(candidate, model === undefined ? GENERIC_QUOTA_WINDOW : modelWindow(model));
+        const observation = suppress(provider, key, {
           observedAtMs: exhaustedAtMs,
           source: "terminal-quota-error",
           ...terminalSuppression(exhaustedAtMs, resetsAtMs),
         });
+        if (observation.newlyExhausted) {
+          log.info("usage limit spent", {
+            provider, candidateKey: key.candidateKey, window: key.window,
+            ...(observation.reportedResetAtMs === undefined ? { recheckAtMs: observation.exhaustion.resetsAtMs } : { resetsAtMs: observation.reportedResetAtMs }),
+          });
+        }
+        return observation;
       },
 
       quotaExhaustion(candidate) {
@@ -586,14 +626,12 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
         observeBestEffort(serviceKey(provider), { observedAtMs: now(), source: "provider-recovered", state: "live" });
       },
 
-      claimQuotaProbe(candidate) {
-        const provider = candidateProviderId(candidate);
-        const target = provider === "chatgpt"
-          ? windowKeysFor(candidate).find((key) => {
-            const row = rows.get(rowKey(key));
-            return row?.state === "exhausted" && suppressedUntilMs(row) === undefined;
-          })
-          : accountKey(candidate, GENERIC_QUOTA_WINDOW);
+      claimQuotaProbe(candidate, model) {
+        const due = windowKeysFor(candidate, model).find((key) => {
+          const row = rows.get(rowKey(key));
+          return row?.state === "exhausted" && suppressedUntilMs(row) === undefined;
+        });
+        const target = due ?? (candidateProviderId(candidate) === "chatgpt" ? undefined : accountKey(candidate, GENERIC_QUOTA_WINDOW));
         return target ? claimProbeOn(target) : undefined;
       },
 
@@ -624,11 +662,14 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
           return false;
         }
         if (!landed) return false;
+        // A sibling row can be another request's probe, such as the account row beside a model's row. Its lease is that
+        // request's, so the sibling is concluded only under the fence this owner last read: a claim advances the fence,
+        // so a claim this owner has not seen rejects the write, and a claim it has seen is skipped.
         for (const sibling of [...windowKeysFor(candidate), serviceKey(provider)]) {
           if (rowKey(sibling) === rowKey(key)) continue;
           const row = rows.get(rowKey(sibling));
-          if (row?.state === "exhausted" && suppressedUntilMs(row) === undefined) {
-            observeBestEffort(sibling, { observedAtMs, source: "quota-probe", state: "live" });
+          if (row?.state === "exhausted" && suppressedUntilMs(row) === undefined && row.leaseExpiresAtMs <= observedAtMs) {
+            observeBestEffort(sibling, { observedAtMs, source: "quota-probe", state: "live", fence: row.fence });
           }
         }
         return true;

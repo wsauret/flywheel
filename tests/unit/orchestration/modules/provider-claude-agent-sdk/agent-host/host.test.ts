@@ -3,8 +3,9 @@ import type { SDKMessage, SDKTaskNotificationMessage, SDKTaskStartedMessage } fr
 import { Cause, Effect, Queue } from "effect";
 import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
 import { LlmStreamError, ProviderRequestValidationError, QuotaExhaustedError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
+import { classifyProviderFailure } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
 import { AGENT_HOST_PLUGIN } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
-import { openAgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
+import { openAgentHost, type AgentHostConfig } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { hostValues } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import type { CliUserFrame, HostLaunch, LaunchedHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/query-launcher.js";
 import { queueIterable } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/queue-iterable.js";
@@ -20,6 +21,8 @@ forwardDiagnostics();
 const directory = temporaryDirectories();
 
 const COORDINATORS = [{ wireModelId: "claude-haiku-5-5", model: "claude-haiku-5-5" }, { wireModelId: "claude-sonnet-5-5", model: "claude-sonnet-5-5" }] as const;
+/** The model of an agent's request. */
+const AGENT_MODEL = "claude-opus-5-5";
 
 /** A request of the host plugin's hook: the start of a turn, or a step that asks for admission. */
 type HookRequest =
@@ -31,7 +34,7 @@ const unused = (): never => { throw new Error("the host reads only whether its e
 /** One host on a fake engine. `emit` sends the engine's messages; `nextFrame` reads the user row id of the next
  *  dispatch frame; `openFrame` reads the next frame and opens its turn at the host's gate, as the engine's plugin
  *  does; `ask` sends the plugin's other hook requests. */
-function fakeEngineHost(options: { readonly dispatcherStepDeadlineMs?: number; readonly recordBoundMs?: number; readonly silentVersions?: SilentVersions; readonly extraUsage?: ExtraUsage } = {}) {
+function fakeEngineHost(options: { readonly dispatcherStepDeadlineMs?: number; readonly recordBoundMs?: number; readonly silentVersions?: SilentVersions; readonly extraUsage?: ExtraUsage; readonly coordinators?: AgentHostConfig["coordinators"] } = {}) {
   const messages = Effect.runSync(Queue.unbounded<SDKMessage, Error | Cause.Done>());
   let launch: HostLaunch | undefined;
   const quotaMarks: (number | undefined)[] = [];
@@ -139,7 +142,7 @@ describe("the shared agent host", () => {
     expect(await closedRecord()).toMatchObject([{ sessionId: host.sessionId, reason: "debug-output" }]);
 
     const next = fakeEngineHost({ silentVersions: versions });
-    const dispatch = next.host.dispatch("a0000000000000002", noListener).then(() => undefined, (error: unknown) => error);
+    const dispatch = next.host.dispatch("a0000000000000002", noListener, AGENT_MODEL).then(() => undefined, (error: unknown) => error);
     next.emit(cliInit({ session_id: next.host.sessionId, claude_code_version: "2.1.999", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
     expect(await dispatch).toBeInstanceOf(ProviderRequestValidationError);
     expect(await next.host.ended).toBeInstanceOf(ProviderRequestValidationError);
@@ -149,7 +152,7 @@ describe("the shared agent host", () => {
 
   test("a coordinator request refused for the login's spent usage marks the login's quota once, fails the frame's agents with the quota failure, demotes no coordinator, and closes the host", async () => {
     const { host, quotaMarks, emit, nextFrame } = fakeEngineHost();
-    const dispatches = ["a0000000000000001", "a0000000000000002"].map((agentId) => host.dispatch(agentId, { ended: () => {}, refused: () => {} }).then(() => undefined, (error: unknown) => error));
+    const dispatches = ["a0000000000000001", "a0000000000000002"].map((agentId) => host.dispatch(agentId, { ended: () => {}, refused: () => {} }, AGENT_MODEL).then(() => undefined, (error: unknown) => error));
     const settled = Promise.all(dispatches);
     const reset = 1_791_900_000;
     emit(cliInit({ session_id: host.sessionId, claude_code_version: "2.1.296", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
@@ -173,7 +176,7 @@ describe("the shared agent host", () => {
 
   test("a coordinator request that the engine refused with its usage-limit text for too many concurrent requests is throttling: it marks no quota, keeps the host and its coordinator model, and fails the frame's agent with the rate limit and its retry delay", async () => {
     const { host, quotaMarks, emit, stderr, nextFrame } = fakeEngineHost();
-    const dispatched = host.dispatch("a0000000000000001", noListener).then(() => undefined, (error: unknown) => error);
+    const dispatched = host.dispatch("a0000000000000001", noListener, AGENT_MODEL).then(() => undefined, (error: unknown) => error);
     emit(cliInit({ session_id: host.sessionId, claude_code_version: "2.1.321", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
     const uuid = await nextFrame();
     stderr([
@@ -189,11 +192,105 @@ describe("the shared agent host", () => {
     await host.close("lifetime-end");
   });
 
+  test("a coordinator request that the service refused for its model's spent usage window moves the coordinator to its next model and marks no login, so the frame's agent goes into the next frame", async () => {
+    const { host, quotaMarks, emit, stderr, nextFrame } = fakeEngineHost();
+    void host.dispatch("a0000000000000001", noListener, AGENT_MODEL).catch(() => {});
+    emit(cliInit({ session_id: host.sessionId, claude_code_version: "2.1.321", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
+    const uuid = await nextFrame();
+    stderr([
+      ...sentBlock("log_d1"), ...responseBlock("error", 429, { "request-id": "req_1", "retry-after": "278946" }, "log_d1"),
+      apiErrorLine(429, '{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit. Please try again later."},"request_id":"req_1"}'),
+    ]);
+    const [report, result] = refused("rate_limit", 429, "You've hit your Haiku limit · resets Dec 1, 8am");
+    emit(rateLimitReport({ status: "rejected", rateLimitType: "seven_day_overage_included", resetsAt: 1_796_112_000 }), report, { ...result, user_message_uuid: uuid });
+    expect(await nextFrame()).not.toBe("");
+    expect(quotaMarks).toEqual([]);
+    expect(payloads("provider.claude_sdk.host.coordinator_demoted")).toMatchObject([{ sessionId: host.sessionId, from: COORDINATORS[0].model, to: COORDINATORS[1].model, status: 429 }]);
+    expect(payloads("provider.claude_sdk.host.closed")).toEqual([]);
+    await host.close("lifetime-end");
+  });
+
+  test("a coordinator with no model left after its model's spent usage window fails each agent of that model with the service's answer, which states the reset, and every other agent as transient, and marks no login", async () => {
+    const coordinator = COORDINATORS[0];
+    const { host, quotaMarks, emit, stderr, nextFrame } = fakeEngineHost({ coordinators: [coordinator] });
+    const onModel = host.dispatch("a0000000000000001", noListener, coordinator.wireModelId).then(() => undefined, (error: unknown) => error);
+    const onOther = host.dispatch("a0000000000000002", noListener, AGENT_MODEL).then(() => undefined, (error: unknown) => error);
+    const settled = Promise.all([onModel, onOther]);
+    emit(cliInit({ session_id: host.sessionId, claude_code_version: "2.1.321", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
+    // The service refuses every coordinator request of the frames with the spent window's answer.
+    for (let frames = 1; ; frames += 1) {
+      const uuid = await Promise.race([nextFrame(), settled.then(() => undefined)]);
+      if (uuid === undefined) break;
+      stderr([
+        ...sentBlock(`log_d${frames}`), ...responseBlock("error", 429, { "request-id": `req_${frames}`, "retry-after": "278946" }, `log_d${frames}`),
+        apiErrorLine(429, `{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account's rate limit. Please try again later."},"request_id":"req_${frames}"}`),
+      ]);
+      const [report, result] = refused("rate_limit", 429, "You've hit your Haiku limit · resets Dec 1, 8am");
+      emit(rateLimitReport({ status: "rejected", rateLimitType: "seven_day_overage_included", resetsAt: 1_796_112_000 }), report, { ...result, user_message_uuid: uuid });
+    }
+    expect(classifyProviderFailure(classifyAnthropicError(await onModel))).toMatchObject({ _tag: "QuotaExhaustedFailure", retryAfterMs: 278_946_000 });
+    expect(await onOther).toMatchObject({ name: "LlmStreamError", kind: "transient", message: expect.stringContaining("no coordinator model") });
+    expect(quotaMarks).toEqual([]);
+    expect(payloads("provider.claude_sdk.host.coordinator_exhausted")).toContainEqual(expect.objectContaining({ sessionId: host.sessionId, from: coordinator.model }));
+    await host.close("lifetime-end");
+  });
+
+  test("each agent's 429 is classified from its own answer, whatever the usage reports of the host's other agents say: a stated wait of days is that model's spent usage, a wait of seconds is throttling, and only a rejected window of the whole login marks the login", async () => {
+    const engine = fakeEngineHost();
+    engine.emit(cliInit({ session_id: engine.host.sessionId, claude_code_version: "2.1.321", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
+    await engine.read();
+    const fable = "a0000000000000001";
+    const opus = "a0000000000000002";
+    const sonnet = "a0000000000000003";
+    for (const agentId of [fable, opus, sonnet]) {
+      await engine.host.admit(agentId, {}, { item: () => {}, done: () => {} });
+      expect(await engine.ask("/step", { turnId: `t-${agentId}`, index: 0, messageCount: 1, agentId })).toMatchObject({ admit: true });
+    }
+    let logs = 0;
+    /** The service refuses one agent's request with a 429 that states `retryAfter`; the engine then sends `reports`. */
+    const refusedRequest = async (agentId: string, retryAfter: string, message: string, ...reports: SDKMessage[]) => {
+      logs += 1;
+      const logId = `log_${logs}`;
+      engine.stderr([
+        ...sentBlock(logId, { agent: agentId }), ...responseBlock("error", 429, { "request-id": `req_${logs}`, "retry-after": retryAfter }, logId),
+        apiErrorLine(429, `{"type":"error","error":{"type":"rate_limit_error","message":"${message}"},"request_id":"req_${logs}"}`),
+      ]);
+      engine.emit(...reports);
+      await engine.read();
+      return classifyProviderFailure(classifyAnthropicError(await engine.host.requestFailure(agentId)));
+    };
+    const weekly = "This request would exceed your account's rate limit. Please try again later.";
+    const fableRejected = rateLimitReport({ status: "rejected", rateLimitType: "seven_day_overage_included", resetsAt: 1_796_112_000 });
+    // An Opus agent's response arrives after the Fable rejection, and its report allows usage again.
+    const opusAllowed = rateLimitReport({ status: "allowed_warning", rateLimitType: "seven_day", utilization: 0.8, resetsAt: 1_796_112_000 });
+
+    // The weekly window of one model: the answer states the reset, days away, after the host's last report flipped.
+    const spent = await refusedRequest(fable, "278946", weekly, fableRejected, opusAllowed);
+    expect(spent).toMatchObject({ _tag: "QuotaExhaustedFailure", retryAfterMs: 278_946_000 });
+    // The window spends one model's allowance, so the host marks no login: the walk marks that model on the account.
+    expect(engine.quotaMarks).toEqual([]);
+
+    // Too many concurrent requests right after the Fable rejection stays throttling, also on another model.
+    const throttled = await refusedRequest(opus, "7", "Number of concurrent connections has exceeded your rate limit.", fableRejected);
+    expect(throttled).toMatchObject({ _tag: "RateLimitFailure", retryAfterMs: 7000 });
+    expect(engine.quotaMarks).toEqual([]);
+
+    // A rejected window of the whole login widens a spent answer to the login, once, with the window's reset.
+    const accountReset = 1_795_900_000;
+    await refusedRequest(sonnet, "86400", weekly, rateLimitReport({ status: "rejected", rateLimitType: "seven_day", resetsAt: accountReset }));
+    const failure = await engine.host.requestFailure(sonnet);
+    expect(failure).toBeInstanceOf(QuotaExhaustedError);
+    expect(classifyAnthropicError(failure)).toBe(failure);
+    expect(engine.quotaMarks).toEqual([accountReset * 1000]);
+    expect(payloads("provider.claude_sdk.host.closed")).toEqual([]);
+    await engine.host.close("lifetime-end");
+  });
+
   test("a task's end reaches its agent's listener once, and the host keeps no listener of an ended task, so its later close tells that agent nothing", async () => {
     const { host, emit, nextFrame } = fakeEngineHost();
     const agentId = "a0000000000000001";
     const ends: string[] = [];
-    const dispatched = host.dispatch(agentId, { ended: (end) => { ends.push(end); }, refused: () => {} });
+    const dispatched = host.dispatch(agentId, { ended: (end) => { ends.push(end); }, refused: () => {} }, AGENT_MODEL);
     await nextFrame();
     const started: SDKTaskStartedMessage = { type: "system", subtype: "task_started", task_id: agentId, description: "agent", ...ENVELOPE };
     const ended: SDKTaskNotificationMessage = { type: "system", subtype: "task_notification", task_id: agentId, status: "completed", output_file: "", summary: "", ...ENVELOPE };
@@ -215,7 +312,7 @@ describe("the shared agent host", () => {
     const { host, emit, read, ask, openFrame } = fakeEngineHost({ dispatcherStepDeadlineMs: deadlineMs });
     let failure: unknown;
     try {
-      const dispatched = host.dispatch("a0000000000000001", noListener).then(() => undefined, (error: unknown) => error);
+      const dispatched = host.dispatch("a0000000000000001", noListener, AGENT_MODEL).then(() => undefined, (error: unknown) => error);
       emit(cliInit({ session_id: host.sessionId, plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
       await openFrame("frame");
       // Each progress comes within the deadline and the frame outlives it, so each one armed the watchdog again.
@@ -242,7 +339,7 @@ describe("the shared agent host", () => {
 
   test("a dispatcher turn that the engine ends with an error fails the frame's dispatch as transient, keeps the host, and leaves the gate no record of the frame", async () => {
     const { host, emit, ask, openFrame } = fakeEngineHost({ dispatcherStepDeadlineMs: 25 });
-    const first = host.dispatch("a0000000000000001", noListener).then(() => undefined, (error: unknown) => error);
+    const first = host.dispatch("a0000000000000001", noListener, AGENT_MODEL).then(() => undefined, (error: unknown) => error);
     emit(cliInit({ session_id: host.sessionId, plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
     const uuid = await openFrame("frame");
     await ask("/step", { turnId: "frame", index: 0, messageCount: 1, agentId: null });
@@ -255,7 +352,7 @@ describe("the shared agent host", () => {
     await Bun.sleep(30);
     expect(payloads("provider.claude_sdk.host.dispatcher_stalled")).toEqual([]);
     // The host serves the next frame.
-    const second = host.dispatch("a0000000000000002", noListener);
+    const second = host.dispatch("a0000000000000002", noListener, AGENT_MODEL);
     await openFrame("next");
     emit({ type: "system", subtype: "task_started", task_id: "a0000000000000002", description: "agent", ...ENVELOPE } satisfies SDKTaskStartedMessage);
     await second;
@@ -289,7 +386,7 @@ describe("the shared agent host's usage guard", () => {
   /** Opens a dispatch frame whose first dispatcher step streams a response: the service answered with a success, and
    *  the engine sent the response's first content block. */
   async function streamingDispatcher(engine: ReturnType<typeof fakeEngineHost>) {
-    void engine.host.dispatch("a0000000000000009", noListener).catch(() => undefined);
+    void engine.host.dispatch("a0000000000000009", noListener, AGENT_MODEL).catch(() => undefined);
     await engine.openFrame("frame");
     expect(await engine.ask("/step", { turnId: "frame", index: 0, messageCount: 1, agentId: null })).toMatchObject({ admit: true });
     engine.stderr([...sentBlock("log_d1"), ...responseBlock("start", 200, { "request-id": "req_d1" }, "log_d1")]);

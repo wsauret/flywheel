@@ -124,7 +124,7 @@ Users can inspect the current session's live cache reuse, token and request usag
 
 ## PI-INTERACTION-127: Generation speed is measured and comparable
 
-Users can compare measured generation speed by model and reasoning effort, including descendant work, in Stats on every client. The session header shows the current agent's own average generation speed. Generation speed counts streamed assistant text and tool arguments in comparison tokens over streaming time only, excluding reasoning, waiting, and tool execution. Readings name their token-count basis and missing measurements.
+Users can compare measured generation speed by model and reasoning effort, including descendant work, in Stats on every client. The session header shows the current agent's own average generation speed. Generation speed counts streamed assistant text and tool arguments in comparison tokens over streaming time only, excluding reasoning, waiting, and tool execution. Output that arrives all at once has no streaming time and counts as a missing measurement. Readings name their token-count basis and missing measurements.
 
 ## PI-INTERACTION-128: Statistics account for incomplete and resumed work
 
@@ -656,7 +656,7 @@ On every client (terminal, desktop web, phone web, editor), a surface stays moun
 
 ## PI-INTERACTION-098: The reader's place holds while content changes
 
-When content above the reader changes size or older history loads, the row the reader looks at stays at the same place on the screen.
+When content above the reader changes size or older history loads, the row the reader looks at stays at the same place on the screen. A list at its top stays at its top while its selected row stays in view, so a row that moves in above the selection, such as a chat that moves into Needs you, shows.
 
 ## PI-INTERACTION-063: A background read that fails is not announced on its own
 
@@ -704,7 +704,7 @@ A Flywheel CLI subcommand that acts on a noun reads noun then verb, separated by
 
 ## PI-INTERACTION-072: A dismissed notification stays dismissed
 
-Dismissing a notification hides it on every client. While its condition stays unresolved, including across restarts, Flywheel does not raise it again; only a recurrence after the condition cleared raises a new notification.
+Dismissing a notification hides it on every client. While its condition stays unresolved, including across restarts, Flywheel does not raise it again; only a recurrence after the condition cleared raises a new notification. A notification about a provider account or an auth profile belongs to that profile: dismissing it on any client of any project hides it in every project that uses the profile.
 
 ## PI-INTERACTION-073: Each client announces new notifications and offers one list
 
