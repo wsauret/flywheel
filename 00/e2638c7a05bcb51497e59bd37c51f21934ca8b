@@ -1,0 +1,24 @@
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host.test.ts
+  s_49aaa3ea3cbf37::t_b92c503238ee84 212-213
+  s_49aaa3ea3cbf37::t_20c22c4bb19dd6 192-211,214-225
+src/infra/diagnostics/diagnostics-registry.ts
+  s_49aaa3ea3cbf37::t_ed0033eb8cfb29 253
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+  s_49aaa3ea3cbf37::t_6f7968f2196d95 5,20,378-396,671
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "00e2638c7a05bcb51497e59bd37c51f21934ca8b",
+  "prompts": {},
+  "sessions": {
+    "s_49aaa3ea3cbf37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45e52c82-0de7-4c6b-b6ba-fbe2b3d32c75",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
