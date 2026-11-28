@@ -11,6 +11,12 @@ export interface GenerationMeasurementTokenizer {
  *  holds no such block. */
 export type SettledTextOf = (blockKey: string) => string | undefined
 
+/** A block whose chunks arrived closer together than this, on average, arrived in one burst and has no streaming time.
+ *  Providers, notably the Claude engine, can release a whole tool input at once after they generate it, so its arrival
+ *  time is not its generation time. Measured chunk spacing splits into under 0.5 ms (bursts) and 10 ms or more (paced
+ *  streaming). */
+const MIN_MEAN_CHUNK_GAP_MS = 1
+
 interface OutputTiming {
   chunkCount: number
   first?: number
@@ -76,7 +82,8 @@ export function createGenerationMeasurement(deps: GenerationMeasurementTokenizer
       try {
         const eligible: { text: string; first: number; last: number }[] = []
         const measure = (output: OutputTiming, text: () => string | undefined): void => {
-          if (output.chunkCount < 2 || output.first === undefined || output.last === undefined || output.last <= output.first) return
+          if (output.chunkCount < 2 || output.first === undefined || output.last === undefined) return
+          if ((output.last - output.first) / (output.chunkCount - 1) < MIN_MEAN_CHUNK_GAP_MS) return
           const measured = text()
           if (measured !== undefined) eligible.push({ text: measured, first: output.first, last: output.last })
         }
