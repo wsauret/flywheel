@@ -143,9 +143,10 @@ export interface ProviderAvailability {
    *  ChatGPT meters two windows, each with its own row, which the rate headers
    *  also feed: a window under its limit is live, and a window at its limit
    *  suppresses the account until its reset. Every other provider has one
-   *  row, which only a refused request closes, because its report can meter
-   *  an allowance that does not gate requests. A report in which every
-   *  window states a share below full lifts that row's spent-limit mark; a
+   *  row, and one row per spent model, which only a refused request closes,
+   *  because its report can meter an allowance that does not gate requests.
+   *  A report in which every window states a share below full lifts the
+   *  spent-limit mark of each of those rows; a
    *  full or unreadable window leaves the mark, and so does a mark that the
    *  rate-limit headers wrote, which only a probe reopens. A lifted account
    *  that is still spent refuses its next request, which closes it again.
@@ -162,7 +163,7 @@ export interface ProviderAvailability {
   /** The account's standing on ChatGPT, folded over both usage windows: any
    *  suppressed window holds the account, then any claimed recheck holds it,
    *  then any window whose bound has passed admits one probe. */
-  chatGptStanding(candidate: AccessProviderCandidate): QuotaStanding;
+  chatGptStanding(candidate: AccessProviderCandidate, model?: string): QuotaStanding;
   /** Records a terminal quota failure for a provider whose account state is
    * one row. The suppression holds until the provider-reported reset, or
    * until the bounded safe recheck moment when the provider reported none,
@@ -172,10 +173,14 @@ export interface ProviderAvailability {
    * presentation needs no second deduplication authority. Throws
    * `QuotaCoordinationError` unless the account's durable row states the
    * provider exhausted afterwards: the caller must not fall back on a
-   * suppression only this process knows about. */
-  markQuotaExhausted(candidate: AccessProviderCandidate, resetsAtMs?: number): QuotaExhaustionObservation;
+   * suppression only this process knows about. With `model`, the suppression
+   * lands on that model's own row of the account, and the account's other
+   * models keep serving. A row that becomes newly spent records one INFO. */
+  markQuotaExhausted(candidate: AccessProviderCandidate, resetsAtMs?: number, model?: string): QuotaExhaustionObservation;
   quotaExhaustion(candidate: AccessProviderCandidate): QuotaExhaustion | undefined;
-  genericQuotaStanding(candidate: AccessProviderCandidate): QuotaStanding;
+  /** The account's standing, and with `model` also that model's own row on the account: either one that is spent
+   *  holds the request back. A binding reads the row of a model only when `forCandidates` named it. */
+  genericQuotaStanding(candidate: AccessProviderCandidate, model?: string): QuotaStanding;
   /** The provider's service health standing: whether its last terminal
    *  outage - a failure that said the service could not answer, not that the
    *  account could not pay - still holds it back. Same algebra as quota, on
@@ -200,7 +205,7 @@ export interface ProviderAvailability {
    *  passed. Returns the probe the winning request concludes, or undefined
    *  when another owner holds the lease. Authority failures throw
    *  `QuotaCoordinationError`; they are not lease-held pending state. */
-  claimQuotaProbe(candidate: AccessProviderCandidate): QuotaProbe | undefined;
+  claimQuotaProbe(candidate: AccessProviderCandidate, model?: string): QuotaProbe | undefined;
   keepQuotaProbeAlive(candidate: AccessProviderCandidate, probe: QuotaProbe): () => void;
   markQuotaLive(candidate: AccessProviderCandidate, probe: QuotaProbe): boolean;
   releaseQuotaProbe(candidate: AccessProviderCandidate, probe: QuotaProbe): void;
@@ -209,8 +214,10 @@ export interface ProviderAvailability {
 export interface ProviderAvailabilityOwner {
   /** Binds one effective auth profile and the exact candidates it can spend
    * from. Profile identity separates account rows while provider outages stay
-   * process-global. */
-  forCandidates(profileId: string, candidates: readonly AccessProviderCandidate[]): ProviderAvailability;
+   * process-global. `modelsOf` names, for each candidate, the canonical models
+   * whose own rows on that account the binding reads with it, in the same
+   * snapshot: only the pairs that a request or a listing can serve. */
+  forCandidates(profileId: string, candidates: readonly AccessProviderCandidate[], modelsOf?: (candidate: AccessProviderCandidate) => readonly string[]): ProviderAvailability;
   /** Stops wait admission, cancels and joins polling, then closes the authority.
    * Repeated calls await the same disposal. */
   dispose(): Promise<void>;

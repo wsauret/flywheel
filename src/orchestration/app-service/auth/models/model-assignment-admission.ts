@@ -335,19 +335,30 @@ export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmiss
 
   /** The provider that would serve each plan's model now, by the readiness rule a request walk applies: the first
    *  ready candidate, else the first that waits on a recheck. The availability binding is new, so it reads the shared
-   *  authority once, now. A model that no candidate can serve has no entry. */
+   *  authority once, now, for every plan: the accounts' rows and each plan model's own rows on them. A model that no
+   *  candidate can serve has no entry. */
   const servingProvidersNow = async (admission: ModelAssignmentReadAdmission, plans: readonly AdmittedFailoverPlan[]): Promise<ReadonlyMap<string, AccessProviderId>> => {
     const serving = new Map<string, AccessProviderId>()
     const candidates = [...new Map(plans.flatMap((plan) => plan.candidates).map((candidate) => [accessProviderCandidateKey(candidate), candidate])).values()]
+    const modelsByCandidate = new Map<string, string[]>()
+    for (const plan of plans) {
+      for (const candidate of plan.candidates) {
+        const key = accessProviderCandidateKey(candidate)
+        const models = modelsByCandidate.get(key) ?? []
+        if (!models.includes(plan.model)) models.push(plan.model)
+        modelsByCandidate.set(key, models)
+      }
+    }
     if (candidates.length === 0) return serving
     const { connection } = admission.capture
     try {
       const requestAdmission = await admission.capture.requestAdmission(candidates)
-      const availability = (deps.providerAvailability ?? getSharedProviderAvailability()).forCandidates(admission.profile.effectiveId, candidates)
+      const availability = (deps.providerAvailability ?? getSharedProviderAvailability()).forCandidates(admission.profile.effectiveId, candidates, (candidate) => modelsByCandidate.get(accessProviderCandidateKey(candidate)) ?? [])
       availability.refreshProjection()
       for (const plan of plans) {
         const inputs = {
           availability,
+          model: plan.model,
           family: plan.family,
           conditions: connection.auth.conditions ?? [],
           credentialLineage: (candidate: AccessProviderCandidate) => candidateCredentialLineage(connection, candidate),

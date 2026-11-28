@@ -253,6 +253,9 @@ export interface AvailabilityAuthority {
    *  read at. One point lookup per key: an owner reads and decodes the accounts
    *  it spends from, and never another account's rows. */
   snapshotFor(keys: readonly AvailabilityKey[]): AvailabilitySnapshot;
+  /** Every row of the one account that `account` names, whatever its window, in one indexed range read: what an
+   *  owner reads when it must learn which windows the account states, such as the models whose allowance it spent. */
+  snapshotForAccount(account: Extract<AvailabilityKey, { readonly scope: "account" }>): AvailabilitySnapshot;
   /** The global revision alone. One indexed scalar read, which is what the
    *  request path spends to learn whether its projection is still current. */
   revision(): number;
@@ -348,6 +351,11 @@ const SELECT_ROWS = `
   join requested r on s.scope = r.scope and s.provider = r.provider and s.profile_id is r.profile_id and s.candidate_key is r.candidate_key and s."window" = r."window"
 `;
 
+const SELECT_ACCOUNT_ROWS = `
+  select scope, provider, profile_id, candidate_key, "window", state, generation, observed_at, resets_at, next_probe_at, source, fence, lease_expires_at
+  from availability_state
+  where scope = 'account' and provider = $provider and profile_id = $profileId and candidate_key = $candidateKey
+`;
 
 const UPSERT_ROW = `
   insert into availability_state (scope, provider, profile_id, candidate_key, "window", state, generation, observed_at, resets_at, next_probe_at, source, fence, lease_expires_at)
@@ -626,6 +634,22 @@ export function createAvailabilityAuthority({ dbFile, providerIds }: Availabilit
           const metadata = readMetadata(opened);
           const encoded = JSON.stringify(keys.map((key) => ({ ...key, profileId: key.scope === "account" ? key.profileId : null, candidateKey: key.scope === "account" ? key.candidateKey : null })));
           const rows = opened.query<RawRow, [{ $keys: string }]>(SELECT_ROWS).all({ $keys: encoded }).map(decodeRow);
+          return { incarnation: metadata.incarnation, revision: metadata.revision, rows };
+        }).deferred();
+      } catch (error) {
+        throw fail(error, "reading the availability authority");
+      }
+    },
+
+    snapshotForAccount(account) {
+      const opened = handle();
+      try {
+        requireInstalledProvider(account.provider);
+        return opened.transaction((): AvailabilitySnapshot => {
+          const metadata = readMetadata(opened);
+          const rows = opened.query<RawRow, [SelectRowBindings]>(SELECT_ACCOUNT_ROWS)
+            .all({ $provider: account.provider, $profileId: account.profileId, $candidateKey: account.candidateKey })
+            .map(decodeRow);
           return { incarnation: metadata.incarnation, revision: metadata.revision, rows };
         }).deferred();
       } catch (error) {

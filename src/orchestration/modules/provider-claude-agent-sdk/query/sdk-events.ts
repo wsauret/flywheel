@@ -125,30 +125,32 @@ type UsageWindow = NonNullable<SDKRateLimitInfo["rateLimitType"]>;
  *  as too many concurrent requests (`concurrents`, CLI 2.1.321), which the SDK's declared type omits. */
 const USAGE_WINDOWS: ReadonlySet<string> = new Set<UsageWindow>(["five_hour", "seven_day", "seven_day_opus", "seven_day_sonnet", "seven_day_overage_included", "overage"]);
 
-/** The windows that spend one model's allowance only. The account key carries no model, so a reset of one of these
- *  windows never bounds the whole account: the mark falls back to the safe recheck, and the account's other models
- *  stay in service. */
+/** The windows that spend one model's allowance only, which the account's other models do not spend. */
 const MODEL_WINDOWS: ReadonlySet<UsageWindow> = new Set(["seven_day_opus", "seven_day_sonnet", "seven_day_overage_included"]);
 
-/** A spent usage window that a rejected rate-limit event named. `resetsAtMs` is when the account's whole allowance
- *  resets, in epoch ms: the event's reset when the window covers every model on the account, else undefined. */
-export interface UsageLimitRejection {
-  readonly resetsAtMs: number | undefined;
-}
+/** A spent usage window that a rejected rate-limit event named. `account`: the window covers every model on the
+ *  account, which is spent until `resetsAtMs` (epoch ms). `model`: the window spends one model's allowance, so the
+ *  event says nothing about the account's other models. */
+export type UsageLimitRejection =
+  | { readonly scope: "account"; readonly resetsAtMs: number }
+  | { readonly scope: "model" };
 
-/** The spent usage window that one rate-limit event names, or undefined when the event rejected nothing or rejected the
- *  request on a limit that is no usage window. */
+/** The spent usage window that one rate-limit event names, or undefined when the event rejected nothing, rejected the
+ *  request on a limit that is no usage window, or named a window of the account without its reset: such an event
+ *  cannot bound the whole account, so the request keeps its own answer's scope and reset. */
 export function usageLimitRejection(info: Pick<SDKRateLimitInfo, "status" | "rateLimitType" | "resetsAt">): UsageLimitRejection | undefined {
   if (info.status !== "rejected" || info.rateLimitType === undefined || !USAGE_WINDOWS.has(info.rateLimitType)) return undefined;
-  return { resetsAtMs: info.resetsAt === undefined || MODEL_WINDOWS.has(info.rateLimitType) ? undefined : info.resetsAt * 1000 };
+  if (MODEL_WINDOWS.has(info.rateLimitType)) return { scope: "model" };
+  return info.resetsAt === undefined ? undefined : { scope: "account", resetsAtMs: info.resetsAt * 1000 };
 }
 
 /** Whether the CLI's error text reports the account's spent allowance. The engine writes its usage-limit text for every
- *  limit that rejected the request (CLI 2.1.321), so the text reports spent usage only when the query's last rejected
- *  rate-limit event named a usage window (`rejection`). Any other limit, such as too many concurrent requests, is
- *  throttling (PI-MODEL-060). */
-export function reportsSpentUsage(text: string, rejection: UsageLimitRejection | undefined): rejection is UsageLimitRejection {
-  return rejection !== undefined && isUsageLimitText(text);
+ *  limit that rejected the request (CLI 2.1.321), so the text reports the account's spent usage only when the query's
+ *  last rejected rate-limit event named a window of the whole account (`rejection`). A spent window of one model is
+ *  the service's own answer to decide, which states its reset (`wireFailure`), and any other limit, such as too many
+ *  concurrent requests, is throttling (PI-MODEL-060). */
+export function reportsSpentUsage(text: string, rejection: UsageLimitRejection | undefined): rejection is Extract<UsageLimitRejection, { readonly scope: "account" }> {
+  return rejection?.scope === "account" && isUsageLimitText(text);
 }
 
 /**
@@ -185,10 +187,13 @@ export function readSdkMessage(message: SDKMessage, acks: Pick<ReplayAcks, "sett
  * then ends its turn as a success that holds the partial text. The stream decides that class, a transient cut.
  * `wire` is the service's own answer to the request when the CLI's debug output logged it and the bridge kept it for
  * the turn's end: then the failure is the native error of that answer, except where the CLI's text reports the
- * account's spent allowance or a refusal of one model, which the CLI reads from the service's usage headers.
- * A spent allowance (`reportsSpentUsage`) is recorded at this boundary, as the ChatGPT adapter records its own at its
- * transport: only that class calls `markQuotaExhausted`, with the reset of the usage window that the CLI's rejected
- * rate-limit event named (`rejection`), and the error carries the observation, so the walk records nothing a second time.
+ * account's spent allowance or a refusal of one model, which the CLI reads from the service's usage headers. A spent
+ * window of one model is that answer too: its 429 states the window's reset, which the Claude adapter's classification
+ * (`classifyAnthropicError`) reads.
+ * The account's spent allowance (`reportsSpentUsage`) is recorded at this boundary, as the ChatGPT adapter records its
+ * own at its transport: only that class calls `markQuotaExhausted`, with the reset of the account window that the
+ * CLI's rejected rate-limit event named (`rejection`), and the error carries the observation, so the walk records
+ * nothing a second time.
  */
 export function cliFailure(report: CliErrorReport | undefined, turnResult: CliTurnResult | undefined, markQuotaExhausted: QuotaMark, rejection: UsageLimitRejection | undefined, wire?: WireFailure): Error {
   const result = turnResult?.isError === true ? turnResult : undefined;
@@ -210,6 +215,10 @@ export function cliFailure(report: CliErrorReport | undefined, turnResult: CliTu
   // The CLI refuses an image above its own limit and sends no request. The service refuses such an image with a 400
   // (not verified live), so the request fails in the class that native Flywheel gets.
   if (result?.terminalReason === "image_error") return badRequest(text);
+  // Without the service's answer, a 429 is throttling: the engine writes its usage-limit text for every limit that
+  // rejected the request, so that text states spent usage only beside a rejected window of the whole account
+  // (`reportsSpentUsage`, above). The cause keeps the status, the provider's own word, without the text.
+  if (status === 429) return new LlmStreamError(text, "rate_limit", undefined, { cause: Object.assign(new Error("429 rate limited"), { status }) });
   if (status !== null) return Anthropic.APIError.generate(status, { type: "error", error: { type: errorType(report?.error), message: text } }, text, new Headers());
   return transportTimeout(text) ?? new LlmStreamError(text, "transient");
 }

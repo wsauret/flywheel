@@ -5,8 +5,9 @@ import type { SDKMessage, SDKRateLimitInfo } from "@anthropic-ai/claude-agent-sd
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import { ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import type { QuotaExhaustionObservation } from "../../../../../../src/orchestration/agent-runtime/llm/routing/provider-availability-types.js";
-import { ProviderAuthenticationError } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
-import { classifySdkMessage, cliFailure, cliResendFailure, readSdkMessages, type CliErrorReport, type CliTurnResult } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.js";
+import { classifyProviderFailure, ProviderAuthenticationError } from "../../../../../../src/orchestration/agent-runtime/llm/stream/provider-failure.js";
+import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/adapters/anthropic/anthropic-adapter-helpers.js";
+import { classifySdkMessage, cliFailure, cliResendFailure, readSdkMessages, usageLimitRejection, type CliErrorReport, type CliTurnResult } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query/sdk-events.js";
 import type { WireFailure } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine/service-requests.js";
 import { assistantError, cliInit, cliOnlyMessage, concurrentsRejected, ENVELOPE, event, GENERIC_USAGE_LIMIT_TEXT, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "../_bridge-harness.js";
 
@@ -17,7 +18,7 @@ const marks: (number | undefined)[] = [];
 const fail = (report: CliErrorReport | undefined, result: CliTurnResult | undefined, wire?: WireFailure) => cliFailure(report, result, (resetsAtMs) => {
   marks.push(resetsAtMs);
   return OBSERVATION;
-}, { resetsAtMs: 2_000 }, wire);
+}, { scope: "account", resetsAtMs: 2_000 }, wire);
 
 describe("the SDK message classification", () => {
   test("separates the main stream's events from pings and subagent events", () => {
@@ -115,7 +116,7 @@ describe("the error map", () => {
     const overloaded = fail(report("overloaded", "API Error: 529 Overloaded"), turn({ status: 529 }));
     expect(overloaded).toBeInstanceOf(Anthropic.APIError);
     expect(overloaded).toMatchObject({ status: 529 });
-    expect(fail(report("rate_limit", "API Error: 429 rate limited"), turn({ status: 429 }))).toBeInstanceOf(Anthropic.RateLimitError);
+    expect(classifyProviderFailure(classifyAnthropicError(fail(report("rate_limit", "API Error: 429 rate limited"), turn({ status: 429 }))))).toMatchObject({ _tag: "RateLimitFailure", status: 429 });
 
     // The CLI refuses an image above its own limit before it sends anything; the service refuses such an image natively.
     const image = fail(report("invalid_request", "API Error: image exceeds 5 MB maximum"), turn({ terminalReason: "image_error", text: "image exceeds 5 MB maximum" }));
@@ -152,8 +153,23 @@ describe("the error map", () => {
     // The engine writes its usage-limit text for every limit that rejected the request, also one that is no usage
     // window, such as too many concurrent requests (CLI 2.1.321). Without a rejected usage window that text is the
     // service's rate limit, and it marks no quota (PI-MODEL-060).
-    const throttled = cliFailure({ error: "rate_limit", text: GENERIC_USAGE_LIMIT_TEXT }, turn({ status: 429 }), () => { throw new Error("the rate limit marked the quota"); }, undefined, { status: 429, body: limit, headers });
+    const unmarked = () => { throw new Error("the failure marked the login"); };
+    const throttled = cliFailure({ error: "rate_limit", text: GENERIC_USAGE_LIMIT_TEXT }, turn({ status: 429 }), unmarked, undefined, { status: 429, body: limit, headers });
     expect(throttled).toBeInstanceOf(Anthropic.RateLimitError);
+    // A spent window of one model is the service's answer, whose 429 states the window's reset: it marks no login.
+    const weekly = new Headers({ "request-id": "req_1", "retry-after": "278946" });
+    const modelSpent = cliFailure({ error: "rate_limit", text: "You've hit your Opus limit · resets 12:15am" }, turn({ status: 429 }), unmarked, { scope: "model" }, { status: 429, body: limit, headers: weekly });
+    expect(modelSpent).toBeInstanceOf(Anthropic.RateLimitError);
+    expect(classifyProviderFailure(classifyAnthropicError(modelSpent))).toMatchObject({ _tag: "QuotaExhaustedFailure", retryAfterMs: 278_946_000 });
+    // Without the service's answer, the engine's usage-limit text is throttling unless a rejected window of the whole
+    // account, with its reset, names the spent allowance: after no rejection, a window of one model, or an account
+    // window without its reset, it marks nothing and is no quota for the walk to mark.
+    for (const rejection of [undefined, { scope: "model" } as const, usageLimitRejection({ status: "rejected", rateLimitType: "seven_day" })]) {
+      for (const text of [GENERIC_USAGE_LIMIT_TEXT, "You've hit your Opus limit · resets 12:15am"]) {
+        const withoutAnswer = cliFailure({ error: "rate_limit", text }, turn({ status: 429 }), unmarked, rejection);
+        expect(classifyProviderFailure(classifyAnthropicError(withoutAnswer))).toMatchObject({ _tag: "RateLimitFailure", status: 429 });
+      }
+    }
   });
 
   test("a login that the engine refuses before it sends a request names Flywheel's login command, not the engine's /login", () => {
