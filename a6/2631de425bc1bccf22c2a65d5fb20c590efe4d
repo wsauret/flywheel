@@ -1,0 +1,19 @@
+bench/ab-persona/records/implementer/2026-11-24T23-57-38-543Z.jsonl
+  s_49aaa3ea3cbf37::t_00f3638ed42efe 86-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a62631de425bc1bccf22c2a65d5fb20c590efe4d",
+  "prompts": {},
+  "sessions": {
+    "s_49aaa3ea3cbf37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45e52c82-0de7-4c6b-b6ba-fbe2b3d32c75",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
